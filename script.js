@@ -88,20 +88,30 @@ function initMarqueeClone(groupId) {
   clone.innerHTML = group.innerHTML;
 }
 
-function waitMarqueeImages(root) {
+function waitMarqueeImages(root, timeoutMs = 3500) {
   const imgs = root.querySelectorAll('img');
-  return Promise.all(
-    [...imgs].map(
-      (img) =>
-        new Promise((resolve) => {
-          if (img.complete) resolve();
-          else {
-            img.addEventListener('load', resolve, { once: true });
-            img.addEventListener('error', resolve, { once: true });
-          }
-        })
-    )
+  const loads = [...imgs].map(
+    (img) =>
+      new Promise((resolve) => {
+        if (img.complete && img.naturalWidth > 0) {
+          resolve();
+          return;
+        }
+
+        const done = () => resolve();
+        img.addEventListener('load', done, { once: true });
+        img.addEventListener('error', done, { once: true });
+
+        if (img.loading === 'lazy') {
+          img.loading = 'eager';
+        }
+      })
   );
+
+  return Promise.race([
+    Promise.all(loads),
+    new Promise((resolve) => window.setTimeout(resolve, timeoutMs)),
+  ]);
 }
 
 function initDepoimentosMarquee() {
@@ -111,22 +121,30 @@ function initDepoimentosMarquee() {
   if (!marquee || !track || !group) return;
 
   initMarqueeClone('depoimentosMarqueeGroup');
-  marquee.classList.add('is-js-marquee');
-  track.style.animation = 'none';
 
   let loopLen = 0;
   let offset = 0;
   let paused = false;
   let rafId = null;
   let lastTime = 0;
+  let started = false;
+  let running = false;
   const speed = 45;
   const canHoverPause = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
   const measure = () => {
-    const width = Math.round(group.scrollWidth || group.getBoundingClientRect().width);
-    if (width < 40) return false;
-    loopLen = width;
-    return true;
+    const cards = group.querySelectorAll('.testimonial-card');
+    const gap = Number.parseFloat(getComputedStyle(group).columnGap || getComputedStyle(group).gap) || 0;
+    const padding =
+      (Number.parseFloat(getComputedStyle(group).paddingLeft) || 0) +
+      (Number.parseFloat(getComputedStyle(group).paddingRight) || 0);
+
+    const cardsWidth = [...cards].reduce((sum, card) => sum + card.offsetWidth, 0);
+    const width = Math.round(cardsWidth + gap * Math.max(cards.length - 1, 0) + padding);
+    const fallback = Math.round(group.scrollWidth || group.getBoundingClientRect().width);
+
+    loopLen = Math.max(width, fallback);
+    return loopLen >= 40;
   };
 
   const normalize = () => {
@@ -140,7 +158,9 @@ function initDepoimentosMarquee() {
   };
 
   const tick = (time) => {
-    if (lastTime && !paused && loopLen > 0) {
+    if (!lastTime) {
+      lastTime = time;
+    } else if (!paused && loopLen > 0) {
       const delta = Math.min(time - lastTime, 48);
       offset -= (speed * delta) / 1000;
       normalize();
@@ -162,20 +182,32 @@ function initDepoimentosMarquee() {
     });
   }
 
+  const enableJsMarquee = () => {
+    if (running) return;
+    running = true;
+    marquee.classList.add('is-js-marquee');
+    track.style.animation = 'none';
+    cancelAnimationFrame(rafId);
+    lastTime = 0;
+    rafId = requestAnimationFrame(tick);
+  };
+
   const boot = async () => {
+    if (started) return;
+    started = true;
+
     await waitMarqueeImages(group);
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
     if (!measure()) {
-      window.setTimeout(boot, 300);
+      started = false;
+      window.setTimeout(boot, 350);
       return;
     }
 
     normalize();
     apply();
-    cancelAnimationFrame(rafId);
-    lastTime = 0;
-    rafId = requestAnimationFrame(tick);
+    enableJsMarquee();
   };
 
   const remeasure = () => {
@@ -185,19 +217,25 @@ function initDepoimentosMarquee() {
   };
 
   window.addEventListener('resize', remeasure);
-  window.addEventListener('orientationchange', () => window.setTimeout(remeasure, 200));
+  window.addEventListener('orientationchange', () => window.setTimeout(remeasure, 250));
 
   if ('ResizeObserver' in window) {
     const observer = new ResizeObserver(() => remeasure());
     observer.observe(group);
   }
 
-  if (document.visibilityState === 'visible') {
-    void boot();
+  if ('IntersectionObserver' in window) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          void boot();
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '240px 0px', threshold: 0.01 }
+    );
+    observer.observe(marquee);
   } else {
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible' && loopLen <= 0) void boot();
-    }, { once: true });
     void boot();
   }
 
