@@ -151,11 +151,11 @@ body {
   z-index: 0;
 }
 
-.copa-hero__bg img {
+.copa-hero__bg-media {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 32% center;
+  object-position: center center;
   display: block;
 }
 
@@ -975,8 +975,8 @@ body {
     height: clamp(64px, 18vw, 84px);
   }
 
-  .copa-hero__bg img {
-    object-position: center 18%;
+  .copa-hero__bg-media {
+    object-position: 33% center;
   }
 
   .copa-hero__overlay {

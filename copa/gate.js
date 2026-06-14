@@ -12,6 +12,8 @@ async function hashPassword(value) {
 function unlock() {
   sessionStorage.setItem(STORAGE_KEY, PASS_HASH);
   document.body.classList.remove('copa-locked');
+  const heroVideo = document.querySelector('.copa-hero__bg-media');
+  if (heroVideo) heroVideo.play().catch(() => {});
 }
 
 async function tryUnlock(password) {
@@ -26,6 +28,8 @@ async function tryUnlock(password) {
 async function initGate() {
   if (sessionStorage.getItem(STORAGE_KEY) === PASS_HASH) {
     document.body.classList.remove('copa-locked');
+    const heroVideo = document.querySelector('.copa-hero__bg-media');
+    if (heroVideo) heroVideo.play().catch(() => {});
     return;
   }
 

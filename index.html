@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://res.cloudinary.com">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,500;1,700&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -26,7 +26,7 @@
         <span></span>
       </button>
       <ul class="nav-links">
-        <li><a href="#sobre">Sobre</a></li>
+        <li><a href="/sobre/">Sobre</a></li>
         <li><a href="#servicos">Serviços</a></li>
         <li><a href="#abordagem">Abordagem</a></li>
         <li><a href="#para-quem">Para quem é</a></li>
@@ -42,14 +42,17 @@
         <div class="hero-media reveal reveal--scale">
           <img
             class="hero-photo"
-            src="https://res.cloudinary.com/dc48hzb6b/image/upload/c_fill,g_auto,w_900,h_1100,q_auto:good,f_auto/v1781467385/Firefly_cbl4ph.jpg"
+            src="https://res.cloudinary.com/dc48hzb6b/image/upload/c_fill,g_auto,w_900,h_1100,q_auto:good,f_auto/v1781476433/BOSSSSSSS_euhk0d.jpg"
             alt="Marcela Tupinambá, nutricionista"
             fetchpriority="high"
             decoding="async"
           >
           <div class="hero-media__shade" aria-hidden="true"></div>
           <div class="hero-media__caption">
-            <p class="hero-media__name">Marcela Tupinambá</p>
+            <p class="hero-media__name">
+              <span class="hero-media__name-line">Marcela</span>
+              <span class="hero-media__name-line hero-media__name-line--accent">Tupinambá</span>
+            </p>
             <p class="hero-media__role">Nutricionista</p>
           </div>
         </div>
@@ -91,47 +94,10 @@
       </div>
     </section>
 
-    <section class="section sobre" id="sobre">
-      <div class="container sobre-prose">
-        <span class="section-label">Sobre mim</span>
-        <h2>Emagrecimento sem viver de dieta</h2>
-        <p class="sobre-lead">Acredito que o emagrecimento não deveria ser uma batalha diária.</p>
-        <p>
-          Ao longo dos anos atendendo mulheres e homens que já tentaram de tudo para emagrecer,
-          percebi um padrão: a maioria não precisava de mais uma dieta. Precisava de direção,
-          estratégia e acompanhamento.
-        </p>
-        <p>Meu trabalho vai muito além de entregar um plano alimentar.</p>
-        <p>
-          Eu ajudo pessoas a construírem hábitos que funcionam na vida real. Com rotina corrida,
-          finais de semana, viagens, eventos, trabalho, e tudo aquilo que faz parte da vida.
-        </p>
-        <p>
-          Porque eu não acredito em resultados rápidos que desaparecem alguns meses depois.
-        </p>
-        <p>
-          Acredito em mudanças consistentes, sustentáveis e que permitam que você alcance seus
-          objetivos sem abrir mão da sua saúde, da sua vida social e da sua liberdade.
-        </p>
-        <p class="sobre-closing">
-          Hoje, meu propósito é mostrar que é possível emagrecer, ganhar saúde e transformar sua
-          relação com a comida sem viver preso a uma dieta.
-        </p>
-        <p class="sobre-highlight">E é exatamente isso que fazemos aqui todos os dias.</p>
-        <ul class="credentials">
-          <li>
-            <strong>CRN 23103265</strong>
-            <span>Registro profissional</span>
-          </li>
-          <li>
-            <strong>Online & Presencial</strong>
-            <span>Atendimento flexível</span>
-          </li>
-          <li>
-            <strong>Humanizado</strong>
-            <span>Sem dietas restritivas</span>
-          </li>
-        </ul>
+    <section class="section sobre-teaser" id="sobre">
+      <div class="container sobre-teaser__box reveal">
+        <p class="sobre-teaser__text">Quer saber mais sobre quem está por trás do método?</p>
+        <a href="/sobre/" class="btn btn-ghost">Conheça a Marcela →</a>
       </div>
     </section>
 
