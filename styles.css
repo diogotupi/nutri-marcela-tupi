@@ -90,13 +90,18 @@ ul {
   line-height: 0;
 }
 
-.logo-img {
-  height: 44px;
+.logo-mark {
+  display: block;
+  flex-shrink: 0;
+}
+
+.logo .logo-mark {
   width: 44px;
+  height: 44px;
   transition: transform var(--transition);
 }
 
-.logo:hover .logo-img {
+.logo:hover .logo-mark {
   transform: scale(1.04);
 }
 
@@ -176,18 +181,30 @@ ul {
 .hero-bg {
   position: absolute;
   inset: 0;
-  background-image:
-    linear-gradient(
-      to right,
-      rgba(250, 248, 244, 0.94) 0%,
-      rgba(250, 248, 244, 0.82) 40%,
-      rgba(250, 248, 244, 0.45) 70%,
-      rgba(250, 248, 244, 0.2) 100%
-    ),
-    url("https://res.cloudinary.com/dc48hzb6b/image/upload/v1781467385/Firefly_cbl4ph.jpg");
-  background-size: cover;
-  background-position: center;
   z-index: 0;
+  overflow: hidden;
+}
+
+.hero-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to right,
+    rgba(250, 248, 244, 0.9) 0%,
+    rgba(250, 248, 244, 0.72) 38%,
+    rgba(250, 248, 244, 0.35) 68%,
+    rgba(250, 248, 244, 0.1) 100%
+  );
+  z-index: 1;
+}
+
+.hero-bg-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center right;
+  display: block;
 }
 
 .hero-content {
@@ -342,11 +359,9 @@ ul {
   background: var(--color-surface);
 }
 
-.brand-logo {
+.brand-logo.logo-mark {
   width: 68%;
   height: 68%;
-  object-fit: contain;
-  display: block;
 }
 
 .image-placeholder {

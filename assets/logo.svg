@@ -1,7 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Marcela Tupinambá">
-  <circle cx="60" cy="60" r="54" fill="none" stroke="#5a7a5e" stroke-width="1.25" opacity="0.55"/>
-  <path d="M60 14c-2.2 4.8-4.8 8.2-1.2 12.4 3.2-2.8 5.6-6.4 1.2-12.4z" fill="#5a7a5e" opacity="0.75"/>
-  <path d="M36 82V46l10.5 16L57 46v36" fill="none" stroke="#2c2a26" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M64 46h22M75 46v36" fill="none" stroke="#2c2a26" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="60" cy="96" r="2" fill="#c8a96e"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Marcela Tupinamba">
+  <circle cx="60" cy="60" r="52" fill="none" stroke="#5a7a5e" stroke-width="2"/>
+  <path d="M60 18c-3 5-5 9-2 14 4-3 6-7 2-14z" fill="#5a7a5e"/>
+  <path d="M34 80V50l11 15L56 50v30" fill="none" stroke="#2c2a26" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M66 50h20M76 50v30" fill="none" stroke="#2c2a26" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="60" cy="94" r="2.5" fill="#c8a96e"/>
 </svg>

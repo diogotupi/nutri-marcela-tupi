@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Marcela Tupinambá — Nutricionista. Atendimento humanizado com foco em saúde, equilíbrio e bem-estar.">
   <title>Marcela Tupinambá | Nutricionista</title>
-  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://res.cloudinary.com">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -14,8 +15,14 @@
 <body>
   <header class="header" id="topo">
     <nav class="nav container">
-      <a href="#topo" class="logo">
-        <img src="assets/logo.svg" alt="Marcela Tupinambá" class="logo-img" width="44" height="44">
+      <a href="#topo" class="logo" aria-label="Marcela Tupinambá">
+        <svg class="logo-mark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" aria-hidden="true">
+          <circle cx="60" cy="60" r="52" fill="none" stroke="#5a7a5e" stroke-width="2"/>
+          <path d="M60 18c-3 5-5 9-2 14 4-3 6-7 2-14z" fill="#5a7a5e"/>
+          <path d="M34 80V50l11 15L56 50v30" fill="none" stroke="#2c2a26" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M66 50h20M76 50v30" fill="none" stroke="#2c2a26" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="60" cy="94" r="2.5" fill="#c8a96e"/>
+        </svg>
       </a>
       <button class="nav-toggle" aria-label="Abrir menu" aria-expanded="false">
         <span></span>
@@ -33,7 +40,15 @@
 
   <main>
     <section class="hero">
-      <div class="hero-bg"></div>
+      <div class="hero-bg" aria-hidden="true">
+        <img
+          class="hero-bg-img"
+          src="https://res.cloudinary.com/dc48hzb6b/image/upload/c_fill,w_1600,h_900,q_auto:good,f_auto/v1781467385/Firefly_cbl4ph.jpg"
+          alt=""
+          fetchpriority="high"
+          decoding="async"
+        >
+      </div>
       <div class="container hero-content">
         <p class="hero-eyebrow">Nutrição com cuidado e propósito</p>
         <h1>Alimentação que respeita<br>o seu corpo e a sua rotina</h1>
@@ -53,7 +68,13 @@
       <div class="container sobre-grid">
         <div class="sobre-image">
           <div class="image-frame image-frame--logo">
-            <img src="assets/logo.svg" alt="Marcela Tupinambá, nutricionista" class="brand-logo">
+            <svg class="logo-mark brand-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Marcela Tupinambá">
+              <circle cx="60" cy="60" r="52" fill="none" stroke="#5a7a5e" stroke-width="2"/>
+              <path d="M60 18c-3 5-5 9-2 14 4-3 6-7 2-14z" fill="#5a7a5e"/>
+              <path d="M34 80V50l11 15L56 50v30" fill="none" stroke="#2c2a26" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M66 50h20M76 50v30" fill="none" stroke="#2c2a26" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="60" cy="94" r="2.5" fill="#c8a96e"/>
+            </svg>
           </div>
         </div>
         <div class="sobre-text">
