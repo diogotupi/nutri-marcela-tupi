@@ -178,9 +178,17 @@ ul {
 .hero-bg {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(ellipse 80% 60% at 70% 40%, var(--color-accent-light) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 50% at 20% 80%, #f5efe6 0%, transparent 60%);
+  background-image:
+    linear-gradient(
+      to right,
+      rgba(250, 248, 244, 0.94) 0%,
+      rgba(250, 248, 244, 0.82) 40%,
+      rgba(250, 248, 244, 0.45) 70%,
+      rgba(250, 248, 244, 0.2) 100%
+    ),
+    url("https://res.cloudinary.com/dc48hzb6b/image/upload/v1781467385/Firefly_cbl4ph.jpg");
+  background-size: cover;
+  background-position: center;
   z-index: 0;
 }
 
@@ -222,25 +230,7 @@ ul {
 }
 
 .hero-accent {
-  position: absolute;
-  right: -80px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 420px;
-  height: 420px;
-  border-radius: 50%;
-  border: 1px solid var(--color-border);
-  opacity: 0.5;
-  z-index: 0;
-}
-
-.hero-accent::after {
-  content: "";
-  position: absolute;
-  inset: 40px;
-  border-radius: 50%;
-  border: 1px solid var(--color-accent);
-  opacity: 0.2;
+  display: none;
 }
 
 /* Buttons */
