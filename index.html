@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://res.cloudinary.com">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -31,7 +31,7 @@
         <li><a href="#abordagem">Abordagem</a></li>
         <li><a href="#para-quem">Para quem é</a></li>
         <li><a href="#depoimentos">Depoimentos</a></li>
-        <li><a href="#cta" class="nav-cta">Agendar</a></li>
+        <li><a href="https://api.whatsapp.com/send/?phone=5521959371667&text=Ol%C3%A1%21+Gostaria+de+agendar+e+saber+mais+informa%C3%A7%C3%B5es+sobre+os+planos+e+consultas+%3A%29+&type=phone_number&app_absent=0" class="nav-cta" target="_blank" rel="noopener noreferrer">Agendar</a></li>
       </ul>
     </nav>
   </header>
@@ -39,7 +39,7 @@
   <main>
     <section class="hero">
       <div class="container hero-layout">
-        <div class="hero-media">
+        <div class="hero-media reveal reveal--scale">
           <img
             class="hero-photo"
             src="https://res.cloudinary.com/dc48hzb6b/image/upload/c_fill,g_auto,w_900,h_1100,q_auto:good,f_auto/v1781467385/Firefly_cbl4ph.jpg"
@@ -47,18 +47,46 @@
             fetchpriority="high"
             decoding="async"
           >
+          <div class="hero-media__shade" aria-hidden="true"></div>
+          <div class="hero-media__caption">
+            <p class="hero-media__name">Marcela Tupinambá</p>
+            <p class="hero-media__role">Nutricionista</p>
+          </div>
         </div>
         <div class="hero-content">
-          <p class="hero-eyebrow">Nutrição com cuidado e propósito</p>
-          <h1>Alimentação que respeita <em>o seu corpo</em> e a sua rotina</h1>
-          <p class="hero-text">
-            Sou Marcela Tupinambá, nutricionista dedicada a ajudar você a construir
-            uma relação mais leve, consciente e sustentável com a comida.
+          <h1 class="reveal">Pare de recomeçar. <em>Comece a construir.</em></h1>
+          <p class="hero-text reveal reveal--delay-1">
+            Emagrecimento, saúde e hábitos sustentáveis para quem está cansado de viver
+            entre dietas, culpa e efeito sanfona.
           </p>
-          <div class="hero-actions">
-            <a href="#cta" class="btn btn-primary">Agendar consulta</a>
-            <a href="#sobre" class="btn btn-ghost">Conhecer mais</a>
+          <div class="hero-actions reveal reveal--delay-2">
+            <a href="https://api.whatsapp.com/send/?phone=5521959371667&text=Ol%C3%A1%21+Gostaria+de+agendar+e+saber+mais+informa%C3%A7%C3%B5es+sobre+os+planos+e+consultas+%3A%29+&type=phone_number&app_absent=0" class="btn btn-primary" target="_blank" rel="noopener noreferrer">Agendar consulta</a>
+            <a href="https://api.whatsapp.com/send/?phone=5521959371667&text=Ol%C3%A1%21+Gostaria+de+agendar+e+saber+mais+informa%C3%A7%C3%B5es+sobre+os+planos+e+consultas+%3A%29+&type=phone_number&app_absent=0" class="btn btn-ghost" target="_blank" rel="noopener noreferrer">Conhecer mais</a>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="featured-depoimento section" id="destaque">
+      <div class="container featured-depoimento__box">
+        <div class="featured-depoimento__header">
+          <span class="section-label reveal">Depoimento em destaque</span>
+          <h2 class="reveal reveal--delay-1">Uma transformação que começou de verdade</h2>
+          <p class="featured-depoimento__lead reveal reveal--delay-2">
+            Escute o relato de uma cliente que saiu do ciclo de culpa e recomeços
+            para construir hábitos que finalmente ficaram.
+          </p>
+        </div>
+        <div class="featured-video reveal reveal--delay-3">
+          <video
+            class="featured-video__player"
+            controls
+            playsinline
+            preload="metadata"
+            poster="https://res.cloudinary.com/dc48hzb6b/video/upload/so_0/v1781475305/depoimento_ky_e7tgjh.jpg"
+          >
+            <source src="https://res.cloudinary.com/dc48hzb6b/video/upload/v1781475305/depoimento_ky_e7tgjh.mp4" type="video/mp4">
+          </video>
         </div>
       </div>
     </section>
@@ -233,7 +261,7 @@
             <li>Quem deseja resultados sustentáveis</li>
           </ul>
         </div>
-        <a href="#cta" class="btn btn-primary btn-large">Quero começar</a>
+        <a href="https://api.whatsapp.com/send/?phone=5521959371667&text=Ol%C3%A1%21+Gostaria+de+agendar+e+saber+mais+informa%C3%A7%C3%B5es+sobre+os+planos+e+consultas+%3A%29+&type=phone_number&app_absent=0" class="btn btn-primary btn-large" target="_blank" rel="noopener noreferrer">Quero começar</a>
       </div>
     </section>
 

@@ -28,13 +28,40 @@ if (navToggle && navLinks) {
 
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-document.querySelectorAll('.section:not(.depoimentos), .hero-layout').forEach((section, index) => {
-  section.classList.add('reveal');
-  if (index % 3 === 1) section.classList.add('reveal--delay-1');
-  if (index % 3 === 2) section.classList.add('reveal--delay-2');
-});
+function initScrollReveal() {
+  const targets = new Set();
 
-if (!prefersReducedMotion) {
+  const addReveal = (el, options = {}) => {
+    if (!el || targets.has(el)) return;
+    const { variant, delay = 0 } = options;
+    el.classList.add('reveal');
+    if (variant) el.classList.add(variant);
+    if (delay) el.style.transitionDelay = `${delay}s`;
+    targets.add(el);
+  };
+
+  const stagger = (parent, selector, step = 0.08, variant) => {
+    parent.querySelectorAll(selector).forEach((el, index) => {
+      addReveal(el, { variant, delay: index * step });
+    });
+  };
+
+  document.querySelectorAll('.sobre-prose').forEach((block) => stagger(block, ':scope > *', 0.07));
+  document.querySelectorAll('.section-header').forEach((block) => stagger(block, ':scope > *', 0.08));
+  document.querySelectorAll('.belief-grid').forEach((block) => stagger(block, '.belief-col', 0.1, 'reveal--left'));
+  document.querySelectorAll('.feature-grid').forEach((block) => stagger(block, '.feature-card', 0.09, 'reveal--scale'));
+  document.querySelectorAll('.para-quem-box').forEach((block) => stagger(block, ':scope > *', 0.09));
+  document.querySelectorAll('.cta-box').forEach((block) => stagger(block, ':scope > *', 0.1));
+  document.querySelectorAll('.credentials').forEach((block) => stagger(block, 'li', 0.08, 'reveal--scale'));
+  document.querySelectorAll('.depoimentos .section-header').forEach((block) => stagger(block, ':scope > *', 0.08));
+
+  document.querySelectorAll('.reveal').forEach((el) => targets.add(el));
+
+  if (prefersReducedMotion) {
+    targets.forEach((el) => el.classList.add('is-visible'));
+    return;
+  }
+
   const revealObserver = new IntersectionObserver(
     (entries, observer) => {
       entries.forEach((entry) => {
@@ -43,13 +70,13 @@ if (!prefersReducedMotion) {
         observer.unobserve(entry.target);
       });
     },
-    { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
+    { threshold: 0.14, rootMargin: '0px 0px -6% 0px' }
   );
 
-  document.querySelectorAll('.reveal').forEach((el) => revealObserver.observe(el));
-} else {
-  document.querySelectorAll('.reveal').forEach((el) => el.classList.add('is-visible'));
+  targets.forEach((el) => revealObserver.observe(el));
 }
+
+initScrollReveal();
 
 /* Depoimentos: marquee + lightbox */
 
