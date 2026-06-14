@@ -178,9 +178,93 @@
 
   @media(min-width:600px){ .compare-container{flex-direction:row;} }
   html{scroll-behavior:smooth;}
+
+  /* GATE */
+  body.copa-locked { overflow: hidden; }
+  body.copa-locked #copa-app { display: none; }
+  #copa-gate { display: none; }
+  body.copa-locked #copa-gate {
+    display: flex;
+    min-height: 100vh;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: var(--cream);
+  }
+  .copa-gate-box {
+    width: min(400px, 100%);
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,.08);
+    text-align: center;
+  }
+  .copa-gate-box h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+  .copa-gate-box p {
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+  }
+  .copa-gate-box input {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font: 500 0.95rem 'DM Sans', sans-serif;
+    margin-bottom: 0.75rem;
+  }
+  .copa-gate-box input:focus {
+    outline: none;
+    border-color: var(--sage);
+  }
+  .copa-gate-box button {
+    width: 100%;
+    padding: 0.9rem;
+    background: var(--navy);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font: 600 0.9rem 'DM Sans', sans-serif;
+    cursor: pointer;
+  }
+  .copa-gate-box button:hover { background: var(--green-deep); }
+  .copa-gate-error {
+    color: var(--red-soft);
+    font-size: 0.85rem;
+    margin-top: 0.75rem;
+    min-height: 1.2rem;
+  }
+  .copa-gate-back {
+    display: inline-block;
+    margin-bottom: 1.5rem;
+    font-size: 0.85rem;
+    color: var(--sage);
+    text-decoration: none;
+  }
 </style>
 </head>
-<body>
+<body class="copa-locked">
+
+<div id="copa-gate">
+  <div class="copa-gate-box">
+    <a href="/" class="copa-gate-back">← Voltar ao site</a>
+    <h1>Copa da nutri</h1>
+    <p>Conteúdo exclusivo para pacientes. Digite a senha para acessar.</p>
+    <form id="copa-gate-form">
+      <input type="password" id="copa-password" placeholder="Senha" autocomplete="current-password" required>
+      <button type="submit">Entrar</button>
+    </form>
+    <p class="copa-gate-error" id="copa-gate-error" aria-live="polite"></p>
+  </div>
+</div>
+
+<div id="copa-app">
 
 <a href="/" style="position:fixed;top:14px;left:14px;z-index:200;padding:8px 14px;background:rgba(255,255,255,.92);border:1px solid #E8E0D5;border-radius:999px;font:500 12px 'DM Sans',sans-serif;color:#5a7a5e;text-decoration:none;box-shadow:0 2px 12px rgba(0,0,0,.06);">← Voltar ao site</a>
 
@@ -725,5 +809,7 @@
   }, { threshold: 0.2 });
   document.querySelectorAll('.cerv-table').forEach(t => obs.observe(t));
 </script>
+</div>
+<script src="gate.js"></script>
 </body>
 </html>
