@@ -1,103 +1,729 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Guia Copa 2026 — dicas de nutrição da Marcela Tupinambá para curtir o mundial com equilíbrio.">
-  <title>Guia Copa 2026 | Marcela Tupinambá</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&family=Outfit:wght@400;500&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --color-bg: #faf8f4;
-      --color-text: #2c2a26;
-      --color-accent: #5a7a5e;
-      --color-border: #e5dfd6;
-      --font-serif: "Cormorant Garamond", Georgia, serif;
-      --font-sans: "Outfit", system-ui, sans-serif;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guia Copa 2026 — Nutri Marcela Tupi</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #FAF7F2;
+    --warm-white: #FEFCF8;
+    --sage: #8BA888;
+    --sage-light: #C8DAC5;
+    --sage-pale: #EBF3EA;
+    --gold: #C8A96E;
+    --gold-light: #E8D5B0;
+    --gold-pale: #FAF3E6;
+    --navy: #2C3E50;
+    --text: #3A3530;
+    --muted: #8C8279;
+    --border: #E8E0D5;
+    --red-pale: #FAEAEA;
+    --red-soft: #D4736A;
+    --green-deep: #4A7A47;
+    --rose: #E8A598;
+    --rose-pale: #FDF0EE;
+    --blue-pale: #EEF4FB;
+    --blue-mid: #7AAACF;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--cream); color:var(--text); font-family:'DM Sans',sans-serif; }
 
-    *,
-    *::before,
-    *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+  /* NAV DOTS */
+  .nav-dots { position:fixed; right:14px; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; gap:9px; z-index:100; }
+  .nav-dot { width:8px; height:8px; border-radius:50%; background:var(--border); cursor:pointer; transition:all .3s; border:none; }
+  .nav-dot.active { background:var(--gold); transform:scale(1.4); }
 
-    html,
-    body {
-      height: 100%;
-    }
+  /* SECTIONS */
+  .section { min-height:100vh; display:flex; flex-direction:column; justify-content:center; padding:48px 26px; position:relative; }
 
-    body {
-      font-family: var(--font-sans);
-      color: var(--color-text);
-      background: var(--color-bg);
-      display: flex;
-      flex-direction: column;
-    }
+  /* CAPA */
+  #s1 { background:var(--warm-white); align-items:center; text-align:center; overflow:hidden; }
+  .capa-deco { position:absolute; top:0; left:0; right:0; bottom:0; pointer-events:none; overflow:hidden; }
+  .capa-deco::before { content:''; position:absolute; top:-100px; right:-100px; width:400px; height:400px; border-radius:50%; background:radial-gradient(circle,rgba(200,169,110,.12),transparent 70%); }
+  .capa-deco::after { content:''; position:absolute; bottom:-80px; left:-80px; width:300px; height:300px; border-radius:50%; background:radial-gradient(circle,rgba(139,168,136,.15),transparent 70%); }
+  .eyebrow { font-size:11px; font-weight:600; letter-spacing:4px; text-transform:uppercase; color:var(--sage); margin-bottom:20px; }
+  .capa-title { font-family:'Playfair Display',serif; font-size:clamp(38px,11vw,72px); font-weight:900; line-height:1; color:var(--text); }
+  .capa-title em { font-style:italic; color:var(--gold); display:block; }
+  .capa-sub { margin-top:20px; font-size:15px; color:var(--muted); font-weight:300; line-height:1.7; max-width:360px; }
+  .capa-tag { display:inline-block; margin-top:24px; background:var(--sage-pale); color:var(--green-deep); font-size:12px; font-weight:600; letter-spacing:2px; text-transform:uppercase; padding:8px 20px; border-radius:40px; }
+  .ornament { width:1px; height:60px; background:linear-gradient(to bottom,transparent,var(--gold),transparent); margin:28px auto; }
+  .brand-sig { font-family:'Playfair Display',serif; font-style:italic; font-size:14px; color:var(--muted); }
 
-    .header {
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      padding: 1rem 1.5rem;
-      border-bottom: 1px solid var(--color-border);
-      background: rgba(250, 248, 244, 0.95);
-    }
+  /* SECTION HEADER */
+  .section-header { margin-bottom:28px; }
+  .section-tag { font-size:10px; font-weight:600; letter-spacing:3px; text-transform:uppercase; color:var(--sage); margin-bottom:8px; }
+  .section-title { font-family:'Playfair Display',serif; font-size:clamp(26px,8vw,42px); font-weight:700; line-height:1.15; color:var(--text); }
+  .section-title em { font-style:italic; color:var(--gold); }
+  .section-desc { margin-top:10px; font-size:14px; color:var(--muted); line-height:1.7; font-weight:300; }
+  .section-line { width:40px; height:2px; background:var(--gold); margin:14px 0; border-radius:2px; }
 
-    .logo {
-      font-family: var(--font-serif);
-      font-size: 1.2rem;
-      font-weight: 500;
-      color: var(--color-text);
-      text-decoration: none;
-    }
+  /* CALENDÁRIO */
+  #s2 { background:var(--warm-white); }
+  .mindset-box { background:var(--sage-pale); border-left:3px solid var(--sage); border-radius:0 12px 12px 0; padding:16px 20px; margin-bottom:24px; font-size:14px; color:var(--green-deep); line-height:1.6; font-style:italic; }
+  .jogo-card { background:#fff; border:1px solid var(--border); border-radius:16px; padding:18px; margin-bottom:10px; display:flex; align-items:center; gap:14px; box-shadow:0 2px 12px rgba(0,0,0,.04); }
+  .jogo-data { text-align:center; min-width:52px; }
+  .jogo-dia-num { font-family:'Playfair Display',serif; font-size:26px; font-weight:900; color:var(--gold); line-height:1; }
+  .jogo-dia-nome { font-size:10px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-top:2px; }
+  .jogo-divider { width:1px; height:44px; background:var(--border); flex-shrink:0; }
+  .jogo-info { flex:1; }
+  .jogo-adversario { font-size:16px; font-weight:600; color:var(--text); }
+  .jogo-adversario span { color:var(--muted); font-weight:300; }
+  .jogo-fase { font-size:11px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:var(--sage); margin-top:3px; }
+  .jogo-hora { font-family:'Playfair Display',serif; font-size:20px; font-weight:700; color:var(--text); text-align:right; flex-shrink:0; }
+  .jogo-hora-label { font-size:10px; color:var(--muted); text-align:right; }
+  .mindset-reminder { background:var(--gold-pale); border-radius:12px; padding:16px 18px; margin-top:14px; display:flex; gap:12px; align-items:flex-start; }
+  .mindset-reminder .icon { font-size:20px; flex-shrink:0; }
+  .mindset-reminder p { font-size:13px; color:var(--text); line-height:1.6; }
+  .mindset-reminder p strong { color:var(--gold); }
 
-    .back-link {
-      font-size: 0.85rem;
-      font-weight: 500;
-      color: var(--color-accent);
-      text-decoration: none;
-      white-space: nowrap;
-    }
+  /* COMPARATIVO */
+  #s3 { background:var(--cream); }
+  #s4 { background:var(--warm-white); }
+  .compare-container { display:flex; flex-direction:column; gap:14px; }
+  .compare-col { border-radius:16px; padding:18px; }
+  .compare-col.sim { background:var(--sage-pale); border:1.5px solid var(--sage-light); }
+  .compare-col.nao { background:var(--red-pale); border:1.5px solid #F2C4C0; }
+  .compare-col-title { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; letter-spacing:1px; text-transform:uppercase; margin-bottom:12px; }
+  .compare-col.sim .compare-col-title { color:var(--green-deep); }
+  .compare-col.nao .compare-col-title { color:var(--red-soft); }
+  .compare-item { display:flex; gap:10px; align-items:flex-start; margin-bottom:9px; font-size:14px; line-height:1.5; color:var(--text); }
+  .compare-item:last-child { margin-bottom:0; }
+  .ci-icon { flex-shrink:0; font-size:15px; margin-top:1px; }
+  .ci-sub { font-size:12px; color:var(--muted); margin-top:2px; }
 
-    .back-link:hover {
-      text-decoration: underline;
-    }
+  /* BEBIDAS */
+  .bebida-card { background:#fff; border:1px solid var(--border); border-radius:14px; padding:14px 16px; margin-bottom:10px; display:flex; gap:14px; align-items:center; }
+  .bebida-emoji { font-size:26px; flex-shrink:0; }
+  .bebida-name { font-size:15px; font-weight:600; color:var(--text); }
+  .bebida-cal { font-size:12px; color:var(--gold); font-weight:600; margin-top:2px; }
+  .bebida-tip { font-size:12px; color:var(--muted); margin-top:4px; line-height:1.4; }
 
-    .embed-wrap {
-      flex: 1;
-      min-height: 0;
-      padding: 0;
-    }
+  /* CERVEJAS */
+  #s5 { background:var(--cream); }
+  .cerveja-intro { background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:18px; font-size:13px; color:var(--muted); line-height:1.6; }
+  .cerveja-intro strong { color:var(--text); }
+  .cerv-table { width:100%; border-collapse:separate; border-spacing:0; background:#fff; border:1px solid var(--border); border-radius:16px; overflow:hidden; margin-bottom:14px; box-shadow:0 2px 12px rgba(0,0,0,.04); }
+  .cerv-table thead tr { background:var(--navy); }
+  .cerv-table thead th { font-size:10px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:rgba(255,255,255,.7); padding:11px 13px; text-align:left; }
+  .cerv-table thead th:last-child { text-align:right; }
+  .cerv-table tbody tr { border-bottom:1px solid var(--border); transition:background .15s; }
+  .cerv-table tbody tr:last-child { border-bottom:none; }
+  .cerv-table tbody tr:hover { background:var(--cream); }
+  .cerv-table td { padding:10px 13px; font-size:14px; color:var(--text); vertical-align:middle; }
+  .cerv-table td:last-child { text-align:right; font-weight:600; font-family:'Playfair Display',serif; font-size:15px; }
+  .cerv-badge { display:inline-block; font-size:9px; font-weight:700; letter-spacing:1px; text-transform:uppercase; padding:2px 7px; border-radius:20px; margin-left:5px; vertical-align:middle; }
+  .badge-leve { background:var(--sage-pale); color:var(--green-deep); }
+  .badge-zero { background:#EEF2FF; color:#5B6AB0; }
+  .badge-medio { background:var(--gold-pale); color:#8A6A20; }
+  .kcal-bar-wrap { display:flex; align-items:center; gap:8px; justify-content:flex-end; }
+  .kcal-bar { height:5px; border-radius:3px; background:var(--border); width:60px; overflow:hidden; }
+  .kcal-bar-fill { height:100%; border-radius:3px; background:var(--gold); transition:width .8s; }
+  .kcal-bar-fill.low { background:var(--sage); }
+  .kcal-bar-fill.high { background:var(--red-soft); }
+  .table-title { font-family:'Playfair Display',serif; font-size:16px; font-weight:700; color:var(--text); margin-bottom:6px; margin-top:18px; }
+  .table-caption { font-size:11px; color:var(--muted); margin-bottom:10px; font-style:italic; }
 
-    .embed-wrap iframe {
-      display: block;
-      width: 100%;
-      height: 100%;
-      min-height: calc(100vh - 65px);
-      border: 0;
-    }
-  </style>
+  /* ===== RECEITAS ===== */
+  #s6 { background:var(--warm-white); min-height:100vh; }
+
+  .rec-tabs { display:flex; gap:0; margin-bottom:20px; border-radius:14px; overflow:hidden; border:1px solid var(--border); background:#fff; }
+  .rec-tab { flex:1; padding:13px 8px; font-size:13px; font-weight:600; text-align:center; cursor:pointer; background:none; border:none; color:var(--muted); transition:all .2s; line-height:1.3; }
+  .rec-tab.active { background:var(--navy); color:#fff; }
+
+  .rec-panel { display:none; }
+  .rec-panel.active { display:block; }
+
+  .receita-card { background:#fff; border:1px solid var(--border); border-radius:16px; overflow:hidden; margin-bottom:10px; box-shadow:0 2px 10px rgba(0,0,0,.04); transition:border-color .2s; }
+  .receita-card.open { border-color:var(--gold); }
+  .receita-header { display:flex; align-items:center; gap:13px; padding:16px 18px; cursor:pointer; }
+  .receita-num { font-family:'Playfair Display',serif; font-size:18px; font-weight:900; color:#fff; background:var(--navy); width:38px; height:38px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .receita-info { flex:1; }
+  .receita-nome { font-size:15px; font-weight:600; color:var(--text); }
+  .receita-cal { font-size:12px; color:var(--gold); font-weight:500; margin-top:2px; }
+  .receita-arrow { color:var(--muted); font-size:12px; transition:transform .3s; flex-shrink:0; }
+  .receita-body { padding:0 18px 18px; border-top:1px solid var(--border); display:none; }
+  .ri-label { font-size:10px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:var(--muted); margin-top:14px; margin-bottom:8px; }
+  .ri-list { list-style:none; display:flex; flex-direction:column; gap:5px; }
+  .ri-list li { font-size:14px; color:var(--text); display:flex; gap:8px; align-items:flex-start; }
+  .ri-list li::before { content:'·'; color:var(--gold); font-weight:700; font-size:18px; line-height:1.2; flex-shrink:0; }
+  .ri-preparo { font-size:13px; color:var(--muted); line-height:1.7; font-weight:300; }
+
+  /* cor das abas de receita por categoria */
+  .rec-tab.active.salgado { background:var(--navy); }
+  .rec-tab.active.doce { background:#7B5E8A; }
+  .rec-tab.active.bebida { background:var(--blue-mid); }
+  .receita-card.doce.open { border-color:#B084C4; }
+  .receita-card.doce .receita-num { background:#7B5E8A; }
+  .receita-card.doce .receita-cal { color:#B084C4; }
+  .receita-card.bebida.open { border-color:var(--blue-mid); }
+  .receita-card.bebida .receita-num { background:var(--blue-mid); }
+  .receita-card.bebida .receita-cal { color:var(--blue-mid); }
+
+  /* REGRAS */
+  #s7 { background:var(--cream); }
+  .regra-item { display:flex; gap:16px; align-items:flex-start; margin-bottom:18px; padding-bottom:18px; border-bottom:1px solid var(--border); }
+  .regra-item:last-child { border-bottom:none; margin-bottom:0; padding-bottom:0; }
+  .regra-num { font-family:'Playfair Display',serif; font-size:28px; font-weight:900; color:var(--gold); line-height:1; flex-shrink:0; width:34px; }
+  .regra-title { font-size:15px; font-weight:600; color:var(--text); margin-bottom:4px; }
+  .regra-text { font-size:13px; color:var(--muted); line-height:1.6; font-weight:300; }
+
+  /* FOOTER */
+  #s8 { background:var(--navy); min-height:auto; padding:48px 28px; text-align:center; justify-content:center; }
+  .footer-ornament { font-family:'Playfair Display',serif; font-style:italic; font-size:13px; color:rgba(255,255,255,.4); letter-spacing:1px; }
+  .footer-name { font-family:'Playfair Display',serif; font-size:26px; font-weight:700; color:var(--gold); margin:12px 0 6px; }
+  .footer-crn { font-size:11px; color:rgba(255,255,255,.35); letter-spacing:2px; text-transform:uppercase; }
+  .footer-msg { margin-top:20px; font-size:13px; color:rgba(255,255,255,.5); line-height:1.7; max-width:320px; margin-left:auto; margin-right:auto; }
+
+  @media(min-width:600px){ .compare-container{flex-direction:row;} }
+  html{scroll-behavior:smooth;}
+</style>
 </head>
 <body>
-  <header class="header">
-    <a href="/" class="logo">Marcela Tupinambá</a>
-    <a href="/" class="back-link">← Voltar ao site</a>
-  </header>
 
-  <main class="embed-wrap">
-    <iframe
-      src="https://claude.site/public/artifacts/54bd46ae-f82d-4ee1-869f-94057e1a6544/embed"
-      title="Guia Copa 2026 — Nutri Marcela Tupi"
-      allow="clipboard-write"
-      allowfullscreen
-    ></iframe>
-  </main>
+<a href="/" style="position:fixed;top:14px;left:14px;z-index:200;padding:8px 14px;background:rgba(255,255,255,.92);border:1px solid #E8E0D5;border-radius:999px;font:500 12px 'DM Sans',sans-serif;color:#5a7a5e;text-decoration:none;box-shadow:0 2px 12px rgba(0,0,0,.06);">← Voltar ao site</a>
+
+<nav class="nav-dots" id="navDots">
+  <button class="nav-dot active" onclick="goTo(0)"></button>
+  <button class="nav-dot" onclick="goTo(1)"></button>
+  <button class="nav-dot" onclick="goTo(2)"></button>
+  <button class="nav-dot" onclick="goTo(3)"></button>
+  <button class="nav-dot" onclick="goTo(4)"></button>
+  <button class="nav-dot" onclick="goTo(5)"></button>
+  <button class="nav-dot" onclick="goTo(6)"></button>
+  <button class="nav-dot" onclick="goTo(7)"></button>
+</nav>
+
+<!-- S1 CAPA -->
+<section class="section" id="s1">
+  <div class="capa-deco"></div>
+  <div style="position:relative;z-index:1;">
+    <div class="eyebrow">⚽ Copa do Mundo 2026</div>
+    <h1 class="capa-title">Torcida<br><em>sem culpa</em></h1>
+    <div class="ornament"></div>
+    <p class="capa-sub">O guia completo para curtir cada jogo com prazer, consciência e muito sabor.</p>
+    <div class="capa-tag">🇧🇷 Guia Nutricional da Copa</div>
+    <div style="margin-top:38px;"><div class="brand-sig">feito por nutri Marcela Tupi</div></div>
+  </div>
+</section>
+
+<!-- S2 CALENDÁRIO -->
+<section class="section" id="s2">
+  <div class="section-header">
+    <div class="section-tag">📅 Programação</div>
+    <h2 class="section-title">Jogos do<br><em>Brasil</em></h2>
+    <div class="section-line"></div>
+    <p class="section-desc">São só 3 momentos especiais — não a Copa inteira.</p>
+  </div>
+  <div class="mindset-box">"O jogo dura 90 minutos. O seu dia tem 1.440. Você não precisa chutar o balde nas outras 1.350."</div>
+  <div class="jogo-card">
+    <div class="jogo-data"><div class="jogo-dia-num">13</div><div class="jogo-dia-nome">Jun · Sáb</div></div>
+    <div class="jogo-divider"></div>
+    <div class="jogo-info"><div class="jogo-adversario">🇧🇷 Brasil <span>×</span> Marrocos 🇲🇦</div><div class="jogo-fase">⭐ Estreia da Seleção</div></div>
+    <div><div class="jogo-hora">19h</div><div class="jogo-hora-label">Horário de Brasília</div></div>
+  </div>
+  <div class="jogo-card">
+    <div class="jogo-data"><div class="jogo-dia-num">19</div><div class="jogo-dia-nome">Jun · Sex</div></div>
+    <div class="jogo-divider"></div>
+    <div class="jogo-info"><div class="jogo-adversario">🇧🇷 Brasil <span>×</span> Haiti 🇭🇹</div><div class="jogo-fase">2ª Rodada da Fase de Grupos</div></div>
+    <div><div class="jogo-hora">21h30</div><div class="jogo-hora-label">Horário de Brasília</div></div>
+  </div>
+  <div class="jogo-card">
+    <div class="jogo-data"><div class="jogo-dia-num">24</div><div class="jogo-dia-nome">Jun · Qua</div></div>
+    <div class="jogo-divider"></div>
+    <div class="jogo-info"><div class="jogo-adversario">🇧🇷 Brasil <span>×</span> Escócia 🏴󠁧󠁢󠁳󠁣󠁴󠁿</div><div class="jogo-fase">3ª Rodada · Fecha Fase de Grupos</div></div>
+    <div><div class="jogo-hora">19h</div><div class="jogo-hora-label">Horário de Brasília</div></div>
+  </div>
+  <div class="mindset-reminder">
+    <div class="icon">💡</div>
+    <p>Entre um jogo e outro, existem <strong>dias normais de rotina</strong>. É nesses dias que o seu resultado realmente acontece.</p>
+  </div>
+</section>
+
+<!-- S3 COMER EM CASA -->
+<section class="section" id="s3">
+  <div class="section-header">
+    <div class="section-tag">🏠 Em Casa</div>
+    <h2 class="section-title">O que <em>comer</em><br>no jogo?</h2>
+    <div class="section-line"></div>
+    <p class="section-desc">A diferença está na escolha e no preparo.</p>
+  </div>
+  <div class="compare-container">
+    <div class="compare-col sim">
+      <div class="compare-col-title"><span>✅</span> Melhores escolhas</div>
+      <div class="compare-item"><span class="ci-icon">🥩</span><div><div>Espetinho de carne ou frango</div><div class="ci-sub">Na airfryer ou churrasqueira</div></div></div>
+      <div class="compare-item"><span class="ci-icon">🥔</span><div><div>Batata rústica assada no forno</div><div class="ci-sub">Com azeite, alho e páprica</div></div></div>
+      <div class="compare-item"><span class="ci-icon">🌽</span><div><div>Nachos assados com molho</div><div class="ci-sub">Tortilla no forno + guacamole</div></div></div>
+      <div class="compare-item"><span class="ci-icon">🍿</span><div><div>Pipoca de panela</div><div class="ci-sub">Ervas no lugar de manteiga</div></div></div>
+      <div class="compare-item"><span class="ci-icon">🥚</span><div><div>Mini frittatas de forno</div><div class="ci-sub">Ovos, legumes e queijo</div></div></div>
+      <div class="compare-item"><span class="ci-icon">🧀</span><div><div>Tábua de frios leve</div><div class="ci-sub">Queijo minas, peito de peru, frutas</div></div></div>
+    </div>
+    <div class="compare-col nao">
+      <div class="compare-col-title"><span>⚠️</span> Pega leve nesses</div>
+      <div class="compare-item"><span class="ci-icon">🍟</span><div><div>Batata frita em porção gigante</div><div class="ci-sub">Alta em gordura e sódio</div></div></div>
+      <div class="compare-item"><span class="ci-icon">🍗</span><div><div>Frango a passarinho frito</div><div class="ci-sub">Troque pela versão assada</div></div></div>
+      <div class="compare-item"><span class="ci-icon">🥟</span><div><div>Coxinha, pastel e salgados fritos</div><div class="ci-sub">Ricos em gordura trans</div></div></div>
+      <div class="compare-item"><span class="ci-icon">🌭</span><div><div>Calabresa com muito pão</div><div class="ci-sub">Alto sódio + carb refinado</div></div></div>
+      <div class="compare-item"><span class="ci-icon">🥫</span><div><div>Petiscos ultraprocessados</div><div class="ci-sub">Sirva em tigela para controlar</div></div></div>
+      <div class="compare-item"><span class="ci-icon">🍰</span><div><div>Sobremesa "porque já estou aqui"</div><div class="ci-sub">Vale a pena realmente?</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- S4 BEBIDAS -->
+<section class="section" id="s4">
+  <div class="section-header">
+    <div class="section-tag">🥤 Bebidas</div>
+    <h2 class="section-title">O que <em>beber</em><br>no jogo?</h2>
+    <div class="section-line"></div>
+    <p class="section-desc">Refrescante, sem álcool e com muito sabor — ou com estratégia se beber.</p>
+  </div>
+  <div class="bebida-card"><div class="bebida-emoji">💧</div><div><div class="bebida-name">Água com gás + limão e hortelã</div><div class="bebida-cal">0 kcal</div><div class="bebida-tip">Coloca pedras de gelo e uma rodela de limão. Parece drink!</div></div></div>
+  <div class="bebida-card"><div class="bebida-emoji">🍋</div><div><div class="bebida-name">Limonada com água de coco</div><div class="bebida-cal">~40 kcal (250ml)</div><div class="bebida-tip">Repõe eletrólitos sem açúcar adicionado.</div></div></div>
+  <div class="bebida-card"><div class="bebida-emoji">🍵</div><div><div class="bebida-name">Chá verde ou hibisco gelado</div><div class="bebida-cal">~5 kcal</div><div class="bebida-tip">Antioxidante. Prepare na véspera e gele.</div></div></div>
+  <div class="bebida-card"><div class="bebida-emoji">🍇</div><div><div class="bebida-name">Sangria mocktail (sem álcool)</div><div class="bebida-cal">~80 kcal (250ml)</div><div class="bebida-tip">Suco de uva integral + laranja + água com gás. Saboroso e festivo.</div></div></div>
+  <div class="compare-col nao" style="margin-top:18px;">
+    <div class="compare-col-title"><span>⚠️</span> Se for beber: estratégias</div>
+    <div class="compare-item"><span class="ci-icon">💧</span><div>Intercale cada drinque com um copo d'água</div></div>
+    <div class="compare-item"><span class="ci-icon">🍽️</span><div>Nunca beba de estômago vazio</div></div>
+    <div class="compare-item"><span class="ci-icon">🔢</span><div>Defina seu limite ANTES de começar</div></div>
+    <div class="compare-item"><span class="ci-icon">🚫</span><div>Evite misturar com refrigerante açucarado</div></div>
+  </div>
+</section>
+
+<!-- S5 CERVEJAS -->
+<section class="section" id="s5">
+  <div class="section-header">
+    <div class="section-tag">🍺 Cervejas</div>
+    <h2 class="section-title">Qual cerveja<br><em>escolher?</em></h2>
+    <div class="section-line"></div>
+    <p class="section-desc">Quanto maior o teor alcoólico, mais calorias. Escolha com informação.</p>
+  </div>
+  <div class="cerveja-intro"><strong>Lembre-se:</strong> a melhor escolha sempre será a que você consome em menor quantidade. Cervejas "ultra" e "zero" são realmente mais leves — mas por serem fáceis de beber, o risco é tomar mais.</div>
+
+  <div class="table-title">🟢 Opções mais leves</div>
+  <div class="table-caption">Valores por porção indicada no rótulo</div>
+  <table class="cerv-table">
+    <thead><tr><th>Marca</th><th>Porção</th><th>kcal</th></tr></thead>
+    <tbody>
+      <tr><td>Heineken 0.0 <span class="cerv-badge badge-zero">sem álcool</span></td><td>330ml</td><td><div class="kcal-bar-wrap"><div class="kcal-bar"><div class="kcal-bar-fill low" style="width:35%"></div></div>69</div></td></tr>
+      <tr><td>Amstel Ultra <span class="cerv-badge badge-leve">leve</span></td><td>275ml</td><td><div class="kcal-bar-wrap"><div class="kcal-bar"><div class="kcal-bar-fill low" style="width:37%"></div></div>72</div></td></tr>
+      <tr><td>Michelob Ultra <span class="cerv-badge badge-leve">destaque</span></td><td>355ml</td><td><div class="kcal-bar-wrap"><div class="kcal-bar"><div class="kcal-bar-fill low" style="width:40%"></div></div>79</div></td></tr>
+      <tr><td>Brahma Zero <span class="cerv-badge badge-zero">sem álcool</span></td><td>350ml</td><td><div class="kcal-bar-wrap"><div class="kcal-bar"><div class="kcal-bar-fill low" style="width:42%"></div></div>84</div></td></tr>
+      <tr><td>Itaipava Zero <span class="cerv-badge badge-zero">sem álcool</span></td><td>350ml</td><td><div class="kcal-bar-wrap"><div class="kcal-bar"><div class="kcal-bar-fill low" style="width:48%"></div></div>99</div></td></tr>
+      <tr><td>Corona <span class="cerv-badge badge-leve">leve</span></td><td>269ml</td><td><div class="kcal-bar-wrap"><div class="kcal-bar"><div class="kcal-bar-fill low" style="width:37%"></div></div>76</div></td></tr>
+    </tbody>
+  </table>
+
+  <div class="table-title">🟡 Tradicionais (com moderação)</div>
+  <div class="table-caption">Valores por porção indicada no rótulo</div>
+  <table class="cerv-table">
+    <thead><tr><th>Marca</th><th>Porção</th><th>kcal</th></tr></thead>
+    <tbody>
+      <tr><td>Amstel</td><td>269ml</td><td><div class="kcal-bar-wrap"><div class="kcal-bar"><div class="kcal-bar-fill" style="width:50%"></div></div>102</div></td></tr>
+      <tr><td>Skol</td><td>350ml</td><td><div class="kcal-bar-wrap"><div class="kcal-bar"><div class="kcal-bar-fill" style="width:71%"></div></div>148</div></td></tr>
+      <tr><td>Brahma</td><td>350ml</td><td><div class="kcal-bar-wrap"><div class="kcal-bar"><div class="kcal-bar-fill" style="width:72%"></div></div>149</div></td></tr>
+      <tr><td>Heineken</td><td>350ml</td><td><div class="kcal-bar-wrap"><div class="kcal-bar"><div class="kcal-bar-fill" style="width:72%"></div></div>149</div></td></tr>
+      <tr><td>Stella Artois</td><td>350ml</td><td><div class="kcal-bar-wrap"><div class="kcal-bar"><div class="kcal-bar-fill" style="width:70%"></div></div>144</div></td></tr>
+      <tr><td>Itaipava</td><td>350ml</td><td><div class="kcal-bar-wrap"><div class="kcal-bar"><div class="kcal-bar-fill" style="width:67%"></div></div>139</div></td></tr>
+      <tr><td>Bohemia</td><td>350ml</td><td><div class="kcal-bar-wrap"><div class="kcal-bar"><div class="kcal-bar-fill" style="width:71%"></div></div>148</div></td></tr>
+      <tr><td>Antarctica</td><td>350ml</td><td><div class="kcal-bar-wrap"><div class="kcal-bar"><div class="kcal-bar-fill" style="width:74%"></div></div>154</div></td></tr>
+      <tr><td>Petra Puro Malte <span class="cerv-badge badge-medio">puro malte</span></td><td>350ml</td><td><div class="kcal-bar-wrap"><div class="kcal-bar"><div class="kcal-bar-fill" style="width:74%"></div></div>154</div></td></tr>
+      <tr><td>Budweiser</td><td>355ml</td><td><div class="kcal-bar-wrap"><div class="kcal-bar"><div class="kcal-bar-fill high" style="width:76%"></div></div>156</div></td></tr>
+    </tbody>
+  </table>
+  <div class="mindset-reminder">
+    <div class="icon">⚠️</div>
+    <p><strong>3 cervejas tradicionais = ~450 kcal</strong> — equivale a uma refeição completa. Uma ou duas com estratégia: tudo certo.</p>
+  </div>
+</section>
+
+<!-- S6 RECEITAS -->
+<section class="section" id="s6">
+  <div class="section-header">
+    <div class="section-tag">🍳 Receitas</div>
+    <h2 class="section-title">Faça em <em>casa</em><br>no dia do jogo</h2>
+    <div class="section-line"></div>
+    <p class="section-desc">Gostoso, simples e com caloria controlada. Prepare antes do apito!</p>
+  </div>
+
+  <!-- ABAS -->
+  <div class="rec-tabs">
+    <button class="rec-tab active salgado" onclick="switchRec('salgado',this)">🥩 Salgados</button>
+    <button class="rec-tab doce" onclick="switchRec('doce',this)">🍫 Doces</button>
+    <button class="rec-tab bebida" onclick="switchRec('bebida',this)">🥤 Bebidas</button>
+  </div>
+
+  <!-- SALGADOS -->
+  <div class="rec-panel active" id="rp-salgado">
+
+    <div class="receita-card" onclick="toggleRec(this)">
+      <div class="receita-header">
+        <div class="receita-num">🥑</div>
+        <div class="receita-info"><div class="receita-nome">Guacamole</div><div class="receita-cal">Com Garytos ou palitos de legumes</div></div>
+        <div class="receita-arrow">▼</div>
+      </div>
+      <div class="receita-body">
+        <div class="ri-label">INGREDIENTES</div>
+        <ul class="ri-list">
+          <li>2 avocados maduros</li><li>2 limões</li><li>Tomate picado</li><li>Cebola roxa em cubinhos</li><li>Sal a gosto</li><li>Garytos ou palitos de cenoura e pepino</li>
+        </ul>
+        <div class="ri-label" style="margin-top:12px;">MODO DE PREPARO</div>
+        <p class="ri-preparo">Em um bowl, amasse os avocados. Adicione o suco do limão, o tomate e a cebola em cubinhos pequenos. Tempere com sal a gosto. Sirva com Garytos ou palitos de cenoura e pepino para uma versão mais leve.</p>
+      </div>
+    </div>
+
+    <div class="receita-card" onclick="toggleRec(this)">
+      <div class="receita-header">
+        <div class="receita-num">🍗</div>
+        <div class="receita-info"><div class="receita-nome">Frango Crocante</div><div class="receita-cal">Airfryer · sem fritura</div></div>
+        <div class="receita-arrow">▼</div>
+      </div>
+      <div class="receita-body">
+        <div class="ri-label">INGREDIENTES</div>
+        <ul class="ri-list">
+          <li>Peitos de frango cortados em tiras</li><li>Farinha de trigo</li><li>Ovos batidos</li><li>Panko (ou migalhas de pão)</li><li>Sal e pimenta a gosto</li>
+        </ul>
+        <div class="ri-label" style="margin-top:12px;">MODO DE PREPARO</div>
+        <p class="ri-preparo">Tempere as tiras de frango com sal e pimenta. Passe primeiro na farinha, depois no ovo batido e por fim no panko. Leve à airfryer a 200°C por 12–15 minutos, virando na metade do tempo, até ficarem crocantes e douradas.</p>
+      </div>
+    </div>
+
+    <div class="receita-card" onclick="toggleRec(this)">
+      <div class="receita-header">
+        <div class="receita-num">🍖</div>
+        <div class="receita-info"><div class="receita-nome">Nuggets Proteicos</div><div class="receita-cal">291 kcal · Forno ou airfryer</div></div>
+        <div class="receita-arrow">▼</div>
+      </div>
+      <div class="receita-body">
+        <div class="ri-label">INGREDIENTES</div>
+        <ul class="ri-list">
+          <li>1 filé (100g) de peito de frango cru</li><li>1 cs (15g) de creme de ricota light</li><li>1 cs (15g) de farinha de amêndoa</li><li>2 cs (20g) de queijo parmesão ralado</li><li>1 dente de alho</li><li>Sal e cúrcuma a gosto</li>
+        </ul>
+        <div class="ri-label" style="margin-top:12px;">MODO DE PREPARO</div>
+        <p class="ri-preparo">Corte o frango em pedaços e bata no processador com alho, sal e creme de ricota até ficar homogêneo. Modele em formato de nugget e empane na farinha de amêndoas com queijo ralado e cúrcuma. Unte uma forma e leve ao forno por 30 min (20 min de um lado, 10 do outro) — ou 15 min na airfryer, virando em 7 min.</p>
+      </div>
+    </div>
+
+    <div class="receita-card" onclick="toggleRec(this)">
+      <div class="receita-header">
+        <div class="receita-num">🥟</div>
+        <div class="receita-info"><div class="receita-nome">Pastel de Forno</div><div class="receita-cal">272 kcal · Airfryer</div></div>
+        <div class="receita-arrow">▼</div>
+      </div>
+      <div class="receita-body">
+        <div class="ri-label">INGREDIENTES</div>
+        <ul class="ri-list">
+          <li>1 Rap10</li><li>1 fatia de queijo muçarela</li><li>50g frango desfiado</li><li>½ col. sopa de requeijão light</li><li>Tomate e orégano a vontade</li><li>Sal a gosto</li>
+        </ul>
+        <div class="ri-label" style="margin-top:12px;">MODO DE PREPARO</div>
+        <p class="ri-preparo">Recheie o meio do Rap10 com queijo, frango e requeijão. Passe o requeijão na borda para fazer o efeito de "cola" e feche a massa amassando com um garfo. Pincele uma gema por cima e leve na airfryer de 12 a 15 minutos a 180°C.</p>
+      </div>
+    </div>
+
+    <div class="receita-card" onclick="toggleRec(this)">
+      <div class="receita-header">
+        <div class="receita-num">🧁</div>
+        <div class="receita-info"><div class="receita-nome">Muffin de Frango</div><div class="receita-cal">285 kcal · Airfryer</div></div>
+        <div class="receita-arrow">▼</div>
+      </div>
+      <div class="receita-body">
+        <div class="ri-label">INGREDIENTES</div>
+        <ul class="ri-list">
+          <li>1 ovo</li><li>2 cs de tapioca (20g)</li><li>60g frango desfiado</li><li>1 fatia fina (15g) de queijo muçarela</li><li>Tomate / orégano / manjericão a vontade</li><li>Sal a gosto</li>
+        </ul>
+        <div class="ri-label" style="margin-top:12px;">MODO DE PREPARO</div>
+        <p class="ri-preparo">Em um bowl, misture os ovos com a tapioca e o frango desfiado. Tempere com sal a gosto. Despeje a massa em forminhas de silicone, distribua o queijo muçarela por cima e leve na airfryer a 180°C de 12 a 15 minutos.</p>
+      </div>
+    </div>
+
+    <div class="receita-card" onclick="toggleRec(this)">
+      <div class="receita-header">
+        <div class="receita-num">🍕</div>
+        <div class="receita-info"><div class="receita-nome">Pizza de Rap10</div><div class="receita-cal">295 kcal · ⚡ 10 min</div></div>
+        <div class="receita-arrow">▼</div>
+      </div>
+      <div class="receita-body">
+        <div class="ri-label">INGREDIENTES</div>
+        <ul class="ri-list">
+          <li>1 Rap10</li><li>80g frango desfiado</li><li>Molho de tomate a gosto</li><li>1 fatia de queijo muçarela (15g)</li><li>Tomate / orégano / manjericão a vontade</li>
+        </ul>
+        <div class="ri-label" style="margin-top:12px;">MODO DE PREPARO</div>
+        <p class="ri-preparo">Coloque o Rap10 na frigideira com o molho de tomate. Adicione o frango desfiado e o tomate em cubos. Distribua o queijo muçarela com orégano e tampe. Fogo sempre baixo — fique de olho para não queimar.</p>
+      </div>
+    </div>
+
+    <div class="receita-card" onclick="toggleRec(this)">
+      <div class="receita-header">
+        <div class="receita-num">🍔</div>
+        <div class="receita-info"><div class="receita-nome">Hambúrguer Artesanal</div><div class="receita-cal">295 kcal · ⚡ 15 min</div></div>
+        <div class="receita-arrow">▼</div>
+      </div>
+      <div class="receita-body">
+        <div class="ri-label">INGREDIENTES</div>
+        <ul class="ri-list">
+          <li>1 pão de hambúrguer</li><li>100g patinho moído cru</li><li>1 fatia de queijo mussarela</li><li>Alface e tomate a vontade</li>
+        </ul>
+        <div class="ri-label" style="margin-top:12px;">MODO DE PREPARO</div>
+        <p class="ri-preparo">Pese o patinho cru e modele o disco de hambúrguer. Grelhe na frigideira com um fio de azeite até o ponto desejado. Antes de tirar, coloque o queijo em cima e espere derreter. Monte no pão com alface e tomate.</p>
+      </div>
+    </div>
+
+    <div class="receita-card" onclick="toggleRec(this)">
+      <div class="receita-header">
+        <div class="receita-num">🌭</div>
+        <div class="receita-info"><div class="receita-nome">Cachorro Quente Fit</div><div class="receita-cal">Salsicha de frango caseira · ⚡ 30 min</div></div>
+        <div class="receita-arrow">▼</div>
+      </div>
+      <div class="receita-body">
+        <div class="ri-label">INGREDIENTES</div>
+        <ul class="ri-list">
+          <li>500g filé de peito de frango</li><li>1 col. chá de sal</li><li>3 col. chá de páprica defumada</li><li>1 col. chá de alho em pó</li><li>1 col. chá de cebola em pó</li><li>1 pitada de pimenta-do-reino</li><li>Pão de cachorro quente</li>
+        </ul>
+        <div class="ri-label" style="margin-top:12px;">MODO DE PREPARO</div>
+        <p class="ri-preparo">Bata o frango no processador até formar massa uniforme. Divida em porções e molde no formato de salsicha usando plástico filme — enrole bem e torça as pontas. Leve ao congelador por 15 min para firmar. Retire do plástico e cozinhe no vapor (5–10 min) ou grelhe na frigideira com azeite. Monte no pão.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- DOCES -->
+  <div class="rec-panel" id="rp-doce">
+
+    <div class="receita-card doce" onclick="toggleRec(this)">
+      <div class="receita-header">
+        <div class="receita-num">🍫</div>
+        <div class="receita-info"><div class="receita-nome">Brownie de Frigideira</div><div class="receita-cal">266 kcal · ⚡ 10 min</div></div>
+        <div class="receita-arrow">▼</div>
+      </div>
+      <div class="receita-body">
+        <div class="ri-label">INGREDIENTES</div>
+        <ul class="ri-list">
+          <li>1 ovo</li><li>2 col. sopa de iogurte desnatado</li><li>2 col. sopa (20g) de farelo de aveia</li><li>2 col. sopa (20g) de cacau em pó</li><li>10g de chocolate</li>
+        </ul>
+        <div class="ri-label" style="margin-top:12px;">MODO DE PREPARO</div>
+        <p class="ri-preparo">Misture todos os ingredientes em um bowl. Coloque na frigideira em fogo BAIXO. Adicione o chocolate por cima para derreter. Vire com cuidado para não queimar.</p>
+      </div>
+    </div>
+
+    <div class="receita-card doce" onclick="toggleRec(this)">
+      <div class="receita-header">
+        <div class="receita-num">🍮</div>
+        <div class="receita-info"><div class="receita-nome">Pudim Proteico</div><div class="receita-cal">266 kcal · Airfryer</div></div>
+        <div class="receita-arrow">▼</div>
+      </div>
+      <div class="receita-body">
+        <div class="ri-label">INGREDIENTES</div>
+        <ul class="ri-list">
+          <li>1 ovo</li><li>30g de whey protein</li><li>1 col. sopa de leite em pó desnatado</li><li>200ml de leite desnatado</li><li>Doce de leite (para o fundo da forminha)</li>
+        </ul>
+        <div class="ri-label" style="margin-top:12px;">MODO DE PREPARO</div>
+        <p class="ri-preparo">Misture todos os ingredientes em um bowl. Molhe o fundo da forminha de silicone com doce de leite e despeje a mistura. Leve na airfryer a 180°C de 12 a 15 minutos.</p>
+      </div>
+    </div>
+
+    <div class="receita-card doce" onclick="toggleRec(this)">
+      <div class="receita-header">
+        <div class="receita-num">🍌</div>
+        <div class="receita-info"><div class="receita-nome">Banoffe Proteico</div><div class="receita-cal">277 kcal · Airfryer</div></div>
+        <div class="receita-arrow">▼</div>
+      </div>
+      <div class="receita-body">
+        <div class="ri-label">INGREDIENTES</div>
+        <ul class="ri-list">
+          <li>1 banana</li><li>3 col. sopa (30g) de farelo de aveia</li><li>½ dose de whey protein (15g)</li><li>1 col. sopa rasa (15g) de doce de leite</li><li>Canela a gosto</li>
+        </ul>
+        <div class="ri-label" style="margin-top:12px;">MODO DE PREPARO</div>
+        <p class="ri-preparo">Amasse a banana com a aveia até formar uma massa. Espalhe em forminhas de silicone e leve à airfryer a 180°C por 10 minutos. Para o recheio: misture o whey com uma col. sopa de água até formar calda, adicione o doce de leite e mexa até homogêneo. Coloque dentro da base e sirva com canela.</p>
+      </div>
+    </div>
+
+    <div class="receita-card doce" onclick="toggleRec(this)">
+      <div class="receita-header">
+        <div class="receita-num">🥕</div>
+        <div class="receita-info"><div class="receita-nome">Bolo de Cenoura Fit</div><div class="receita-cal">Com cobertura de chocolate 70%</div></div>
+        <div class="receita-arrow">▼</div>
+      </div>
+      <div class="receita-body">
+        <div class="ri-label">INGREDIENTES</div>
+        <ul class="ri-list">
+          <li>70g de cenoura crua</li><li>1 ovo sem a película da gema</li><li>50ml de leite desnatado</li><li>2 col. sopa de adoçante (xilitol, eritritol ou stevia)</li><li>1 pitada de sal</li><li>30g de farelo de aveia</li><li>1 col. chá de fermento em pó</li><li>15g de chocolate 70% (cobertura)</li>
+        </ul>
+        <div class="ri-label" style="margin-top:12px;">MODO DE PREPARO</div>
+        <p class="ri-preparo">No liquidificador, bata a cenoura, o ovo, o leite e o adoçante. Transfira para um bowl e acrescente o farelo de aveia, o sal e o fermento. Despeje em forminhas de silicone. Leve à airfryer por 15 min ou ao forno por 30 min. Derreta 15g de chocolate 70% para a cobertura.</p>
+      </div>
+    </div>
+
+    <div class="receita-card doce" onclick="toggleRec(this)">
+      <div class="receita-header">
+        <div class="receita-num">🍰</div>
+        <div class="receita-info"><div class="receita-nome">Cheesecake Proteica</div><div class="receita-cal">Com calda de morango · Airfryer</div></div>
+        <div class="receita-arrow">▼</div>
+      </div>
+      <div class="receita-body">
+        <div class="ri-label">INGREDIENTES</div>
+        <ul class="ri-list">
+          <li>200g de ricota</li><li>2 col. sopa de iogurte desnatado</li><li>1 scoop de whey sabor baunilha</li><li>200g de morango</li><li>30g de biscoito maizena (base)</li>
+        </ul>
+        <div class="ri-label" style="margin-top:12px;">MODO DE PREPARO</div>
+        <p class="ri-preparo">Amasse o biscoito maizena e use como base na forma. Bata os demais ingredientes no liquidificador e despeje sobre a base. Asse a 180°C por 20 minutos (forno ou airfryer). Enquanto isso, aqueça os morangos em uma panela com adoçante até virar calda. Leve a cheesecake para gelar por 1h e sirva com a calda de morango.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- BEBIDAS -->
+  <div class="rec-panel" id="rp-bebida">
+
+    <div class="receita-card bebida" onclick="toggleRec(this)">
+      <div class="receita-header">
+        <div class="receita-num">🍋</div>
+        <div class="receita-info"><div class="receita-nome">Limonada de Coco com Hortelã</div><div class="receita-cal">~40 kcal · 0 álcool · ⚡ 5 min</div></div>
+        <div class="receita-arrow">▼</div>
+      </div>
+      <div class="receita-body">
+        <div class="ri-label">INGREDIENTES (2 porções)</div>
+        <ul class="ri-list">
+          <li>Suco de 3 limões</li><li>200ml água de coco natural</li><li>300ml água com gás</li><li>Folhas de hortelã</li><li>Gelo bastante</li><li>Stevia a gosto</li>
+        </ul>
+        <div class="ri-label" style="margin-top:12px;">MODO DE PREPARO</div>
+        <p class="ri-preparo">Macere levemente as folhas de hortelã no fundo do copo. Adicione gelo, suco de limão e água de coco. Complete com água com gás e mexa suavemente.</p>
+      </div>
+    </div>
+
+    <div class="receita-card bebida" onclick="toggleRec(this)">
+      <div class="receita-header">
+        <div class="receita-num">🍇</div>
+        <div class="receita-info"><div class="receita-nome">Sangria Mocktail de Uva</div><div class="receita-cal">~80 kcal · 0 álcool · ⚡ 10 min</div></div>
+        <div class="receita-arrow">▼</div>
+      </div>
+      <div class="receita-body">
+        <div class="ri-label">INGREDIENTES (4 porções)</div>
+        <ul class="ri-list">
+          <li>500ml suco de uva integral (sem açúcar)</li><li>1 laranja fatiada</li><li>1 limão fatiado</li><li>1 maçã em cubos</li><li>1 pau de canela + 3 cravos</li><li>Água com gás para completar</li>
+        </ul>
+        <div class="ri-label" style="margin-top:12px;">MODO DE PREPARO</div>
+        <p class="ri-preparo">Misture o suco de uva com as frutas e especiarias. Deixe gelar por pelo menos 1h (véspera fica ainda melhor!). Na hora de servir, complete com água com gás e bastante gelo.</p>
+      </div>
+    </div>
+
+    <div class="receita-card bebida" onclick="toggleRec(this)">
+      <div class="receita-header">
+        <div class="receita-num">🍵</div>
+        <div class="receita-info"><div class="receita-nome">Chá Verde Gelado com Gengibre</div><div class="receita-cal">~5 kcal · Anti-inflamatório</div></div>
+        <div class="receita-arrow">▼</div>
+      </div>
+      <div class="receita-body">
+        <div class="ri-label">INGREDIENTES (1 litro)</div>
+        <ul class="ri-list">
+          <li>2 sachês de chá verde</li><li>1 litro de água quente (~80°C)</li><li>3 fatias de gengibre fresco</li><li>Suco de 1 limão</li><li>Stevia a gosto</li>
+        </ul>
+        <div class="ri-label" style="margin-top:12px;">MODO DE PREPARO</div>
+        <p class="ri-preparo">Deixe os sachês e o gengibre em água quente por 3 minutos. Não superextraia. Retire os sachês, adicione limão e adoçante. Resfrie e sirva com bastante gelo.</p>
+      </div>
+    </div>
+
+    <div class="receita-card bebida" onclick="toggleRec(this)">
+      <div class="receita-header">
+        <div class="receita-num">🍍</div>
+        <div class="receita-info"><div class="receita-nome">Vitamina Tropical Cremosa</div><div class="receita-cal">Sem lactose · ⚡ 5 min</div></div>
+        <div class="receita-arrow">▼</div>
+      </div>
+      <div class="receita-body">
+        <div class="ri-label">INGREDIENTES (2 porções)</div>
+        <ul class="ri-list">
+          <li>1 xícara de abacaxi picado (congelado)</li><li>1 banana congelada</li><li>200ml leite de coco light</li><li>1 col. chá de cúrcuma</li><li>Suco de ½ limão</li><li>Folhas de hortelã</li>
+        </ul>
+        <div class="ri-label" style="margin-top:12px;">MODO DE PREPARO</div>
+        <p class="ri-preparo">Bata tudo no liquidificador até cremoso. Sirva imediatamente com folhinhas de hortelã. Opcional: adicione 1 col. sopa de chia para mais fibra.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- S7 REGRAS -->
+<section class="section" id="s7">
+  <div class="section-header">
+    <div class="section-tag">🏆 Resumo</div>
+    <h2 class="section-title">As regras<br><em>de ouro</em></h2>
+    <div class="section-line"></div>
+  </div>
+  <div class="regra-item"><div class="regra-num">1</div><div><div class="regra-title">O jogo é uma refeição, não um dia inteiro</div><div class="regra-text">Trate o momento do jogo como um evento especial — não como permissão para comer o dia todo. São 90 minutos, não 24 horas.</div></div></div>
+  <div class="regra-item"><div class="regra-num">2</div><div><div class="regra-title">Não chegue com fome no jogo</div><div class="regra-text">Coma bem antes. Fome + emoção + petiscos = combinação perigosa. Uma refeição equilibrada antes protege suas escolhas durante.</div></div></div>
+  <div class="regra-item"><div class="regra-num">3</div><div><div class="regra-title">Escolha a versão melhor, não a perfeita</div><div class="regra-text">No bar: prefira grelhados. Em casa: versão assada. Dividir porções é sempre uma boa estratégia.</div></div></div>
+  <div class="regra-item"><div class="regra-num">4</div><div><div class="regra-title">Se beber, beba com estratégia</div><div class="regra-text">Intercale com água. Defina o limite antes. Coma algo antes de começar. Cerveja leve ou zero são aliadas — desde que você não tome mais por isso.</div></div></div>
+  <div class="regra-item"><div class="regra-num">5</div><div><div class="regra-title">No fim da Copa, o que importa é o acumulado</div><div class="regra-text">São só 3 jogos do Brasil. Escolhas melhores em cada um deles e a Copa não vai impactar o seu resultado.</div></div></div>
+</section>
+
+<!-- S8 FOOTER -->
+<section class="section" id="s8">
+  <div class="footer-ornament">feito com carinho por</div>
+  <div class="footer-name">Nutri Marcela Tupi</div>
+  <div class="footer-crn">Nutricionista</div>
+  <p class="footer-msg">Que a torcida seja intensa, a comida seja gostosa e a culpa não apareça. Vai Brasil! 🇧🇷⚽</p>
+</section>
+
+<script>
+  const sections = ['s1','s2','s3','s4','s5','s6','s7','s8'];
+  const dots = document.querySelectorAll('.nav-dot');
+
+  function updateDots() {
+    const scrollY = window.scrollY + window.innerHeight * 0.4;
+    sections.forEach((id, i) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (scrollY >= el.offsetTop && scrollY < el.offsetTop + el.offsetHeight) {
+        dots.forEach(d => d.classList.remove('active'));
+        if (i < dots.length) dots[i].classList.add('active');
+      }
+    });
+  }
+  window.addEventListener('scroll', updateDots);
+
+  function goTo(i) {
+    const el = document.getElementById(sections[i]);
+    if (el) el.scrollIntoView({ behavior:'smooth' });
+  }
+
+  function switchRec(cat, btn) {
+    document.querySelectorAll('.rec-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.rec-tab').forEach(b => b.classList.remove('active'));
+    document.getElementById('rp-' + cat).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  function toggleRec(card) {
+    const body = card.querySelector('.receita-body');
+    const arrow = card.querySelector('.receita-arrow');
+    const isOpen = card.classList.contains('open');
+    // close all in same panel
+    const panel = card.closest('.rec-panel');
+    panel.querySelectorAll('.receita-card').forEach(c => {
+      c.classList.remove('open');
+      c.querySelector('.receita-body').style.display = 'none';
+      c.querySelector('.receita-arrow').style.transform = 'rotate(0deg)';
+    });
+    if (!isOpen) {
+      card.classList.add('open');
+      body.style.display = 'block';
+      arrow.style.transform = 'rotate(180deg)';
+    }
+  }
+
+  // Animate bars
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.querySelectorAll('.kcal-bar-fill').forEach(b => {
+          const w = b.style.width; b.style.width = '0';
+          setTimeout(() => b.style.width = w, 100);
+        });
+      }
+    });
+  }, { threshold: 0.2 });
+  document.querySelectorAll('.cerv-table').forEach(t => obs.observe(t));
+</script>
 </body>
 </html>
