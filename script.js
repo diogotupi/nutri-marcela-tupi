@@ -112,16 +112,18 @@ function initDepoimentosMarquee() {
 
   initMarqueeClone('depoimentosMarqueeGroup');
   marquee.classList.add('is-js-marquee');
+  track.style.animation = 'none';
 
   let loopLen = 0;
   let offset = 0;
   let paused = false;
   let rafId = null;
-  const speed = 0.6;
+  let lastTime = 0;
+  const speed = 45;
   const canHoverPause = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
   const measure = () => {
-    const width = group.getBoundingClientRect().width;
+    const width = Math.round(group.scrollWidth || group.getBoundingClientRect().width);
     if (width < 40) return false;
     loopLen = width;
     return true;
@@ -137,12 +139,14 @@ function initDepoimentosMarquee() {
     track.style.transform = `translate3d(${offset}px, 0, 0)`;
   };
 
-  const tick = () => {
-    if (!paused && loopLen > 0) {
-      offset -= speed;
+  const tick = (time) => {
+    if (lastTime && !paused && loopLen > 0) {
+      const delta = Math.min(time - lastTime, 48);
+      offset -= (speed * delta) / 1000;
       normalize();
       apply();
     }
+    lastTime = time;
     rafId = requestAnimationFrame(tick);
   };
 
@@ -170,11 +174,32 @@ function initDepoimentosMarquee() {
     normalize();
     apply();
     cancelAnimationFrame(rafId);
+    lastTime = 0;
     rafId = requestAnimationFrame(tick);
   };
 
-  window.addEventListener('resize', () => measure());
-  void boot();
+  const remeasure = () => {
+    if (!measure()) return;
+    normalize();
+    apply();
+  };
+
+  window.addEventListener('resize', remeasure);
+  window.addEventListener('orientationchange', () => window.setTimeout(remeasure, 200));
+
+  if ('ResizeObserver' in window) {
+    const observer = new ResizeObserver(() => remeasure());
+    observer.observe(group);
+  }
+
+  if (document.visibilityState === 'visible') {
+    void boot();
+  } else {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && loopLen <= 0) void boot();
+    }, { once: true });
+    void boot();
+  }
 
   return { setPaused };
 }

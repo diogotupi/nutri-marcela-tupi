@@ -196,65 +196,61 @@ ul {
   align-items: center;
   padding: clamp(8.5rem, 14vw, 10rem) 0 5rem;
   overflow: hidden;
+  isolation: isolate;
 }
 
-.hero::before {
-  content: "";
+.hero-bg {
   position: absolute;
-  top: -20%;
-  right: -10%;
-  width: 60%;
-  height: 70%;
-  background: radial-gradient(circle, rgba(82, 183, 136, 0.12) 0%, transparent 70%);
+  inset: 0;
+  z-index: 0;
+}
+
+.hero-bg__photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 12%;
+  display: block;
+}
+
+.hero-bg__overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(248, 250, 249, 0.92) 0%,
+      rgba(248, 250, 249, 0.72) 28%,
+      rgba(248, 250, 249, 0.35) 48%,
+      rgba(248, 250, 249, 0.12) 62%,
+      transparent 78%
+    ),
+    linear-gradient(
+      to top,
+      rgba(248, 250, 249, 0.55) 0%,
+      transparent 35%
+    );
   pointer-events: none;
 }
 
 .hero-layout {
-  display: grid;
-  grid-template-columns: minmax(240px, 340px) 1fr;
-  gap: clamp(2.5rem, 6vw, 5rem);
-  align-items: center;
-}
-
-.hero-media {
   position: relative;
-  width: 100%;
-  max-width: 340px;
-  justify-self: center;
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-  aspect-ratio: 3 / 4;
-  max-height: calc(100vh - 140px);
-  box-shadow: var(--shadow-card);
-}
-
-.hero-media__shade {
-  position: absolute;
-  inset: 0;
   z-index: 1;
-  background: linear-gradient(
-    to top,
-    rgba(255, 255, 255, 1) 0%,
-    rgba(255, 255, 255, 0.94) 12%,
-    rgba(255, 255, 255, 0.5) 26%,
-    transparent 40%
-  );
-  pointer-events: none;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(300px, 520px);
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: end;
+  width: 100%;
 }
 
-.hero-media__caption {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 2;
-  padding: 2rem 1.25rem 1.35rem;
-  text-align: center;
+.hero-brand {
+  align-self: end;
+  padding-bottom: clamp(1rem, 3vw, 2rem);
 }
 
 .hero-media__name {
   font-family: var(--font-display);
-  font-size: clamp(2.15rem, 5vw, 3.15rem);
+  font-size: clamp(2.5rem, 5.5vw, 4.5rem);
   font-weight: 700;
   line-height: 0.92;
   letter-spacing: -0.03em;
@@ -289,33 +285,23 @@ ul {
   content: "";
   position: absolute;
   top: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
   width: 2.75rem;
   height: 2px;
-  background: linear-gradient(90deg, transparent, var(--color-accent), transparent);
+  background: linear-gradient(90deg, var(--color-accent), transparent);
   border-radius: 1px;
-}
-
-.hero-media::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  border-radius: inherit;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  pointer-events: none;
-}
-
-.hero-photo {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 8%;
 }
 
 .hero-content {
   max-width: 540px;
+  justify-self: end;
+  align-self: center;
+  padding: clamp(1.5rem, 3vw, 2.25rem);
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
 }
 
 .hero h1 {
@@ -867,6 +853,8 @@ ul {
 
 .marquee--depoimentos.is-js-marquee .marquee-track {
   animation: none !important;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -1210,19 +1198,39 @@ ul {
 /* Responsive */
 
 @media (max-width: 900px) {
-  .hero-layout {
-    grid-template-columns: 1fr;
-    gap: 2.5rem;
+  .hero {
+    align-items: flex-end;
+    padding-bottom: 3rem;
   }
 
-  .hero-media {
-    max-width: 300px;
-    margin-inline: auto;
-    max-height: none;
+  .hero-bg__photo {
+    object-position: 42% 10%;
+  }
+
+  .hero-bg__overlay {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(248, 250, 249, 0.15) 0%,
+        rgba(248, 250, 249, 0.55) 45%,
+        rgba(248, 250, 249, 0.92) 72%,
+        rgba(248, 250, 249, 0.98) 100%
+      );
+  }
+
+  .hero-layout {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    align-items: end;
+  }
+
+  .hero-brand {
+    padding-bottom: 0;
   }
 
   .hero-content {
     max-width: none;
+    justify-self: stretch;
     text-align: center;
   }
 
