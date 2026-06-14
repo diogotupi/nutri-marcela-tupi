@@ -105,8 +105,8 @@ ul {
 }
 
 .logo .logo-mark {
-  width: 40px;
-  height: 40px;
+  width: auto;
+  height: 44px;
   transition: transform var(--transition);
 }
 
@@ -858,6 +858,18 @@ ul {
   color: var(--color-text-muted);
 }
 
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.footer-logo {
+  width: 48px;
+  height: auto;
+  flex-shrink: 0;
+}
+
 .back-top {
   font-weight: 500;
   transition: color var(--transition);
@@ -999,5 +1011,10 @@ ul {
     flex-direction: column;
     gap: 0.75rem;
     text-align: center;
+  }
+
+  .footer-brand {
+    flex-direction: column;
+    gap: 0.5rem;
   }
 }
