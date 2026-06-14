@@ -39,13 +39,19 @@
   <main>
     <section class="hero">
       <div class="hero-bg" aria-hidden="true">
-        <img
-          class="hero-bg__photo"
-          src="https://res.cloudinary.com/dc48hzb6b/image/upload/c_fill,g_auto,w_1920,h_1200,q_auto:good,f_auto/v1781476433/BOSSSSSSS_euhk0d.jpg"
-          alt=""
-          fetchpriority="high"
-          decoding="async"
-        >
+        <picture>
+          <source
+            media="(max-width: 900px)"
+            srcset="https://res.cloudinary.com/dc48hzb6b/image/upload/c_fill,g_auto,w_900,h_1200,q_auto:good,f_auto/v1781478096/MARCEBOSS_ctx280.png"
+          >
+          <img
+            class="hero-bg__photo"
+            src="https://res.cloudinary.com/dc48hzb6b/image/upload/c_fill,g_auto,w_1920,h_1200,q_auto:good,f_auto/v1781476433/BOSSSSSSS_euhk0d.jpg"
+            alt=""
+            fetchpriority="high"
+            decoding="async"
+          >
+        </picture>
         <div class="hero-bg__overlay"></div>
       </div>
       <div class="container hero-layout">

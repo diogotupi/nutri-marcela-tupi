@@ -155,7 +155,7 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center center;
+  object-position: 25% center;
   display: block;
 }
 
@@ -976,7 +976,7 @@ body {
   }
 
   .copa-hero__bg-media {
-    object-position: left center;
+    object-position: 25% center;
   }
 
   .copa-hero__overlay {
