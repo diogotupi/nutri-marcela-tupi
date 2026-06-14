@@ -196,7 +196,7 @@ function initDepoimentosMarquee() {
     if (started) return;
     started = true;
 
-    await waitMarqueeImages(group);
+    await waitMarqueeImages(track);
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
     if (!measure()) {
@@ -209,6 +209,48 @@ function initDepoimentosMarquee() {
     apply();
     enableJsMarquee();
   };
+
+  let dragging = false;
+  let dragMoved = false;
+  let dragStartX = 0;
+  let dragOffsetStart = 0;
+
+  const onTouchStart = (event) => {
+    if (event.touches.length !== 1) return;
+    dragging = true;
+    dragMoved = false;
+    dragStartX = event.touches[0].clientX;
+    dragOffsetStart = offset;
+    setPaused(true);
+  };
+
+  const onTouchMove = (event) => {
+    if (!dragging || event.touches.length !== 1) return;
+    const deltaX = event.touches[0].clientX - dragStartX;
+    if (Math.abs(deltaX) > 8) {
+      dragMoved = true;
+      event.preventDefault();
+    }
+    offset = dragOffsetStart + deltaX;
+    normalize();
+    apply();
+  };
+
+  const onTouchEnd = () => {
+    if (!dragging) return;
+    dragging = false;
+    setPaused(false);
+    if (dragMoved) {
+      window.setTimeout(() => {
+        dragMoved = false;
+      }, 80);
+    }
+  };
+
+  marquee.addEventListener('touchstart', onTouchStart, { passive: true });
+  marquee.addEventListener('touchmove', onTouchMove, { passive: false });
+  marquee.addEventListener('touchend', onTouchEnd, { passive: true });
+  marquee.addEventListener('touchcancel', onTouchEnd, { passive: true });
 
   const remeasure = () => {
     if (!measure()) return;
@@ -239,7 +281,7 @@ function initDepoimentosMarquee() {
     void boot();
   }
 
-  return { setPaused };
+  return { setPaused, didDrag: () => dragMoved };
 }
 
 const marqueeControls = initDepoimentosMarquee();
@@ -275,6 +317,8 @@ function closeLightbox() {
 
 document.querySelectorAll('.marquee--depoimentos .testimonial-card').forEach((card) => {
   card.addEventListener('click', () => {
+    if (marqueeControls?.didDrag?.()) return;
+
     const img = card.querySelector('img');
     const src = card.dataset.full || img?.getAttribute('src');
     const alt = img?.getAttribute('alt') || 'Depoimento ampliado';

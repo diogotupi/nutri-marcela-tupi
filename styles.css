@@ -863,6 +863,10 @@ ul {
   will-change: transform;
 }
 
+.marquee--depoimentos.is-js-marquee {
+  touch-action: pan-y;
+}
+
 .marquee--depoimentos.is-js-marquee .marquee-track {
   animation: none !important;
   will-change: transform;
@@ -920,10 +924,11 @@ ul {
 .testimonial-card img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: top center;
+  object-fit: contain;
+  object-position: center center;
   display: block;
   pointer-events: none;
+  background: #ece5dd;
 }
 
 .testimonial-card__hint {
@@ -955,6 +960,20 @@ ul {
   text-align: center;
   font-size: 0.85rem;
   color: var(--color-text-muted);
+}
+
+.testimonials-hint__desktop {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .testimonials-hint__touch {
+    display: none;
+  }
+
+  .testimonials-hint__desktop {
+    display: inline;
+  }
 }
 
 .testimonial-lightbox {
