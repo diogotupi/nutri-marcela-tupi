@@ -24,6 +24,7 @@
       <nav class="app-nav" id="dashboard-nav">
         <button type="button" class="dashboard-tab is-active" data-tab="diet">Minha dieta</button>
         <button type="button" class="dashboard-tab" data-tab="points">Banco de pontos</button>
+        <button type="button" class="dashboard-tab" data-tab="guides">Guias</button>
         <button type="button" class="dashboard-tab" data-tab="account">Conta</button>
         <a href="/">Site público</a>
       </nav>
@@ -83,6 +84,23 @@
           </div>
         </div>
         <div id="points-bank" class="points-bank"></div>
+      </div>
+
+      <!-- GUIAS -->
+      <div class="dashboard-panel" id="panel-guides" hidden>
+        <div class="app-topbar">
+          <div>
+            <h1>Guias exclusivos</h1>
+            <p>Materiais práticos da Marcela — acesso liberado para você, sem senha extra.</p>
+          </div>
+        </div>
+        <section class="app-card guides-intro" style="padding:1.2rem;margin-bottom:1rem">
+          <p class="guides-intro__text">
+            Situações do dia a dia: Copa da nutri, guia de mercado, escolhas com álcool, churrasco e muito mais.
+            Novos guias serão adicionados aqui conforme forem lançados.
+          </p>
+        </section>
+        <div id="guides-grid" class="guides-grid"></div>
       </div>
 
       <!-- CONTA -->

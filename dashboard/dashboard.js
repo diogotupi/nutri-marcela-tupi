@@ -17,6 +17,7 @@ import {
   toggleItemCheck,
   toggleMealCheck,
 } from '../js/auth.js';
+import { initGuidesPanel } from './guides-panel.js';
 import { initPointsPanel, loadPointsPanel } from './points-panel.js';
 
 const greeting = document.getElementById('patient-greeting');
@@ -38,6 +39,7 @@ let pointsLoaded = false;
 const panels = {
   diet: document.getElementById('panel-diet'),
   points: document.getElementById('panel-points'),
+  guides: document.getElementById('panel-guides'),
   account: document.getElementById('panel-account'),
 };
 
@@ -148,7 +150,8 @@ function bindCheckEvents(container) {
         else tracking.mealIds.delete(mealId);
         input.closest('.patient-meal-block')?.classList.toggle('is-meal-checked', input.checked);
         showToast(input.checked ? 'Refeição marcada!' : 'Refeição desmarcada.');
-      } catch (error) {        input.checked = !input.checked;
+      } catch (error) {
+        input.checked = !input.checked;
         showToast(error.message, 'error');
       }
     });
@@ -163,7 +166,8 @@ function bindCheckEvents(container) {
         else tracking.itemIds.delete(itemId);
         input.closest('.check-row')?.classList.toggle('is-checked', input.checked);
         if (activeDiet) renderDietCard(activeDiet, activeDietCard);
-      } catch (error) {        input.checked = !input.checked;
+      } catch (error) {
+        input.checked = !input.checked;
         showToast(error.message, 'error');
       }
     });
@@ -199,7 +203,8 @@ document.querySelectorAll('[data-water]').forEach((button) => {
       tracking.water = await addWaterIntake(today, delta);
       renderWater();
       showToast(delta > 0 ? `+${delta} ml registrados` : 'Ajuste feito');
-    } catch (error) {      showToast(error.message, 'error');
+    } catch (error) {
+      showToast(error.message, 'error');
     }
   });
 });
@@ -264,6 +269,7 @@ async function init() {
   if (!auth) return;
 
   initPointsPanel();
+  initGuidesPanel();
 
   try {
     await loadDashboard(auth.profile);
