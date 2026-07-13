@@ -88,6 +88,22 @@ a {
 }
 
 .app-nav a,
+.app-sidebar-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
+  text-decoration: none;
+  text-align: left;
+  padding: 0.7rem 0.85rem;
+  border-radius: 10px;
+  font: 500 0.9rem var(--font);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+  display: block;
+  width: 100%;
+}
+
 .app-nav button {
   appearance: none;
   border: none;
@@ -105,9 +121,22 @@ a {
 .app-nav a:hover,
 .app-nav a.is-active,
 .app-nav button:hover,
-.app-nav button.is-active {
+.app-nav button.is-active,
+.app-sidebar-btn:hover {
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
+}
+
+.app-sidebar-btn--logout {
+  color: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  margin-top: 0.15rem;
+}
+
+.app-sidebar-btn--logout:hover {
+  background: rgba(220, 38, 38, 0.18);
+  border-color: rgba(248, 113, 113, 0.35);
+  color: #fecaca;
 }
 
 .app-nav button.is-active {
