@@ -6,7 +6,7 @@ create table if not exists public.patient_bdp_settings (
   patient_id uuid references public.profiles (id) on delete cascade not null,
   week_start date not null,
   strategy text not null default 'moderado'
-    check (strategy in ('controlado', 'moderado', 'flexivel')),
+    check (strategy in ('leve', 'controlado', 'moderado', 'flexivel')),
   updated_at timestamptz not null default now(),
   primary key (patient_id, week_start)
 );
