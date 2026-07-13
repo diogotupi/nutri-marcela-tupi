@@ -53,18 +53,25 @@ Login da admin:
 - Usuário: `marcela`
 - Senha: a que você definiu
 
-## 5. Deploy da Edge Function `create-patient`
+## 5. Publicar a função `create-patient` (obrigatório para cadastrar pacientes)
 
-A Marcela cria pacientes pelo painel. Isso exige a function com permissão de admin do Supabase.
+Sem este passo, ao criar paciente aparece **"Failed to fetch"**.
+
+### Opção A — Pelo painel do Supabase (mais fácil)
+
+1. Abra [supabase.com/dashboard](https://supabase.com/dashboard) → seu projeto
+2. Menu **Edge Functions** → **Deploy a new function**
+3. Nome: `create-patient`
+4. Cole o código de `supabase/functions/create-patient/index.ts`
+5. Clique em **Deploy**
+
+### Opção B — Pelo terminal
 
 ```bash
-npm install -g supabase
-supabase login
-supabase link --project-ref SEU_PROJECT_REF
-supabase functions deploy create-patient
+npx supabase login
+npx supabase link --project-ref pvkkxzatvuubkddzvbiq
+npx supabase functions deploy create-patient
 ```
-
-A function usa automaticamente as variáveis do projeto.
 
 ## 6. Testar
 

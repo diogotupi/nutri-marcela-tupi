@@ -1,0 +1,7 @@
+project_id = "pvkkxzatvuubkddzvbiq"
+
+[api]
+enabled = true
+
+[functions.create-patient]
+verify_jwt = true

@@ -77,20 +77,40 @@ export async function createPatient(payload) {
   const session = await getSession();
   if (!session) throw new Error('Sessão expirada.');
 
-  const response = await fetch(`${window.APP_CONFIG.supabaseUrl}/functions/v1/create-patient`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${session.access_token}`,
-      apikey: window.APP_CONFIG.supabaseAnonKey,
-    },
-    body: JSON.stringify(payload),
-  });
-
-  const result = await response.json();
-  if (!response.ok) {
-    throw new Error(result.error || 'Não foi possível criar o paciente.');
+  let response;
+  try {
+    response = await fetch(`${window.APP_CONFIG.supabaseUrl}/functions/v1/create-patient`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+        apikey: window.APP_CONFIG.supabaseAnonKey,
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    throw new Error(
+      'Não foi possível conectar ao servidor. A função create-patient precisa ser publicada no Supabase (passo 3 do supabase/README.md).'
+    );
   }
+
+  let result = {};
+  try {
+    result = await response.json();
+  } catch {
+    throw new Error('Resposta inválida do servidor ao criar paciente.');
+  }
+
+  if (response.status === 404) {
+    throw new Error(
+      'Função create-patient não encontrada. Publique a Edge Function no painel do Supabase (Edge Functions → create-patient).'
+    );
+  }
+
+  if (!response.ok) {
+    throw new Error(result.error || result.message || 'Não foi possível criar o paciente.');
+  }
+
   return result.patient;
 }
 
