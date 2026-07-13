@@ -145,6 +145,43 @@ $$;
 
 grant execute on function public.tournament_leaderboard(uuid) to authenticated;
 
+-- Desafios visíveis ao paciente (security definer — evita RLS cruzado)
+create or replace function public.my_active_tournaments()
+returns table (
+  id uuid,
+  title text,
+  description text,
+  start_date date,
+  end_date date,
+  metric_bdp boolean,
+  metric_water boolean,
+  status text
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    t.id,
+    t.title,
+    t.description,
+    t.start_date,
+    t.end_date,
+    t.metric_bdp,
+    t.metric_water,
+    t.status
+  from public.tournaments t
+  inner join public.tournament_participants tp
+    on tp.tournament_id = t.id
+  where tp.patient_id = public.current_profile_id()
+    and t.status = 'active'
+    and t.end_date >= (timezone('America/Sao_Paulo', now()))::date
+  order by t.start_date, t.end_date;
+$$;
+
+grant execute on function public.my_active_tournaments() to authenticated;
+
 -- RLS
 alter table public.patient_bdp_settings enable row level security;
 alter table public.patient_bdp_entries enable row level security;

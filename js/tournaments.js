@@ -1,4 +1,4 @@
-import { getSupabase } from './app-core.js';
+import { getSupabase, getLocalDateString } from './app-core.js';
 import { getProfile } from './auth.js';
 
 export async function fetchTournaments() {
@@ -13,9 +13,23 @@ export async function fetchTournaments() {
 }
 
 export async function fetchMyActiveTournaments() {
+  const supabase = getSupabase();
+
+  const { data, error } = await supabase.rpc('my_active_tournaments');
+  if (!error) return data || [];
+
+  // Fallback se a RPC ainda não foi criada no Supabase
+  if (error.code === '42883' || error.message?.includes('my_active_tournaments')) {
+    return fetchMyActiveTournamentsLegacy();
+  }
+
+  throw error;
+}
+
+async function fetchMyActiveTournamentsLegacy() {
   const profile = await getProfile();
   const supabase = getSupabase();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getLocalDateString();
 
   const { data: participations, error: partError } = await supabase
     .from('tournament_participants')
@@ -31,9 +45,8 @@ export async function fetchMyActiveTournaments() {
     .select('id, title, description, start_date, end_date, metric_bdp, metric_water, status')
     .in('id', ids)
     .eq('status', 'active')
-    .lte('start_date', today)
     .gte('end_date', today)
-    .order('end_date');
+    .order('start_date');
 
   if (error) throw error;
   return data || [];

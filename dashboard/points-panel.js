@@ -44,11 +44,11 @@ const rootEl = document.getElementById('points-bank');
 const today = getLocalDateString();
 
 async function refreshDesafios() {
-  try {
-    desafios = await fetchMyActiveTournaments();
-  } catch {
-    desafios = [];
-  }
+  desafios = await fetchMyActiveTournaments();
+}
+
+function desafioKicker(desafio) {
+  return desafio.start_date > today ? 'Desafio em breve' : 'Desafio ativo';
 }
 
 function renderDesafiosSection() {
@@ -64,7 +64,7 @@ function renderDesafiosSection() {
 
   return desafios.map((desafio) => `
     <section class="pb-section pb-desafios app-card" style="padding:1.15rem" data-desafio-id="${desafio.id}">
-      <p class="pb-kicker">Desafio ativo</p>
+      <p class="pb-kicker">${desafioKicker(desafio)}</p>
       <h2 class="pb-title">${escapeHtml(desafio.title)}</h2>
       <p class="pb-lead">${escapeHtml(desafio.description || '')}</p>
       <p class="pb-desafio-meta">
@@ -420,7 +420,12 @@ export async function loadPointsPanel() {
   const profile = await getProfile();
   myProfileId = profile.id;
   h2oState = await loadTodayWater(today);
-  await refreshDesafios();
+  try {
+    await refreshDesafios();
+  } catch (error) {
+    desafios = [];
+    showToast(error.message, 'error');
+  }
   state = await loadTrackerState();
   render();
 }

@@ -103,6 +103,12 @@ Isso habilita:
 
 **Critério de ranking (v1):** mais água total no período; em empate, menos pontos no BDP.
 
+Se o desafio não aparecer para o paciente, rode também:
+
+`supabase/migration-desafios-fetch.sql`
+
+(e confirme que o paciente foi marcado como participante ao criar o desafio)
+
 ## 8. Testar
 
 | URL | Quem usa |
