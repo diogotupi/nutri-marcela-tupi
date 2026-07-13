@@ -1515,6 +1515,166 @@ a.guide-card__cover:hover {
   line-height: 1.35;
 }
 
+/* Admin — acompanhamento do paciente */
+.tracking-sub {
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.tracking-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.tracking-date-field {
+  margin: 0;
+  min-width: 160px;
+}
+
+.tracking-date-field label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.tracking-date-field input {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 0.55rem 0.65rem;
+  font: 500 0.88rem var(--font);
+}
+
+.tracking-stats__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.tracking-stat {
+  padding: 0.85rem 1rem;
+  box-shadow: none;
+}
+
+.tracking-stat__label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tracking-stat__value {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--color-dark);
+}
+
+.tracking-stat__sub {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.tracking-stat__bar {
+  margin-top: 0.55rem;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-bg-alt);
+  overflow: hidden;
+}
+
+.tracking-stat__bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-accent-mid);
+}
+
+.tracking-diet-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  background: var(--color-bg-alt);
+}
+
+.tracking-diet-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.tracking-meal + .tracking-meal {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.tracking-meal__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+}
+
+.tracking-meal__count {
+  margin-left: auto;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.tracking-meal__mark,
+.tracking-food__mark {
+  width: 1.25rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.tracking-meal.is-meal-checked .tracking-meal__mark,
+.tracking-food.is-checked .tracking-food__mark {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+.tracking-meal__items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-left: 1.75rem;
+}
+
+.tracking-food {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.tracking-food__meta {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.tracking-weekly-table tr.is-today td {
+  background: var(--color-accent-light);
+  font-weight: 600;
+}
+
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -1555,6 +1715,10 @@ a.guide-card__cover:hover {
   }
 
   .pb-coringa-sizes {
+    grid-template-columns: 1fr;
+  }
+
+  .tracking-stats__grid {
     grid-template-columns: 1fr;
   }
 }

@@ -48,6 +48,27 @@
         <p id="patient-notes" style="margin:0.5rem 0 0;color:var(--color-text-muted)">—</p>
       </section>
 
+      <section class="app-card tracking-panel" style="padding:1.2rem;margin-bottom:1rem">
+        <div class="tracking-head">
+          <div>
+            <h2 class="panel-section-title">Acompanhamento da dieta</h2>
+            <p class="tracking-sub">Checks de refeições, alimentos e H2Ômetro do paciente.</p>
+          </div>
+          <div class="app-field tracking-date-field">
+            <label for="tracking-date">Dia</label>
+            <input type="date" id="tracking-date">
+          </div>
+        </div>
+        <div id="tracking-stats" class="tracking-stats"></div>
+        <div id="tracking-diet" class="tracking-diet"></div>
+      </section>
+
+      <section class="app-card" style="padding:1.2rem;margin-bottom:1rem">
+        <h2 class="panel-section-title">Últimos 7 dias</h2>
+        <p class="tracking-sub">Visão rápida de aderência à dieta e hidratação.</p>
+        <div id="tracking-weekly" class="tracking-weekly"></div>
+      </section>
+
       <section class="app-card app-table-wrap">
         <table class="app-table">
           <thead>
