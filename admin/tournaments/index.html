@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Torneios | Admin Marcela Tupinambá</title>
+  <link rel="icon" href="../../assets/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../app/app.css">
+  <script src="../../js/config.js"></script>
+</head>
+<body class="app-body">
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <div class="app-brand">
+        <img src="../../assets/logo-transparent.png" alt="">
+        <div>
+          <strong>Marcela Tupinambá</strong>
+          <span>Painel admin</span>
+        </div>
+      </div>
+      <nav class="app-nav">
+        <a href="/admin/">Pacientes</a>
+        <a href="/admin/tournaments/" class="is-active">Torneios</a>
+        <a href="/">Site público</a>
+      </nav>
+      <div class="app-sidebar-footer">
+        <button type="button" class="app-nav" id="logout-btn">Sair</button>
+      </div>
+    </aside>
+
+    <main class="app-main">
+      <div class="app-topbar">
+        <div>
+          <h1>Torneios</h1>
+          <p>Crie competições por período com métricas de Banco de pontos e/ou H2Ômetro.</p>
+        </div>
+        <div class="app-actions">
+          <button type="button" class="app-btn app-btn--primary" id="open-create-modal">+ Novo torneio</button>
+        </div>
+      </div>
+
+      <section class="app-card app-table-wrap">
+        <table class="app-table">
+          <thead>
+            <tr>
+              <th>Título</th>
+              <th>Período</th>
+              <th>Métricas</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tournaments-table-body">
+            <tr><td colspan="5" class="app-empty">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="app-card" id="ranking-panel" hidden style="padding:1.2rem;margin-top:1rem">
+        <div class="app-topbar" style="margin-bottom:0.75rem;padding:0">
+          <div>
+            <h2 id="ranking-title" style="margin:0;font-size:1.1rem">Ranking</h2>
+            <p id="ranking-meta" class="pb-tournament-meta"></p>
+          </div>
+          <button type="button" class="app-btn app-btn--ghost" id="close-ranking">Fechar</button>
+        </div>
+        <div id="ranking-body"></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="app-modal" id="create-modal" aria-hidden="true">
+    <div class="app-modal__panel app-modal__panel--wide" role="dialog" aria-labelledby="create-title">
+      <div class="app-modal__head">
+        <h2 id="create-title">Novo torneio</h2>
+        <button type="button" class="app-modal__close" id="close-create-modal" aria-label="Fechar">&times;</button>
+      </div>
+      <form id="create-tournament-form" class="app-form">
+        <div class="app-field">
+          <label for="title">Título</label>
+          <input id="title" name="title" required placeholder="Ex.: Desafio H2O de Junho">
+        </div>
+        <div class="app-field">
+          <label for="description">Descrição (opcional)</label>
+          <textarea id="description" name="description" rows="2"></textarea>
+        </div>
+        <div class="diet-meta-grid">
+          <div class="app-field">
+            <label for="start_date">Início</label>
+            <input id="start_date" name="start_date" type="date" required>
+          </div>
+          <div class="app-field">
+            <label for="end_date">Fim</label>
+            <input id="end_date" name="end_date" type="date" required>
+          </div>
+        </div>
+        <fieldset class="app-field">
+          <legend>Métricas do torneio</legend>
+          <label class="check-row">
+            <input type="checkbox" class="check-row__input" name="metric_bdp" checked>
+            <span class="check-row__box" aria-hidden="true"></span>
+            <span class="check-row__content"><span class="check-row__name">Banco de pontos</span></span>
+          </label>
+          <label class="check-row" style="margin-top:0.45rem">
+            <input type="checkbox" class="check-row__input" name="metric_water" checked>
+            <span class="check-row__box" aria-hidden="true"></span>
+            <span class="check-row__content"><span class="check-row__name">H2Ômetro (água)</span></span>
+          </label>
+        </fieldset>
+        <div class="app-field">
+          <label>Participantes</label>
+          <div id="patients-checklist" class="tournament-patients-list app-empty">Carregando pacientes...</div>
+        </div>
+        <p class="app-error" id="create-error" aria-live="polite"></p>
+        <button type="submit" class="app-btn app-btn--primary">Criar torneio</button>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="./tournaments.js"></script>
+</body>
+</html>

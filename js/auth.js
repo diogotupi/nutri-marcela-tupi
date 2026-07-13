@@ -271,3 +271,144 @@ export async function fetchMyActiveDiet() {
   if (!data) return null;
   return fetchDietWithMeals(data.id);
 }
+
+export async function fetchTodayTracking(checkDate) {
+  const profile = await getProfile();
+  const supabase = getSupabase();
+
+  const [mealRes, itemRes, waterRes] = await Promise.all([
+    supabase
+      .from('patient_meal_checks')
+      .select('meal_id')
+      .eq('patient_id', profile.id)
+      .eq('check_date', checkDate),
+    supabase
+      .from('patient_item_checks')
+      .select('item_id')
+      .eq('patient_id', profile.id)
+      .eq('check_date', checkDate),
+    supabase
+      .from('patient_water_logs')
+      .select('amount_ml, goal_ml')
+      .eq('patient_id', profile.id)
+      .eq('log_date', checkDate)
+      .maybeSingle(),
+  ]);
+
+  if (mealRes.error) throw mealRes.error;
+  if (itemRes.error) throw itemRes.error;
+  if (waterRes.error) throw waterRes.error;
+
+  return {
+    mealIds: new Set((mealRes.data || []).map((row) => row.meal_id)),
+    itemIds: new Set((itemRes.data || []).map((row) => row.item_id)),
+    water: waterRes.data || { amount_ml: 0, goal_ml: 2000 },
+  };
+}
+
+export async function toggleMealCheck(mealId, checkDate, checked) {
+  const supabase = getSupabase();
+  const profile = await getProfile();
+
+  if (checked) {
+    const { error } = await supabase.from('patient_meal_checks').upsert(
+      { patient_id: profile.id, meal_id: mealId, check_date: checkDate },
+      { onConflict: 'patient_id,meal_id,check_date' }
+    );
+    if (error) throw error;
+    return;
+  }
+
+  const { error } = await supabase
+    .from('patient_meal_checks')
+    .delete()
+    .eq('patient_id', profile.id)
+    .eq('meal_id', mealId)
+    .eq('check_date', checkDate);
+  if (error) throw error;
+}
+
+export async function toggleItemCheck(itemId, checkDate, checked) {
+  const supabase = getSupabase();
+  const profile = await getProfile();
+
+  if (checked) {
+    const { error } = await supabase.from('patient_item_checks').upsert(
+      { patient_id: profile.id, item_id: itemId, check_date: checkDate },
+      { onConflict: 'patient_id,item_id,check_date' }
+    );
+    if (error) throw error;
+    return;
+  }
+
+  const { error } = await supabase
+    .from('patient_item_checks')
+    .delete()
+    .eq('patient_id', profile.id)
+    .eq('item_id', itemId)
+    .eq('check_date', checkDate);
+  if (error) throw error;
+}
+
+export async function addWaterIntake(checkDate, deltaMl) {
+  const supabase = getSupabase();
+  const profile = await getProfile();
+
+  const { data: current, error: fetchError } = await supabase
+    .from('patient_water_logs')
+    .select('amount_ml, goal_ml')
+    .eq('patient_id', profile.id)
+    .eq('log_date', checkDate)
+    .maybeSingle();
+
+  if (fetchError) throw fetchError;
+
+  const nextAmount = Math.max(0, (current?.amount_ml || 0) + deltaMl);
+  const goal = current?.goal_ml || 2000;
+
+  const { data, error } = await supabase
+    .from('patient_water_logs')
+    .upsert(
+      {
+        patient_id: profile.id,
+        log_date: checkDate,
+        amount_ml: nextAmount,
+        goal_ml: goal,
+      },
+      { onConflict: 'patient_id,log_date' }
+    )
+    .select('amount_ml, goal_ml')
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function setWaterGoal(checkDate, goalMl) {
+  const supabase = getSupabase();
+  const profile = await getProfile();
+
+  const { data: current } = await supabase
+    .from('patient_water_logs')
+    .select('amount_ml')
+    .eq('patient_id', profile.id)
+    .eq('log_date', checkDate)
+    .maybeSingle();
+
+  const { data, error } = await supabase
+    .from('patient_water_logs')
+    .upsert(
+      {
+        patient_id: profile.id,
+        log_date: checkDate,
+        amount_ml: current?.amount_ml || 0,
+        goal_ml: goalMl,
+      },
+      { onConflict: 'patient_id,log_date' }
+    )
+    .select('amount_ml, goal_ml')
+    .single();
+
+  if (error) throw error;
+  return data;
+}

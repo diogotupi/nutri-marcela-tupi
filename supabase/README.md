@@ -73,12 +73,43 @@ npx supabase link --project-ref pvkkxzatvuubkddzvbiq
 npx supabase functions deploy create-patient
 ```
 
-## 6. Testar
+## 6. Tracking diário (checks + H2Ômetro)
+
+Execute no **SQL Editor**:
+
+`supabase/migration-tracking.sql`
+
+Isso habilita:
+- check de refeições e alimentos por dia
+- registro de água (H2Ômetro)
+
+## 7. Banco de pontos + torneios
+
+Execute no **SQL Editor**:
+
+`supabase/migration-tournaments.sql`
+
+Isso habilita:
+- rastreador BDP salvo no Supabase (conta para torneios)
+- torneios criados pela Marcela em `/admin/tournaments/`
+- ranking por **Banco de pontos** e/ou **H2Ômetro**
+
+### Torneios (admin)
+
+1. Acesse `/admin/tournaments/`
+2. Crie o torneio (título, datas, métricas, participantes)
+3. Pacientes inscritos veem o ranking na aba **Banco de pontos**
+4. Ao fim, clique **Encerrar** e veja o vencedor no ranking
+
+**Critério de ranking (v1):** mais água total no período; em empate, menos pontos no BDP.
+
+## 8. Testar
 
 | URL | Quem usa |
 |-----|----------|
 | `/login/` | Admin e pacientes |
-| `/admin/` | Marcela |
+| `/admin/` | Marcela — pacientes e dietas |
+| `/admin/tournaments/` | Marcela — torneios |
 | `/dashboard/` | Pacientes |
 
 Fluxo:
@@ -87,6 +118,7 @@ Fluxo:
 3. Abre o paciente → **Nova dieta**
 4. Monta refeições → **Ativar dieta**
 5. Paciente entra em `/login/` e vê a dieta em `/dashboard/`
+6. Paciente usa **Banco de pontos** (com H2Ômetro espelhado) e participa de torneios
 
 ## Estrutura das dietas (estilo WebDiet)
 
@@ -97,6 +129,8 @@ Fluxo:
 
 ## Próximos passos (futuro)
 
+- Salvar rastreador de pontos no Supabase (sync entre dispositivos)
+- Admin ajustar tabela de alimentos e cotas por paciente
 - Banco de alimentos com busca
 - Cálculo automático de macros
 - PDF da dieta
