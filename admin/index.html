@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin | Marcela Tupinambá</title>
+  <link rel="icon" href="../assets/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../app/app.css">
+  <script src="../js/config.js"></script>
+</head>
+<body class="app-body">
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <div class="app-brand">
+        <img src="../assets/logo-transparent.png" alt="">
+        <div>
+          <strong>Marcela Tupinambá</strong>
+          <span>Painel admin</span>
+        </div>
+      </div>
+      <nav class="app-nav">
+        <a href="/admin/" class="is-active">Pacientes</a>
+        <a href="/">Site público</a>
+      </nav>
+      <div class="app-sidebar-footer">
+        <button type="button" class="app-nav" id="logout-btn">Sair</button>
+      </div>
+    </aside>
+
+    <main class="app-main">
+      <div class="app-topbar">
+        <div>
+          <h1>Pacientes</h1>
+          <p>Gerencie logins, dietas e histórico de cada paciente.</p>
+        </div>
+        <div class="app-actions">
+          <button type="button" class="app-btn app-btn--primary" id="open-create-modal">+ Novo paciente</button>
+        </div>
+      </div>
+
+      <div class="app-grid app-grid--stats">
+        <div class="app-card app-stat">
+          <div class="app-stat-label">Total de pacientes</div>
+          <div class="app-stat-value" id="stat-patients">0</div>
+        </div>
+        <div class="app-card app-stat">
+          <div class="app-stat-label">Dietas ativas</div>
+          <div class="app-stat-value" id="stat-active-diets">0</div>
+        </div>
+      </div>
+
+      <section class="app-card app-table-wrap">
+        <table class="app-table">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Usuário</th>
+              <th>Cadastro</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="patients-table-body">
+            <tr><td colspan="4" class="app-empty">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+
+  <div class="app-modal" id="create-modal" aria-hidden="true">
+    <div class="app-modal__panel" role="dialog" aria-labelledby="create-title">
+      <div class="app-modal__head">
+        <h2 id="create-title">Novo paciente</h2>
+        <button type="button" class="app-modal__close" id="close-create-modal" aria-label="Fechar">&times;</button>
+      </div>
+      <form id="create-patient-form" class="app-form">
+        <div class="app-field">
+          <label for="full_name">Nome completo</label>
+          <input id="full_name" name="full_name" required>
+        </div>
+        <div class="app-field">
+          <label for="username">Usuário</label>
+          <input id="username" name="username" pattern="[a-z0-9._-]{3,32}" required>
+        </div>
+        <div class="app-field">
+          <label for="password">Senha inicial</label>
+          <input id="password" name="password" type="password" minlength="6" required>
+        </div>
+        <div class="app-field">
+          <label for="notes">Observações (opcional)</label>
+          <textarea id="notes" name="notes"></textarea>
+        </div>
+        <p class="app-error" id="create-error" aria-live="polite"></p>
+        <button type="submit" class="app-btn app-btn--primary">Criar paciente</button>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="./admin.js"></script>
+</body>
+</html>

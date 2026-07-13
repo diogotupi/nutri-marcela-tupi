@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entrar | Marcela Tupinambá</title>
+  <link rel="icon" href="../assets/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../app/app.css">
+  <script src="../js/config.js"></script>
+</head>
+<body class="app-body">
+  <main class="login-page">
+    <div class="login-card">
+      <a href="/" class="login-back">← Voltar ao site</a>
+      <img src="../assets/logo-transparent.png" alt="Marcela Tupinambá">
+      <h1>Área do paciente</h1>
+      <p>Entre com o usuário e senha criados pela nutricionista.</p>
+      <form id="login-form" class="app-form">
+        <div class="app-field">
+          <label for="username">Usuário</label>
+          <input id="username" name="username" autocomplete="username" required>
+        </div>
+        <div class="app-field">
+          <label for="password">Senha</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required>
+        </div>
+        <p class="app-error" id="login-error" aria-live="polite"></p>
+        <button type="submit" class="app-btn app-btn--primary" style="width:100%">Entrar</button>
+      </form>
+      <p class="app-error" id="setup-notice" hidden style="margin-top:1rem;text-align:center"></p>
+    </div>
+  </main>
+  <script type="module" src="./login.js"></script>
+</body>
+</html>

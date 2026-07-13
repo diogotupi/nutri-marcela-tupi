@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meu painel | Marcela Tupinambá</title>
+  <link rel="icon" href="../assets/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../app/app.css">
+  <script src="../js/config.js"></script>
+</head>
+<body class="app-body">
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <div class="app-brand">
+        <img src="../assets/logo-transparent.png" alt="">
+        <div>
+          <strong>Marcela Tupinambá</strong>
+          <span id="sidebar-user">Meu painel</span>
+        </div>
+      </div>
+      <nav class="app-nav">
+        <a href="/dashboard/" class="is-active">Minha dieta</a>
+        <a href="/">Site público</a>
+      </nav>
+      <div class="app-sidebar-footer">
+        <button type="button" class="app-nav" id="logout-btn">Sair</button>
+      </div>
+    </aside>
+
+    <main class="app-main">
+      <div class="app-topbar">
+        <div>
+          <h1>Olá, <span id="patient-greeting">paciente</span></h1>
+          <p>Veja seu plano alimentar atual e altere sua senha quando quiser.</p>
+        </div>
+      </div>
+
+      <section class="app-card" id="active-diet-card" style="margin-bottom:1rem">
+        <div class="patient-diet-card">
+          <div class="app-empty">Carregando dieta...</div>
+        </div>
+      </section>
+
+      <section class="app-card" style="padding:1.2rem;margin-bottom:1rem">
+        <h2 style="margin:0 0 1rem;font-size:1.05rem">Histórico de dietas</h2>
+        <div id="diet-history"></div>
+      </section>
+
+      <section class="app-card" style="padding:1.2rem">
+        <h2 style="margin:0 0 1rem;font-size:1.05rem">Alterar senha</h2>
+        <form id="password-form" class="app-form" style="max-width:420px">
+          <div class="app-field">
+            <label for="new-password">Nova senha</label>
+            <input id="new-password" type="password" minlength="6" required>
+          </div>
+          <div class="app-field">
+            <label for="confirm-password">Confirmar nova senha</label>
+            <input id="confirm-password" type="password" minlength="6" required>
+          </div>
+          <p class="app-error" id="password-error" aria-live="polite"></p>
+          <button type="submit" class="app-btn app-btn--primary">Salvar nova senha</button>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="./dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Montar dieta | Admin</title>
+  <link rel="icon" href="../../assets/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../app/app.css">
+  <script src="../../js/config.js"></script>
+</head>
+<body class="app-body">
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <div class="app-brand">
+        <img src="../../assets/logo-transparent.png" alt="">
+        <div>
+          <strong>Marcela Tupinambá</strong>
+          <span>Montar dieta</span>
+        </div>
+      </div>
+      <nav class="app-nav">
+        <a href="/admin/">Pacientes</a>
+        <a href="#" id="back-patient-link">Voltar ao paciente</a>
+      </nav>
+      <div class="app-sidebar-footer">
+        <button type="button" class="app-nav" id="logout-btn">Sair</button>
+      </div>
+    </aside>
+
+    <main class="app-main">
+      <div class="app-topbar">
+        <div>
+          <h1 id="builder-title">Plano alimentar</h1>
+          <p id="builder-subtitle">Monte as refeições do dia — estilo WebDiet, simples e visual.</p>
+        </div>
+        <div class="app-actions">
+          <button type="button" class="app-btn app-btn--ghost" id="save-draft-btn">Salvar rascunho</button>
+          <button type="button" class="app-btn app-btn--primary" id="activate-diet-btn">Ativar dieta</button>
+        </div>
+      </div>
+
+      <div class="diet-meta-grid">
+        <div class="app-field">
+          <label for="diet-title">Título da dieta</label>
+          <input id="diet-title" value="Plano alimentar">
+        </div>
+        <div class="app-field">
+          <label for="diet-start-date">Data de início</label>
+          <input id="diet-start-date" type="date">
+        </div>
+        <div class="app-field">
+          <label for="diet-status">Status</label>
+          <select id="diet-status">
+            <option value="draft">Rascunho</option>
+            <option value="active">Ativa</option>
+            <option value="archived">Arquivada</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="app-field" style="margin-bottom:1rem">
+        <label for="diet-notes">Orientações gerais</label>
+        <textarea id="diet-notes" placeholder="Hidratação, substituições, observações..."></textarea>
+      </div>
+
+      <div class="diet-builder">
+        <div class="diet-meal-nav" id="meal-nav"></div>
+        <div class="diet-panel" id="meal-panel"></div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="./diet.js"></script>
+</body>
+</html>

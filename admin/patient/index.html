@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paciente | Admin</title>
+  <link rel="icon" href="../../assets/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../app/app.css">
+  <script src="../../js/config.js"></script>
+</head>
+<body class="app-body">
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <div class="app-brand">
+        <img src="../../assets/logo-transparent.png" alt="">
+        <div>
+          <strong>Marcela Tupinambá</strong>
+          <span>Painel admin</span>
+        </div>
+      </div>
+      <nav class="app-nav">
+        <a href="/admin/">Pacientes</a>
+        <a href="/">Site público</a>
+      </nav>
+      <div class="app-sidebar-footer">
+        <button type="button" class="app-nav" id="logout-btn">Sair</button>
+      </div>
+    </aside>
+
+    <main class="app-main">
+      <div class="app-topbar">
+        <div>
+          <h1 id="patient-name">Paciente</h1>
+          <p id="patient-meta">Carregando...</p>
+        </div>
+        <div class="app-actions">
+          <a href="/admin/" class="app-btn app-btn--ghost">← Voltar</a>
+          <button type="button" class="app-btn app-btn--primary" id="new-diet-btn">+ Nova dieta</button>
+        </div>
+      </div>
+
+      <section class="app-card" style="padding:1rem 1.1rem;margin-bottom:1rem">
+        <strong>Observações</strong>
+        <p id="patient-notes" style="margin:0.5rem 0 0;color:var(--color-text-muted)">—</p>
+      </section>
+
+      <section class="app-card app-table-wrap">
+        <table class="app-table">
+          <thead>
+            <tr>
+              <th>Dieta</th>
+              <th>Status</th>
+              <th>Início</th>
+              <th>Atualizada</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="diets-table-body">
+            <tr><td colspan="5" class="app-empty">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="./patient.js"></script>
+</body>
+</html>
