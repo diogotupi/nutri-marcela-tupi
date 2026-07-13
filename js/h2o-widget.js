@@ -19,7 +19,7 @@ export function renderH2oMarkup({ idPrefix = 'h2o', todayLabel = '', water = { a
         <div class="h2o-meter__fill" id="${idPrefix}-fill" style="width:${pct}%"></div>
       </div>
       <p class="h2o-card__goal" id="${idPrefix}-goal">Meta: ${water.goal_ml} ml · ${pct}%</p>
-      <p class="pb-h2o-note">Registre sua água aqui também — conta para torneios e metas futuras.</p>
+      <p class="pb-h2o-note">Registre sua água aqui também — conta para desafios e metas futuras.</p>
       <div class="h2o-actions">
         <button type="button" class="app-btn app-btn--ghost h2o-btn" data-h2o-prefix="${idPrefix}" data-water="250">+250 ml</button>
         <button type="button" class="app-btn app-btn--ghost h2o-btn" data-h2o-prefix="${idPrefix}" data-water="500">+500 ml</button>

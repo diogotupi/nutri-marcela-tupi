@@ -37,65 +37,65 @@ let activeCategory = FOOD_CATEGORIES[0].id;
 let coringaType = 'leve';
 let coringaSize = 'half';
 let h2oState = null;
-let tournaments = [];
+let desafios = [];
 let myProfileId = null;
 
 const rootEl = document.getElementById('points-bank');
 const today = getLocalDateString();
 
-async function refreshTournaments() {
+async function refreshDesafios() {
   try {
-    tournaments = await fetchMyActiveTournaments();
+    desafios = await fetchMyActiveTournaments();
   } catch {
-    tournaments = [];
+    desafios = [];
   }
 }
 
-function renderTournamentsSection() {
-  if (!tournaments.length) {
+function renderDesafiosSection() {
+  if (!desafios.length) {
     return `
-      <section class="pb-section pb-tournaments app-card" style="padding:1.15rem">
-        <p class="pb-kicker">Torneios</p>
-        <h2 class="pb-title">Nenhum torneio ativo</h2>
-        <p class="pb-lead" style="margin:0">Quando a Marcela criar um torneio e incluir você, o ranking aparece aqui.</p>
+      <section class="pb-section pb-desafios app-card" style="padding:1.15rem">
+        <p class="pb-kicker">Desafios</p>
+        <h2 class="pb-title">Nenhum desafio ativo</h2>
+        <p class="pb-lead" style="margin:0">Quando a Marcela criar um desafio e incluir você, o ranking aparece aqui.</p>
       </section>
     `;
   }
 
-  return tournaments.map((tournament) => `
-    <section class="pb-section pb-tournaments app-card" style="padding:1.15rem" data-tournament-id="${tournament.id}">
-      <p class="pb-kicker">Torneio ativo</p>
-      <h2 class="pb-title">${escapeHtml(tournament.title)}</h2>
-      <p class="pb-lead">${escapeHtml(tournament.description || '')}</p>
-      <p class="pb-tournament-meta">
-        ${escapeHtml(tournamentPeriodLabel(tournament))}
-        · ${escapeHtml(tournamentMetricsLabel(tournament))}
+  return desafios.map((desafio) => `
+    <section class="pb-section pb-desafios app-card" style="padding:1.15rem" data-desafio-id="${desafio.id}">
+      <p class="pb-kicker">Desafio ativo</p>
+      <h2 class="pb-title">${escapeHtml(desafio.title)}</h2>
+      <p class="pb-lead">${escapeHtml(desafio.description || '')}</p>
+      <p class="pb-desafio-meta">
+        ${escapeHtml(tournamentPeriodLabel(desafio))}
+        · ${escapeHtml(tournamentMetricsLabel(desafio))}
       </p>
-      <div class="pb-tournament-loading app-empty">Carregando ranking…</div>
-      <div class="pb-tournament-board" hidden></div>
+      <div class="pb-desafio-loading app-empty">Carregando ranking…</div>
+      <div class="pb-desafio-board" hidden></div>
     </section>
   `).join('');
 }
 
-async function hydrateTournamentBoards() {
-  await Promise.all(tournaments.map(async (tournament) => {
-    const section = rootEl.querySelector(`[data-tournament-id="${tournament.id}"]`);
+async function hydrateDesafioBoards() {
+  await Promise.all(desafios.map(async (desafio) => {
+    const section = rootEl.querySelector(`[data-desafio-id="${desafio.id}"]`);
     if (!section) return;
 
-    const loading = section.querySelector('.pb-tournament-loading');
-    const board = section.querySelector('.pb-tournament-board');
+    const loading = section.querySelector('.pb-desafio-loading');
+    const board = section.querySelector('.pb-desafio-board');
 
     try {
-      const rows = await fetchTournamentLeaderboard(tournament.id);
+      const rows = await fetchTournamentLeaderboard(desafio.id);
       const myRow = rows.find((row) => row.patient_id === myProfileId);
       const headers = ['#', 'Participante'];
-      if (tournament.metric_water) headers.push('Água');
-      if (tournament.metric_bdp) headers.push('Pts BDP');
+      if (desafio.metric_water) headers.push('Água');
+      if (desafio.metric_bdp) headers.push('Pts BDP');
 
       board.innerHTML = `
-        ${myRow ? `<p class="pb-tournament-you">Sua posição: <strong>${myRow.rank}º</strong></p>` : ''}
+        ${myRow ? `<p class="pb-desafio-you">Sua posição: <strong>${myRow.rank}º</strong></p>` : ''}
         <div class="app-table-wrap">
-          <table class="app-table pb-tournament-table">
+          <table class="app-table pb-desafio-table">
             <thead>
               <tr>${headers.map((h) => `<th>${h}</th>`).join('')}</tr>
             </thead>
@@ -104,14 +104,14 @@ async function hydrateTournamentBoards() {
                 <tr class="${row.patient_id === myProfileId ? 'is-me' : ''}">
                   <td>${row.rank}º</td>
                   <td>${escapeHtml(row.full_name)}</td>
-                  ${tournament.metric_water ? `<td>${row.water_ml} ml</td>` : ''}
-                  ${tournament.metric_bdp ? `<td>${row.bdp_pts} pts</td>` : ''}
+                  ${desafio.metric_water ? `<td>${row.water_ml} ml</td>` : ''}
+                  ${desafio.metric_bdp ? `<td>${row.bdp_pts} pts</td>` : ''}
                 </tr>
               `).join('')}
             </tbody>
           </table>
         </div>
-        <p class="pb-tournament-hint">Ranking: mais água primeiro; em empate, menos pontos no BDP.</p>
+        <p class="pb-desafio-hint">Ranking: mais água primeiro; em empate, menos pontos no BDP.</p>
       `;
       loading.hidden = true;
       board.hidden = false;
@@ -131,7 +131,7 @@ function render() {
   const coringaPts = getCoringaPoints(coringaType, coringaSize);
 
   rootEl.innerHTML = `
-    ${renderTournamentsSection()}
+    ${renderDesafiosSection()}
 
     ${h2oState ? renderH2oMarkup({
       idPrefix: 'pb-h2o',
@@ -297,15 +297,15 @@ function render() {
     idPrefix: 'pb-h2o',
     checkDate: today,
     onUpdate: async () => {
-      await refreshTournamentBoardsOnly();
+      await refreshDesafioBoardsOnly();
     },
   });
-  hydrateTournamentBoards();
+  hydrateDesafioBoards();
 }
 
-async function refreshTournamentBoardsOnly() {
-  if (!tournaments.length) return;
-  await hydrateTournamentBoards();
+async function refreshDesafioBoardsOnly() {
+  if (!desafios.length) return;
+  await hydrateDesafioBoards();
 }
 
 function renderFoodGrid() {
@@ -390,7 +390,7 @@ function bindEvents() {
     const size = CORINGA_SIZES.find((item) => item.id === coringaSize);
     state = await addCoringaEntry(coringaType, coringaSize, type.label, size.label);
     showToast('Estimativa adicionada ao rastreador.');
-    await refreshTournamentBoardsOnly();
+    await refreshDesafioBoardsOnly();
     render();
   });
 
@@ -398,7 +398,7 @@ function bindEvents() {
     const button = event.target.closest('[data-remove]');
     if (!button) return;
     state = await removeEntry(button.dataset.remove);
-    await refreshTournamentBoardsOnly();
+    await refreshDesafioBoardsOnly();
     render();
   });
 }
@@ -410,7 +410,7 @@ function bindFoodButtons() {
       if (!food) return;
       state = await addFoodEntry(food);
       showToast(`${food.name} adicionado.`);
-      await refreshTournamentBoardsOnly();
+      await refreshDesafioBoardsOnly();
       render();
     });
   });
@@ -420,7 +420,7 @@ export async function loadPointsPanel() {
   const profile = await getProfile();
   myProfileId = profile.id;
   h2oState = await loadTodayWater(today);
-  await refreshTournaments();
+  await refreshDesafios();
   state = await loadTrackerState();
   render();
 }

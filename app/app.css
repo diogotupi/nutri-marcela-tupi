@@ -1401,28 +1401,33 @@ a {
   color: var(--color-text-muted);
 }
 
+.pb-desafio-meta,
 .pb-tournament-meta {
   margin: 0 0 0.75rem;
   font-size: 0.82rem;
   color: var(--color-text-muted);
 }
 
+.pb-desafio-you,
 .pb-tournament-you {
   margin: 0 0 0.75rem;
   font-size: 0.92rem;
 }
 
+.pb-desafio-hint,
 .pb-tournament-hint {
   margin: 0.65rem 0 0;
   font-size: 0.78rem;
   color: var(--color-text-muted);
 }
 
+.pb-desafio-table tr.is-me td,
 .pb-tournament-table tr.is-me td {
   background: var(--color-accent-light);
   font-weight: 600;
 }
 
+.desafio-patients-list,
 .tournament-patients-list {
   display: flex;
   flex-direction: column;

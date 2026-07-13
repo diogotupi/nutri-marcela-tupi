@@ -9,9 +9,9 @@ import {
   updateTournamentStatus,
 } from '../../js/tournaments.js';
 
-const tableBody = document.getElementById('tournaments-table-body');
+const tableBody = document.getElementById('desafios-table-body');
 const modal = document.getElementById('create-modal');
-const form = document.getElementById('create-tournament-form');
+const form = document.getElementById('create-desafio-form');
 const createError = document.getElementById('create-error');
 const patientsChecklist = document.getElementById('patients-checklist');
 const rankingPanel = document.getElementById('ranking-panel');
@@ -20,7 +20,7 @@ const rankingMeta = document.getElementById('ranking-meta');
 const rankingBody = document.getElementById('ranking-body');
 
 let patients = [];
-let tournaments = [];
+let desafios = [];
 
 document.getElementById('logout-btn').addEventListener('click', async () => {
   await signOut();
@@ -75,22 +75,22 @@ function renderPatientsChecklist() {
   `).join('');
 }
 
-function renderTournaments() {
-  if (!tournaments.length) {
-    tableBody.innerHTML = '<tr><td colspan="5" class="app-empty">Nenhum torneio criado ainda.</td></tr>';
+function renderDesafios() {
+  if (!desafios.length) {
+    tableBody.innerHTML = '<tr><td colspan="5" class="app-empty">Nenhum desafio criado ainda.</td></tr>';
     return;
   }
 
-  tableBody.innerHTML = tournaments.map((tournament) => `
+  tableBody.innerHTML = desafios.map((desafio) => `
     <tr>
-      <td><strong>${escapeHtml(tournament.title)}</strong></td>
-      <td>${escapeHtml(tournamentPeriodLabel(tournament))}</td>
-      <td>${escapeHtml(tournamentMetricsLabel(tournament))}</td>
-      <td><span class="app-badge app-badge--${tournament.status === 'active' ? 'active' : tournament.status === 'draft' ? 'draft' : 'archived'}">${statusLabel(tournament.status)}</span></td>
+      <td><strong>${escapeHtml(desafio.title)}</strong></td>
+      <td>${escapeHtml(tournamentPeriodLabel(desafio))}</td>
+      <td>${escapeHtml(tournamentMetricsLabel(desafio))}</td>
+      <td><span class="app-badge app-badge--${desafio.status === 'active' ? 'active' : desafio.status === 'draft' ? 'draft' : 'archived'}">${statusLabel(desafio.status)}</span></td>
       <td class="app-table-actions">
-        <button type="button" class="app-btn app-btn--ghost" data-ranking="${tournament.id}">Ranking</button>
-        ${tournament.status === 'active'
-          ? `<button type="button" class="app-btn app-btn--ghost" data-finish="${tournament.id}">Encerrar</button>`
+        <button type="button" class="app-btn app-btn--ghost" data-ranking="${desafio.id}">Ranking</button>
+        ${desafio.status === 'active'
+          ? `<button type="button" class="app-btn app-btn--ghost" data-finish="${desafio.id}">Encerrar</button>`
           : ''}
       </td>
     </tr>
@@ -102,10 +102,10 @@ function renderTournaments() {
 
   tableBody.querySelectorAll('[data-finish]').forEach((button) => {
     button.addEventListener('click', async () => {
-      if (!confirm('Encerrar este torneio? O ranking final ficará registrado.')) return;
+      if (!confirm('Encerrar este desafio? O ranking final ficará registrado.')) return;
       try {
         await updateTournamentStatus(button.dataset.finish, 'finished');
-        showToast('Torneio encerrado.');
+        showToast('Desafio encerrado.');
         await loadAll();
       } catch (error) {
         showToast(error.message, 'error');
@@ -114,33 +114,33 @@ function renderTournaments() {
   });
 }
 
-async function showRanking(tournamentId) {
-  const tournament = tournaments.find((item) => item.id === tournamentId);
-  if (!tournament) return;
+async function showRanking(desafioId) {
+  const desafio = desafios.find((item) => item.id === desafioId);
+  if (!desafio) return;
 
-  rankingTitle.textContent = tournament.title;
-  rankingMeta.textContent = `${tournamentPeriodLabel(tournament)} · ${tournamentMetricsLabel(tournament)}`;
+  rankingTitle.textContent = desafio.title;
+  rankingMeta.textContent = `${tournamentPeriodLabel(desafio)} · ${tournamentMetricsLabel(desafio)}`;
   rankingBody.innerHTML = '<div class="app-empty">Carregando ranking...</div>';
   rankingPanel.hidden = false;
 
   try {
-    const rows = await fetchTournamentLeaderboard(tournamentId);
+    const rows = await fetchTournamentLeaderboard(desafioId);
     if (!rows.length) {
-      rankingBody.innerHTML = '<div class="app-empty">Nenhum participante neste torneio.</div>';
+      rankingBody.innerHTML = '<div class="app-empty">Nenhum participante neste desafio.</div>';
       return;
     }
 
     const winner = rows[0];
     rankingBody.innerHTML = `
-      <p class="pb-tournament-you">Vencedor(a): <strong>${escapeHtml(winner.full_name)}</strong></p>
+      <p class="pb-desafio-you">Vencedor(a): <strong>${escapeHtml(winner.full_name)}</strong></p>
       <div class="app-table-wrap">
-        <table class="app-table pb-tournament-table">
+        <table class="app-table pb-desafio-table">
           <thead>
             <tr>
               <th>#</th>
               <th>Participante</th>
-              ${tournament.metric_water ? '<th>Água total</th>' : ''}
-              ${tournament.metric_bdp ? '<th>Pts BDP</th>' : ''}
+              ${desafio.metric_water ? '<th>Água total</th>' : ''}
+              ${desafio.metric_bdp ? '<th>Pts BDP</th>' : ''}
             </tr>
           </thead>
           <tbody>
@@ -148,14 +148,14 @@ async function showRanking(tournamentId) {
               <tr>
                 <td>${row.rank}º</td>
                 <td>${escapeHtml(row.full_name)}</td>
-                ${tournament.metric_water ? `<td>${row.water_ml} ml</td>` : ''}
-                ${tournament.metric_bdp ? `<td>${row.bdp_pts} pts</td>` : ''}
+                ${desafio.metric_water ? `<td>${row.water_ml} ml</td>` : ''}
+                ${desafio.metric_bdp ? `<td>${row.bdp_pts} pts</td>` : ''}
               </tr>
             `).join('')}
           </tbody>
         </table>
       </div>
-      <p class="pb-tournament-hint">Critério: mais água primeiro; em empate, menos pontos no BDP.</p>
+      <p class="pb-desafio-hint">Critério: mais água primeiro; em empate, menos pontos no BDP.</p>
     `;
   } catch (error) {
     rankingBody.innerHTML = `<div class="app-empty">${escapeHtml(error.message)}</div>`;
@@ -195,7 +195,7 @@ form.addEventListener('submit', async (event) => {
       status: 'active',
       patient_ids: patientIds,
     });
-    showToast('Torneio criado!');
+    showToast('Desafio criado!');
     closeModal();
     await loadAll();
   } catch (error) {
@@ -204,9 +204,9 @@ form.addEventListener('submit', async (event) => {
 });
 
 async function loadAll() {
-  [patients, tournaments] = await Promise.all([fetchPatients(), fetchTournaments()]);
+  [patients, desafios] = await Promise.all([fetchPatients(), fetchTournaments()]);
   renderPatientsChecklist();
-  renderTournaments();
+  renderDesafios();
 }
 
 async function init() {

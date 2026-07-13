@@ -83,21 +83,21 @@ Isso habilita:
 - check de refeições e alimentos por dia
 - registro de água (H2Ômetro)
 
-## 7. Banco de pontos + torneios
+## 7. Banco de pontos + desafios
 
 Execute no **SQL Editor**:
 
 `supabase/migration-tournaments.sql`
 
 Isso habilita:
-- rastreador BDP salvo no Supabase (conta para torneios)
-- torneios criados pela Marcela em `/admin/tournaments/`
+- rastreador BDP salvo no Supabase (conta para desafios)
+- desafios criados pela Marcela em `/admin/desafios/`
 - ranking por **Banco de pontos** e/ou **H2Ômetro**
 
-### Torneios (admin)
+### Desafios (admin)
 
-1. Acesse `/admin/tournaments/`
-2. Crie o torneio (título, datas, métricas, participantes)
+1. Acesse `/admin/desafios/`
+2. Crie o desafio (título, datas, métricas, participantes)
 3. Pacientes inscritos veem o ranking na aba **Banco de pontos**
 4. Ao fim, clique **Encerrar** e veja o vencedor no ranking
 
@@ -109,7 +109,7 @@ Isso habilita:
 |-----|----------|
 | `/login/` | Admin e pacientes |
 | `/admin/` | Marcela — pacientes e dietas |
-| `/admin/tournaments/` | Marcela — torneios |
+| `/admin/desafios/` | Marcela — desafios |
 | `/dashboard/` | Pacientes |
 
 Fluxo:
@@ -118,7 +118,7 @@ Fluxo:
 3. Abre o paciente → **Nova dieta**
 4. Monta refeições → **Ativar dieta**
 5. Paciente entra em `/login/` e vê a dieta em `/dashboard/`
-6. Paciente usa **Banco de pontos** (com H2Ômetro espelhado) e participa de torneios
+6. Paciente usa **Banco de pontos** (com H2Ômetro espelhado) e participa de desafios
 
 ## Estrutura das dietas (estilo WebDiet)
 

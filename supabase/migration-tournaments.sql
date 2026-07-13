@@ -94,7 +94,7 @@ begin
   into v_allowed;
 
   if not v_allowed then
-    raise exception 'Acesso negado ao ranking deste torneio.';
+    raise exception 'Acesso negado ao ranking deste desafio.';
   end if;
 
   return query
