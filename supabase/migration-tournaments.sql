@@ -198,12 +198,6 @@ create policy "tournament_participants_select"
   using (
     public.is_admin()
     or patient_id = public.current_profile_id()
-    or exists (
-      select 1
-      from public.tournament_participants tp
-      where tp.tournament_id = tournament_id
-        and tp.patient_id = public.current_profile_id()
-    )
   );
 
 drop policy if exists "tournament_participants_admin_write" on public.tournament_participants;
