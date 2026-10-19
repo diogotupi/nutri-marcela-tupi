@@ -1,13 +1,5 @@
 export const PATIENT_GUIDES = [
   {
-    id: 'copa',
-    label: 'Copa da nutri',
-    image: '/assets/materiais/copa-da-nutri.png',
-    alt: 'Copa da nutri — receitas práticas para assistir os jogos',
-    href: '/copa/',
-    available: true,
-  },
-  {
     id: 'mercado',
     label: 'Guia de mercado',
     image: '/assets/materiais/guia-de-mercado.png',
