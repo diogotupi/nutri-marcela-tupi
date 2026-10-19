@@ -207,16 +207,16 @@ ul {
 }
 
 .hero-bg picture {
+  position: absolute;
+  inset: 5rem 44% 0 4%;
   display: block;
-  width: 100%;
-  height: 100%;
 }
 
 .hero-bg__photo {
-  width: 60%;
+  width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: center 12%;
+  object-fit: contain;
+  object-position: center bottom;
   display: block;
 }
 
@@ -1239,10 +1239,12 @@ ul {
     padding: clamp(5rem, 12vw, 6rem) 0 1.5rem;
   }
 
+  .hero-bg picture {
+    inset: 5rem 0 auto;
+    height: 65svh;
+  }
+
   .hero-bg__photo {
-    width: 100%;
-    height: 80svh;
-    object-fit: cover;
     object-position: center top;
   }
 
