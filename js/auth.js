@@ -130,7 +130,7 @@ export async function fetchPatient(patientId) {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, username, full_name, notes, created_at')
+    .select('id, user_id, username, full_name, notes, created_at')
     .eq('id', patientId)
     .eq('role', 'patient')
     .single();

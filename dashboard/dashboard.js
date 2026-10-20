@@ -268,8 +268,10 @@ async function init() {
   const auth = await requireAuth({ role: 'patient' });
   if (!auth) return;
 
-  initPointsPanel();
+  initPointsPanel(auth.profile);
   initGuidesPanel();
+  // Open the new weekend bank first; diet and tracking remain available in the sidebar.
+  switchTab('points');
 
   try {
     await loadDashboard(auth.profile);

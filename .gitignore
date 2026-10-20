@@ -1,3 +1,4 @@
 node_modules/
 package-lock.json
+supabase/.temp/
 js/config.local.js

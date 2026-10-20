@@ -17,6 +17,7 @@ import {
 
 const params = new URLSearchParams(window.location.search);
 const patientId = params.get('id');
+document.getElementById('weekend-bank-link').href = `/admin/banco/?id=${encodeURIComponent(patientId || '')}`;
 
 const patientName = document.getElementById('patient-name');
 const patientMeta = document.getElementById('patient-meta');
