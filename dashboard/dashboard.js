@@ -20,6 +20,7 @@ import {
 import { initGuidesPanel } from './guides-panel.js';
 import { initPointsPanel, loadPointsPanel } from './points-panel.js';
 import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js';
+import { initPatientExtras, bindMealExtras, mealExtrasMarkup, notifyPatientSaved } from './patient-extras.js';
 
 const greeting = document.getElementById('patient-greeting');
 const sidebarUser = document.getElementById('sidebar-user');
@@ -132,6 +133,7 @@ function renderDietCard(diet, container) {
         </label>
         ${itemsHtml ? `<div class="meal-items">${itemsHtml}</div>` : ''}
         <form data-meal-report="${meal.id}" class="patient-meal-report"><label>Como foi esta refeição?<select name="status">${[['','Sem registro'],['done','Realizada'],['partial','Parcial'],['skipped','Não realizada']].map(([value,label])=>`<option value="${value}" ${reportStatus===value?'selected':''}>${label}</option>`).join('')}</select></label><label>Comentário (opcional)<input name="comment" maxlength="2000" value="${escapeHtml(report?.comment || '')}"></label><button class="app-btn app-btn--ghost">Salvar relato</button><p role="status"></p></form>
+        ${mealExtrasMarkup(meal.id)}
       </div>
     `;
   }).join('');
@@ -152,6 +154,7 @@ function renderDietCard(diet, container) {
   `;
 
   bindCheckEvents(container);
+  bindMealExtras(container,profile);
 }
 
 function bindCheckEvents(container) {
@@ -161,7 +164,7 @@ function bindCheckEvents(container) {
     try { const {error}=await getSupabase().rpc('report_meal',{p_meal:mealId,p_date:today,p_status:status,p_comment:comment});if(error)throw error;
       if(status)mealReports.set(mealId,{status,comment});else mealReports.delete(mealId);
       if(status==='done')tracking.mealIds.add(mealId);else tracking.mealIds.delete(mealId);
-      renderDietCard(activeDiet,activeDietCard);updateNextMeal();showToast('Relato salvo.');
+      renderDietCard(activeDiet,activeDietCard);updateNextMeal();showToast('Relato salvo.');notifyPatientSaved();
     }catch(error){message.textContent=error.message;button.disabled=false;}
   }));
   container.querySelectorAll('[data-meal-id]').forEach((input) => {
@@ -179,6 +182,7 @@ function bindCheckEvents(container) {
         showToast(input.checked ? 'Refeição marcada!' : 'Refeição desmarcada.');
         updateNextMeal();
         renderDietCard(activeDiet,activeDietCard);
+        notifyPatientSaved();
       } catch (error) {
         input.checked = !input.checked;
         showToast(error.message, 'error');
@@ -196,6 +200,7 @@ function bindCheckEvents(container) {
         else tracking.itemIds.delete(itemId);
         input.closest('.check-row')?.classList.toggle('is-checked', input.checked);
         if (activeDiet) renderDietCard(activeDiet, activeDietCard);
+        notifyPatientSaved();
       } catch (error) {
         input.checked = !input.checked;
         showToast(error.message, 'error');
@@ -242,6 +247,7 @@ document.querySelectorAll('[data-water]').forEach((button) => {
       lastWater = delta;
       document.getElementById('water-status').textContent = 'Salvo no seu acompanhamento.';
       showToast(delta > 0 ? `+${delta} ml registrados` : 'Ajuste feito');
+      notifyPatientSaved();
     } catch (error) {
       showToast(error.message, 'error');
       document.getElementById('water-status').textContent = 'Não foi possível confirmar o salvamento. Verifique a conexão e tente novamente.';
@@ -270,7 +276,7 @@ async function loadDashboard(profile) {
     renderDietCard(fullDiet, activeDietCard);
     const preview = activeDietCard.cloneNode(true);
     preview.querySelectorAll('input').forEach(input => input.remove());
-    preview.querySelectorAll('.diet-card__hint, .patient-meal-report, .meal-check__box, .check-row__box, .meal-check__label small').forEach(el => el.remove());
+    preview.querySelectorAll('.diet-card__hint, .patient-meal-report, .meal-extra-actions, .meal-check__box, .check-row__box, .meal-check__label small').forEach(el => el.remove());
     preview.querySelectorAll('.is-checked, .is-meal-checked').forEach(el=>el.classList.remove('is-checked','is-meal-checked'));
     document.getElementById('plan-preview').innerHTML = preview.innerHTML;
   } else {
@@ -329,6 +335,7 @@ async function init() {
   // Open the new weekend bank first; diet and tracking remain available in the sidebar.
   switchTab('diet');
   initPatientCare(profile).catch(error => { document.getElementById('patient-reminders').textContent = error.message; });
+  initPatientExtras(profile).catch(error => { document.getElementById('patient-training').insertAdjacentHTML('beforeend',`<p role="status">${escapeHtml(error.message)}</p>`); });
 
   try {
     await loadDashboard(auth.profile);
@@ -349,7 +356,7 @@ function updateNextMeal() {
 document.getElementById('water-undo').addEventListener('click', async () => {
   if (!lastWater) return;
   const button = document.getElementById('water-undo'); button.disabled = true;
-  try { pendingUndo ||= crypto.randomUUID(); tracking.water = await addWaterIntake(today, -lastWater, pendingUndo); pendingUndo = null; lastWater = null; renderWater(); document.getElementById('water-status').textContent = 'Último incremento desfeito.'; }
+  try { pendingUndo ||= crypto.randomUUID(); tracking.water = await addWaterIntake(today, -lastWater, pendingUndo); pendingUndo = null; lastWater = null; renderWater(); document.getElementById('water-status').textContent = 'Último incremento desfeito.'; notifyPatientSaved(); }
   catch (error) { showToast(error.message, 'error'); button.disabled = false; }
 });
 document.getElementById('print-plan').addEventListener('click', () => window.print());
@@ -357,3 +364,8 @@ document.getElementById('export-patient-data').addEventListener('click', () => e
 document.getElementById('evolution-range').addEventListener('change', () => loadEvolution(profile.id).catch(error => { document.getElementById('evolution-content').textContent = error.message; }));
 function connectionStatus() { const el = document.getElementById('connection-status'); el.hidden = navigator.onLine; el.textContent = 'Você está sem conexão. Aguarde reconectar antes de salvar registros.'; }
 addEventListener('online', connectionStatus); addEventListener('offline', connectionStatus); connectionStatus();
+function refreshVisibleEvolution(){if(profile&&!panels.evolution.hidden)loadEvolution(profile.id).catch(error=>{document.getElementById('evolution-content').textContent=error.message;});}
+document.getElementById('refresh-evolution').addEventListener('click',refreshVisibleEvolution);
+addEventListener('patient:record-saved',refreshVisibleEvolution);
+addEventListener('focus',refreshVisibleEvolution);
+addEventListener('visibilitychange',()=>{if(!document.hidden)refreshVisibleEvolution();});

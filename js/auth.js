@@ -18,7 +18,7 @@ export async function getProfile() {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, user_id, username, full_name, role, notes, created_at')
+    .select('id, user_id, username, full_name, role, photo_path, notes, created_at')
     .eq('user_id', session.user.id)
     .single();
 
@@ -27,7 +27,7 @@ export async function getProfile() {
 }
 
 export async function requireAuth({ role } = {}) {
-  const loginPath = role === 'admin' ? '/admin/login/' : '/login/';
+  const loginPath = ['admin', 'secretary'].includes(role) ? '/admin/login/' : '/login/';
   if (!isConfigured()) {
     window.location.href = `${loginPath}?setup=1`;
     return null;
@@ -47,11 +47,11 @@ export async function requireAuth({ role } = {}) {
   }
 
   if (role && profile.role !== role) {
-    window.location.href = profile.role === 'admin' ? '/admin/' : '/dashboard/';
+    window.location.href = ({ admin: '/admin/', secretary: '/secretaria/', patient: '/dashboard/' })[profile.role] || '/login/';
     return null;
   }
 
-  if (profile.role === 'admin') {
+  if (['admin', 'secretary'].includes(profile.role)) {
     const { data, error } = await getSupabase().auth.mfa.getAuthenticatorAssuranceLevel();
     if (error) throw error;
     if (data.nextLevel === 'aal2' && data.currentLevel !== 'aal2') {
@@ -140,7 +140,7 @@ export async function fetchPatient(patientId) {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, user_id, username, full_name, notes, created_at')
+    .select('id, user_id, username, full_name, photo_path, notes, created_at')
     .eq('id', patientId)
     .eq('role', 'patient')
     .single();

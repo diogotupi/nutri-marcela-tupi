@@ -1,0 +1,24 @@
+begin;
+do $$ declare au uuid:=gen_random_uuid(); pu uuid:=gen_random_uuid(); ap uuid:=gen_random_uuid(); pp uuid:=gen_random_uuid(); gid uuid; mid uuid; did uuid; task_id uuid;begin
+ insert into auth.users(id,email) values(au,'qa-correct-'||au||'@example.invalid'),(pu,'qa-correct-'||pu||'@example.invalid');
+ insert into public.profiles(id,user_id,username,full_name,role) values(ap,au,'qa-'||au,'QA administrator','admin'),(pp,pu,'qa-'||pu,'QA patient','patient');
+ perform set_config('request.jwt.claims',jsonb_build_object('sub',au,'role','authenticated','aal','aal1')::text,true);
+ insert into public.patient_goals(patient_id,valid_from,water_ml,created_by) values(pp,current_date,2000,ap) returning id into gid;
+ insert into public.diets(patient_id,title,status,created_by) values(pp,'QA meal','draft',ap) returning id into did;insert into public.diet_meals(diet_id,name) values(did,'Lanchinho pré-culto QA') returning id into mid;
+ execute 'set local role authenticated';
+ perform public.admin_edit_goal(gid,1800,'QA correction',current_date);if (select water_ml from public.patient_goals where id=gid)<>1800 then raise exception 'FAIL goal correction';end if;
+ perform public.admin_correct_water(pp,current_date,750,'QA correction');if (select amount_ml from public.patient_water_logs where patient_id=pp)<>750 then raise exception 'FAIL water correction';end if;
+ perform public.admin_edit_meal_report(pp,mid,current_date,'done','QA');if not exists(select 1 from public.patient_meal_checks where patient_id=pp and meal_id=mid) then raise exception 'FAIL meal check';end if;
+ perform public.admin_edit_meal_report(pp,mid,current_date,null,null);if exists(select 1 from public.patient_meal_checks where patient_id=pp and meal_id=mid) then raise exception 'FAIL delete check';end if;
+ perform public.admin_delete_goal(gid);perform public.admin_delete_water(pp,current_date);
+ if exists(select 1 from public.patient_goals where id=gid) or exists(select 1 from public.patient_water_logs where patient_id=pp) then raise exception 'FAIL delete';end if;
+ if (select count(*) from public.clinical_change_history where patient_id=pp)<3 then raise exception 'FAIL audit history';end if;
+ insert into public.patient_care_settings(patient_id,started_on,ends_on) values(pp,current_date,current_date+14);
+ select id into task_id from public.staff_tasks where patient_id=pp order by due_at limit 1;perform public.archive_staff_task(task_id);
+ execute 'reset role';perform public.generate_followup_tasks();if (select count(*) from public.staff_tasks where patient_id=pp and status='pending')<>1 then raise exception 'FAIL cancelled task returned';end if;
+ perform set_config('request.jwt.claims',jsonb_build_object('sub',pu,'role','authenticated','aal','aal1')::text,true);execute 'set local role authenticated';
+ begin perform public.admin_correct_water(pp,current_date,999,'QA');raise exception 'FAIL patient correction';exception when insufficient_privilege then null;end;
+ if exists(select 1 from public.clinical_change_history where patient_id=pp) then raise exception 'FAIL private audit leak';end if;execute 'reset role';
+ end $$;
+rollback;
+select 'PASS administrative corrections, audit snapshots, meal ownership, cancellation persistence, patient denial' as result;

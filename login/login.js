@@ -2,7 +2,6 @@ import { getSupabase, isConfigured } from '../js/app-core.js';
 import { getProfile, signIn, signOut, changePassword } from '../js/auth.js';
 const $ = id => document.getElementById(id);
 const admin = document.body.dataset.accessRole === 'admin';
-const destination = admin ? '/admin/' : '/dashboard/';
 const loginPath = admin ? '/admin/login/' : '/login/';
 let factorId;
 const params = new URLSearchParams(location.search);
@@ -22,7 +21,7 @@ async function busy(form, operation) {
 }
 async function route() {
   const profile = await getProfile(); if (!profile) return;
-  if (profile.role !== (admin ? 'admin' : 'patient')) { await signOut(); throw Error(admin ? 'Este acesso é exclusivo da nutricionista. Use a área do paciente.' : 'Esta conta é profissional. Use o acesso da nutricionista.'); }
+  if (!(admin ? ['admin', 'secretary'].includes(profile.role) : profile.role === 'patient')) { await signOut(); throw Error(admin ? 'Este acesso é exclusivo da equipe autorizada. Use a área do paciente.' : 'Esta conta é profissional. Use o acesso da equipe.'); }
   if (admin) {
     const { data, error } = await getSupabase().auth.mfa.getAuthenticatorAssuranceLevel(); if (error) throw error;
     if (data.nextLevel === 'aal2' && data.currentLevel !== 'aal2') {
@@ -32,7 +31,7 @@ async function route() {
       showForm('mfa-form'); $('mfa-code').focus(); return;
     }
   }
-  location.replace(destination);
+  location.replace(profile.role === 'secretary' ? '/secretaria/' : admin ? '/admin/' : '/dashboard/');
 }
 $('toggle-password').onclick = () => { const visible = $('password').type === 'password'; $('password').type = visible ? 'text' : 'password'; $('toggle-password').textContent = visible ? 'Ocultar' : 'Mostrar'; $('toggle-password').setAttribute('aria-pressed',String(visible)); };
 $('forgot').onclick = () => { showForm('recovery-form'); $('email').focus(); };

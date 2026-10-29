@@ -66,11 +66,12 @@ function renderMealNav() {
 
 function renderMealPanel() {
   const meal = mealsState[activeMealIndex];
+  if (!meal) { mealPanel.innerHTML = '<p>Nenhuma refeição neste plano.</p><button type="button" id="first-meal">Adicionar refeição</button>'; document.getElementById('first-meal').onclick=()=>{mealsState.push({name:'Nova refeição',items:[]});activeMealIndex=0;render();};return; }
   ensureItem(meal);
 
   mealPanel.innerHTML = `
     <div class="diet-panel__head">
-      <h3>${escapeHtml(meal.name)}</h3><label>Horário previsto <input type="time" id="meal-time" value="${escapeHtml(meal.scheduled_time||'')}"></label>
+      <label>Nome da refeição <input id="meal-name" value="${escapeHtml(meal.name)}" aria-label="Nome da refeição"></label><button type="button" id="remove-meal-btn" class="app-btn app-btn--ghost">Remover refeição</button><label>Horário previsto <input type="time" id="meal-time" value="${escapeHtml(meal.scheduled_time||'')}"></label>
       <span style="color:var(--color-text-muted);font-size:0.82rem">${meal.items.length} item(ns)</span>
     </div>
     <table class="diet-items-table">
@@ -101,6 +102,8 @@ function renderMealPanel() {
     </div>
   `;
 
+  document.getElementById('meal-name').addEventListener('input',event=>{mealsState[activeMealIndex].name=event.target.value;renderMealNav();});
+  document.getElementById('remove-meal-btn').onclick=()=>{if(!confirm('Remover esta refeição desta versão do plano? Os registros anteriores serão preservados.'))return;mealsState.splice(activeMealIndex,1);activeMealIndex=Math.max(0,activeMealIndex-1);render();};
   document.getElementById('meal-time').addEventListener('input', event => { mealsState[activeMealIndex].scheduled_time = event.target.value || null; });
   mealPanel.querySelectorAll('[data-field]').forEach((input) => {
     input.addEventListener('input', () => {
@@ -145,7 +148,7 @@ function collectPayload(statusOverride) {
     start_date: dietStartDate.value || null,
     status: statusOverride || dietStatus.value,
     meals: mealsState.map((meal) => ({
-      name: meal.name,
+      name: meal.name.trim(),
       scheduled_time: meal.scheduled_time || null,
       items: meal.items,
     })),
@@ -154,6 +157,7 @@ function collectPayload(statusOverride) {
 
 async function save(statusOverride) {
   const payload = collectPayload(statusOverride);
+  if (payload.meals.some(meal => !meal.name)) throw new Error('Dê um nome a cada refeição antes de salvar.');
   const savedId = await saveDietBuilder(dietId, payload);
   if (savedId) { dietId = savedId; history.replaceState({}, '', `?patient=${patientId}&diet=${dietId}`); }
   dietStatus.value = payload.status;
@@ -183,7 +187,7 @@ function hydrateFromDiet(diet) {
   dietStartDate.value = diet.start_date || '';
   dietStatus.value = diet.status;
 
-  if (diet.meals?.length) {
+  if (Array.isArray(diet.meals)) {
     mealsState = diet.meals.map((meal) => ({
       name: meal.name,
       scheduled_time: meal.scheduled_time || null,

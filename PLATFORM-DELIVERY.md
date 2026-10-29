@@ -36,3 +36,29 @@ Dados clínicos não são armazenados em cache offline. PWA não foi ativada, ev
 - Exportações estruturadas incluem referências de anexos; os arquivos originais são baixados por acesso privado autorizado. A política de retenção/exclusão do serviço precisa ser definida pela responsável antes de implementar descarte automático.
 - A biblioteca oficial TACO continua dependendo de importação de fonte verificada. Exemplos existentes estão marcados como ilustrativos.
 - Resumos são descritivos e verificáveis, sem diagnóstico, prescrição ou interpretação clínica automática.
+## Rodada de gestão, equipe e progresso
+
+O administrativo agora registra anamnese como relato do paciente documentado por Marcela, sem controles de origem/rascunho. Edição cria versão e oculta a anterior da visão ativa; remoção preserva auditoria. Consultas não exigem término. Água, metas, refeições e checks possuem correção administrativa, e planos podem ser arquivados. Nomes personalizados de refeições são preservados e editáveis.
+
+Entrada e vencimento do acompanhamento aceitam 90/180 dias ou datas personalizadas. Alertas separam vencimento em até três dias, ausência de acesso hoje, ausência de registros de refeições por três dias e dois episódios de dificuldade na semana. O “modo babá” é exclusivo do administrativo. Notas privadas e instruções da secretária são campos distintos. Tarefas de contato começam no sétimo dia e se repetem a cada sete dias até o vencimento; cancelamento mantém a chave para impedir recriação pelo agendador.
+
+Secretárias são cadastradas pela profissional com capacidades independentes. A área `/secretaria/` mostra tarefas atribuídas ou disponíveis à equipe, instruções e ações autorizadas. O acesso não concede leitura de prontuários, anexos, notas privadas ou outras áreas administrativas. Cadastro usa `create-secretary`; listagem, conclusão e agendamento usam RPCs verificadas no servidor. Não são enviados convites ou senhas automaticamente.
+
+O paciente ganhou registro de treino, fotos de refeições associadas ao plano, foto de perfil, episódio de dificuldade com linguagem neutra, medalhas baseadas em evidências e gráfico de água com meta vigente. A medalha “Orgulho da nutri” é concedida ou retirada pela profissional. Uploads usam o Storage privado do Supabase, sem Cloudinary. A redução local de imagens controla tamanho, mas não elimina consumo das cotas de armazenamento/tráfego; não foi integrado serviço externo de imagens.
+
+### Validação desta rodada
+
+- `npm test`: 21 testes passaram, incluindo cálculos do paciente e metas históricas.
+- `supabase/progress-regression.sql`: idempotência, medalhas com evidências, restrições de concessão e progresso.
+- `supabase/secretary-regression.sql`: isolamento, atribuição de tarefas, capacidades e ausência de acesso clínico indevido.
+- `supabase/management-regression.sql`: correções administrativas, exclusão lógica, tarefas canceladas e integridade de registros.
+- Os testes SQL usam fixtures transacionais e rollback, sem dados demonstrativos persistentes.
+- `tests/admin-browser-qa.cjs` e `tests/admin-care-team-qa.cjs`: prontuário, consulta sem término, edição de anamnese, prazos, alertas, calendário, capacidades e refeições personalizadas; layout desktop/mobile e nenhum erro de página.
+- `tests/patient-browser-qa.cjs`: fluxos do paciente, conversão real de foto no navegador, registro de dificuldade idempotente, medalhas e atualização do gráfico após água.
+- Testes de navegador usam respostas locais interceptadas; não substituem ensaio com credenciais reais. Nenhuma senha real foi alterada nos testes.
+
+O calendário WhatsApp representa pendências manuais da secretária. Não existe envio automático nem confirmação de entrega/leitura de mensagem externa. Ausência de registro nunca é tratada como ausência de alimentação. Exclusões administrativas preservam auditoria; descarte definitivo de dados e exclusão de contas continuam fora desta interface.
+
+Fotos JPG/PNG/WebP de até 20 MB são reduzidas no navegador para WebP (acompanhamento: até 1600 px e 900 KB; avatar: até 512 px e 350 KB). PDFs não são transformados. HEIC requer exportação para JPG. O paciente consulta o histórico de anamnese; a edição fica com Marcela.
+
+O adviser do Supabase aponta a configuração preexistente de proteção contra senhas vazadas desativada. A ativação depende da configuração/plano de autenticação: [documentação de proteção de senhas](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection). RPCs com `SECURITY DEFINER` são intencionais para operações restritas: verificam identidade e capacidade, com testes de isolamento e privilégios executados. Essa implementação não dispensa revisão periódica de permissões.

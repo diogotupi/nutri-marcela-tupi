@@ -2,6 +2,7 @@ import { getSupabase } from './app-core.js';
 import { getProfile } from './auth.js';
 
 const db = () => getSupabase();
+const canonical = value => JSON.stringify(value && typeof value === 'object' ? (Array.isArray(value) ? value.map(v => JSON.parse(canonical(v))) : Object.fromEntries(Object.keys(value).sort().map(k => [k, JSON.parse(canonical(value[k]))]))) : value);
 async function result(query) { const { data, error } = await query; if (error) throw error; return data; }
 async function collectRows(build) {
   const rows = [];
@@ -11,10 +12,18 @@ async function collectRows(build) {
     if (batch.length < 500) return rows;
   }
 }
-export const listClinical = (patientId) => collectRows(() => db().from('clinical_records').select('*').eq('patient_id', patientId).order('occurred_at', { ascending: false }).order('id'));
+export const listClinical = (patientId) => collectRows(() => db().from('clinical_records').select('*').eq('patient_id', patientId).is('archived_at', null).order('occurred_at', { ascending: false }).order('id'));
 export async function addClinical(patientId, kind, payload, options = {}) {
   const profile = await getProfile();
-  return result(db().from('clinical_records').insert({ patient_id: patientId, kind, payload, created_by: profile.id, occurred_at: options.occurredAt || new Date().toISOString(), visibility: options.visibility || 'shared', status: options.status || 'submitted', parent_id: options.parentId || null, version: options.version || 1 }).select().single());
+  const row = { ...(options.id ? { id: options.id } : {}), patient_id: patientId, kind, payload, created_by: profile.id, occurred_at: options.occurredAt || new Date().toISOString(), visibility: options.visibility || 'shared', status: options.status || 'submitted', parent_id: options.parentId || null, version: options.version || 1 };
+  const response = await db().from('clinical_records').insert(row).select().single();
+  if (response.error?.code === '23505' && options.id) {
+    const existing = await result(db().from('clinical_records').select('*').eq('id', options.id).eq('patient_id', patientId).eq('created_by', profile.id).single());
+    if (existing.kind !== kind || canonical(existing.payload) !== canonical(payload)) throw Error('Identificador de envio já utilizado. Atualize a página.');
+    return existing;
+  }
+  if (response.error) throw response.error;
+  return response.data;
 }
 export const reviewClinical = (id) => result(db().from('clinical_records').update({ status: 'reviewed' }).eq('id', id).select().single());
 export function listAppointments(patientId) { return collectRows(() => { const q = db().from('appointments').select('*').order('starts_at').order('id'); return patientId ? q.eq('patient_id', patientId) : q; }); }

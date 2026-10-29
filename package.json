@@ -4,7 +4,7 @@
   "description": "Site institucional simples e elegante para a nutricionista Marcela Tupinambá.",
   "main": "script.js",
   "scripts": {
-    "test": "node --test dashboard/bank/model.test.mjs admin/metrics.test.mjs"
+    "test": "node --test dashboard/bank/model.test.mjs dashboard/patient-model.test.mjs admin/metrics.test.mjs"
   },
   "repository": {
     "type": "git",
