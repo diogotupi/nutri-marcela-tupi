@@ -27,21 +27,22 @@ export async function getProfile() {
 }
 
 export async function requireAuth({ role } = {}) {
+  const loginPath = role === 'admin' ? '/admin/login/' : '/login/';
   if (!isConfigured()) {
-    window.location.href = '/login/?setup=1';
+    window.location.href = `${loginPath}?setup=1`;
     return null;
   }
 
   const session = await getSession();
   if (!session) {
-    window.location.href = '/login/';
+    window.location.href = loginPath;
     return null;
   }
 
   const profile = await getProfile();
   if (!profile) {
     await signOut();
-    window.location.href = '/login/?error=profile';
+    window.location.href = `${loginPath}?error=profile`;
     return null;
   }
 
@@ -50,12 +51,21 @@ export async function requireAuth({ role } = {}) {
     return null;
   }
 
+  if (profile.role === 'admin') {
+    const { data, error } = await getSupabase().auth.mfa.getAuthenticatorAssuranceLevel();
+    if (error) throw error;
+    if (data.nextLevel === 'aal2' && data.currentLevel !== 'aal2') {
+      window.location.href = '/admin/login/?mfa=1';
+      return null;
+    }
+  }
   return { session, profile };
 }
 
 export async function signIn(username, password) {
   const supabase = getSupabase();
-  const email = usernameToEmail(username);
+  const value = String(username).trim().toLowerCase();
+  const email = value.includes('@') ? value : usernameToEmail(value);
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
   return data;
@@ -163,7 +173,7 @@ export async function fetchDietWithMeals(dietId) {
 
   const { data: meals, error: mealsError } = await supabase
     .from('diet_meals')
-    .select('id, name, sort_order, diet_items(id, food_name, quantity, unit, notes, sort_order)')
+    .select('id, name, scheduled_time, sort_order, diet_items(id, food_name, quantity, unit, notes, substitutions, sort_order)')
     .eq('diet_id', dietId)
     .order('sort_order');
 
@@ -196,60 +206,9 @@ export async function createDiet(patientId, title) {
 }
 
 export async function saveDietBuilder(dietId, payload) {
-  const supabase = getSupabase();
-
-  const { error: dietError } = await supabase
-    .from('diets')
-    .update({
-      title: payload.title,
-      notes: payload.notes,
-      start_date: payload.start_date || null,
-      status: payload.status,
-    })
-    .eq('id', dietId);
-
-  if (dietError) throw dietError;
-
-  const { data: existingMeals } = await supabase
-    .from('diet_meals')
-    .select('id')
-    .eq('diet_id', dietId);
-
-  const existingMealIds = (existingMeals || []).map((meal) => meal.id);
-  if (existingMealIds.length) {
-    await supabase.from('diet_items').delete().in('meal_id', existingMealIds);
-    await supabase.from('diet_meals').delete().eq('diet_id', dietId);
-  }
-
-  for (const [mealIndex, meal] of payload.meals.entries()) {
-    const { data: insertedMeal, error: mealError } = await supabase
-      .from('diet_meals')
-      .insert({
-        diet_id: dietId,
-        name: meal.name,
-        sort_order: mealIndex,
-      })
-      .select('id')
-      .single();
-
-    if (mealError) throw mealError;
-
-    const items = (meal.items || [])
-      .filter((item) => item.food_name && item.food_name.trim())
-      .map((item, itemIndex) => ({
-        meal_id: insertedMeal.id,
-        food_name: item.food_name.trim(),
-        quantity: item.quantity?.trim() || null,
-        unit: item.unit?.trim() || null,
-        notes: item.notes?.trim() || null,
-        sort_order: itemIndex,
-      }));
-
-    if (items.length) {
-      const { error: itemsError } = await supabase.from('diet_items').insert(items);
-      if (itemsError) throw itemsError;
-    }
-  }
+  const { data, error } = await getSupabase().rpc('save_diet_version', { p_diet: dietId, p_payload: payload });
+  if (error) throw error;
+  return data;
 }
 
 export async function fetchMyDiets() {
@@ -307,24 +266,7 @@ export async function fetchTodayTracking(checkDate) {
 }
 
 export async function toggleMealCheck(mealId, checkDate, checked) {
-  const supabase = getSupabase();
-  const profile = await getProfile();
-
-  if (checked) {
-    const { error } = await supabase.from('patient_meal_checks').upsert(
-      { patient_id: profile.id, meal_id: mealId, check_date: checkDate },
-      { onConflict: 'patient_id,meal_id,check_date' }
-    );
-    if (error) throw error;
-    return;
-  }
-
-  const { error } = await supabase
-    .from('patient_meal_checks')
-    .delete()
-    .eq('patient_id', profile.id)
-    .eq('meal_id', mealId)
-    .eq('check_date', checkDate);
+  const { error } = await getSupabase().rpc('report_meal', { p_meal: mealId, p_date: checkDate, p_status: checked ? 'done' : null, p_comment: null });
   if (error) throw error;
 }
 
@@ -350,36 +292,8 @@ export async function toggleItemCheck(itemId, checkDate, checked) {
   if (error) throw error;
 }
 
-export async function addWaterIntake(checkDate, deltaMl) {
-  const supabase = getSupabase();
-  const profile = await getProfile();
-
-  const { data: current, error: fetchError } = await supabase
-    .from('patient_water_logs')
-    .select('amount_ml, goal_ml')
-    .eq('patient_id', profile.id)
-    .eq('log_date', checkDate)
-    .maybeSingle();
-
-  if (fetchError) throw fetchError;
-
-  const nextAmount = Math.max(0, (current?.amount_ml || 0) + deltaMl);
-  const goal = current?.goal_ml || 2000;
-
-  const { data, error } = await supabase
-    .from('patient_water_logs')
-    .upsert(
-      {
-        patient_id: profile.id,
-        log_date: checkDate,
-        amount_ml: nextAmount,
-        goal_ml: goal,
-      },
-      { onConflict: 'patient_id,log_date' }
-    )
-    .select('amount_ml, goal_ml')
-    .single();
-
+export async function addWaterIntake(checkDate, deltaMl, operationId = crypto.randomUUID()) {
+  const { data, error } = await getSupabase().rpc('record_water', { p_date: checkDate, p_delta: deltaMl, p_operation: operationId });
   if (error) throw error;
   return data;
 }

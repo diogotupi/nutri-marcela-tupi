@@ -70,6 +70,17 @@ export function totals(p, entries, date = null) {
   const reserved = filtered.filter(e => e.status === 'planned').reduce((s, e) => s + entryTotal(e), 0);
   return { budget, consumed, reserved, balance: budget == null ? null : budget - consumed, available: budget == null ? null : budget - consumed - reserved, projection: consumed + reserved };
 }
+export function targetSnapshot(settings) {
+  return { friday: settings.friday, fridayStart: settings.fridayStart, fridayConfirmed: settings.fridayConfirmed, targets: { 0: settings.targets[0], 5: settings.targets[5], 6: settings.targets[6] } };
+}
+export function targetApproval(period, requests = []) {
+  const expected = JSON.stringify(targetSnapshot(period.settings));
+  return requests.find(r => r.period === period.id && ['approved', 'pending', 'rejected'].includes(r.status) && JSON.stringify(targetSnapshot(r.snapshot)) === expected) || null;
+}
+export function validatedTotals(period, entries, requests = [], date = null) {
+  if (targetApproval(period, requests)?.status === 'approved') return totals(period, entries, date);
+  return totals({ ...period, settings: { ...period.settings, targets: { 0: null, 5: null, 6: null } } }, entries, date);
+}
 export function segments(t) {
   const denominator = Math.max(t.budget || 0, t.projection, 1);
   return [t.consumed, t.reserved, Math.max(0, (t.budget || 0) - t.projection)].map(n => Math.max(0, n / denominator * 100));

@@ -12,6 +12,8 @@ export async function mountBank(root, store, { name = 'paciente', readOnly = fal
   root.classList.add('bank');
   root.innerHTML = '<p role="status">Carregando Banco de Pontos…</p>';
   let state = await store.load();
+  let approvals = store.approvals ? await store.approvals() : [];
+  const bankTotals = (p, entries, date = null) => M.validatedTotals(p, entries, approvals, date);
   let selected = M.weekend(), view = 'balance', busy = false, undo = null;
   let draftItems = [], draftEntry = null, selectedFood = null, editorMode = '';
   root.innerHTML = '<div class="b-main"></div><dialog class="b-dialog" aria-labelledby="b-dialog-title"></dialog><p class="b-status" role="status" aria-live="polite"></p>';
@@ -24,7 +26,7 @@ export async function mountBank(root, store, { name = 'paciente', readOnly = fal
     if (busy) throw Error('Aguarde a sincronização.');
     M.validateState(next);
     busy = true; root.querySelectorAll('button').forEach(b => b.disabled = true); say('Sincronizando…');
-    try { await store.save(next); state = next; render(); say(message); }
+    try { await store.save(next); state = next; approvals = store.approvals ? await store.approvals() : []; render(); say(message); }
     finally { busy = false; root.querySelectorAll('button').forEach(b => b.disabled = false); }
   }
   function modal(title, content, submit) {
@@ -38,8 +40,8 @@ export async function mountBank(root, store, { name = 'paciente', readOnly = fal
       <div class="b-alert"><strong>1 ponto = 1 kcal.</strong> Registre todo o consumo alimentar do período, e não apenas refeições livres.</div>
       <label>Nome ou apelido<input name="name" maxlength="80" required value="${esc(s.name || name)}" autocomplete="nickname"></label>
       <label class="b-check"><input name="friday" type="checkbox" ${s.friday ? 'checked' : ''}>Incluir sexta-feira (sábado e domingo já estão incluídos)</label>
-      <div class="b-cols"><label>Início na sexta (opcional)<input type="time" name="fridayStart" value="${esc(s.fridayStart)}"></label><label>Modo<select name="mode">${option('record', 'Somente registro — ainda não tenho meta', [s.targets[5],s.targets[6],s.targets[0]].every(x=>x==null)?'record':'goals')}${option('goals','Informar metas orientadas pela nutri',[s.targets[5],s.targets[6],s.targets[0]].every(x=>x==null)?'record':'goals')}</select></label></div>
-      <fieldset><legend>Metas diárias, em pontos (kcal)</legend><p class="b-muted">Deixe em branco os dias sem meta. O orçamento total só aparece quando todos os dias acompanhados têm meta.</p><div class="b-cols">${[[5,'Sexta'],[6,'Sábado'],[0,'Domingo']].map(([d,l])=>`<label>${l}${numInput('target'+d,s.targets[d],false)}</label>`).join('')}</div></fieldset>
+      <div class="b-cols"><label>Início na sexta (opcional)<input type="time" name="fridayStart" value="${esc(s.fridayStart)}"></label><label>Modo<select name="mode">${option('record', 'Somente registro — ainda não tenho meta', [s.targets[5],s.targets[6],s.targets[0]].every(x=>x==null)?'record':'goals')}${option('goals','Propor valores para a nutri validar',[s.targets[5],s.targets[6],s.targets[0]].every(x=>x==null)?'record':'goals')}</select></label></div>
+      <fieldset><legend>Valores propostos, em pontos (kcal)</legend><p class="b-muted">Deixe em branco os dias sem meta. O saldo só será calculado depois da validação da nutricionista para este período.</p><div class="b-cols">${[[5,'Sexta'],[6,'Sábado'],[0,'Domingo']].map(([d,l])=>`<label>${l}${numInput('target'+d,s.targets[d],false)}</label>`).join('')}</div></fieldset>
       <label class="b-check"><input name="fridayConfirmed" type="checkbox" ${s.fridayConfirmed?'checked':''}>Se começar no meio da sexta, confirmo que a meta informada corresponde somente ao intervalo acompanhado.</label>
       <p class="b-muted">As alterações valem para este período e como padrão para novos finais de semana. Períodos anteriores mantêm suas metas.</p>
       <p class="b-muted">Seus registros serão sincronizados com sua conta e poderão ser consultados pela Marcela. É necessária conexão para salvar.</p>`, 'Salvar configurações');
@@ -57,17 +59,23 @@ export async function mountBank(root, store, { name = 'paciente', readOnly = fal
       <div class="b-row b-between b-heading"><div><strong>${M.dateLabel(days[0])} — ${M.dateLabel(days.at(-1))}</strong><p class="b-muted">${p.closed?'Período encerrado':'Período aberto'} · ${readOnly?'Somente leitura':'Registre, observe e ajuste.'}</p></div><div class="b-row b-controls">${btn('prev','← Anterior')}<label>Final de semana de<input type="date" id="b-period" value="${selected}" min="2000-01-01" max="2199-12-31"></label>${btn('next','Próximo →')}</div></div>
       <nav class="b-nav" aria-label="Banco de Pontos">${[['balance','Meu saldo'],['plan','Planejar'],['register','Registrar'],['history','Histórico']].map(([k,l])=>`<button type="button" data-action="view" data-id="${k}" ${view===k?'aria-current="page"':''}>${l}</button>`).join('')}</nav>`;
   }
+  function approvalPanel() {
+    const p=current(), approval=M.targetApproval(p,approvals), hasTargets=M.periodDays(p).some(d=>p.settings.targets[M.weekday(d)]!=null);
+    if(!hasTargets)return '<p class="b-muted">Sem meta definida. Registre normalmente; a nutricionista pode orientar os valores.</p>';
+    const label={approved:'Metas validadas pela nutricionista',pending:'Validação pendente',rejected:'Valores não aprovados; converse com a nutricionista'}[approval?.status]||'Valores ainda não validados';
+    return `<section class="b-card"><h3>${label}</h3><p>${M.periodDays(p).map(d=>M.dateLabel(d)+': '+M.fmt(p.settings.targets[M.weekday(d)])+' pts informados').join(' · ')}</p><p class="b-muted">A validação vale apenas para estes valores e este período. Qualquer alteração exige nova revisão. Os registros antigos são preservados.</p>${readOnly&&approval?.status==='pending'?btn('approve-targets','Validar estes valores',approval.id,'b-primary')+btn('reject-targets','Não aprovar',approval.id):!readOnly&&store.requestTargets&&!['pending','approved'].includes(approval?.status)?btn('request-targets','Solicitar validação da nutricionista','','b-primary'):''}</section>`;
+  }
   function summary() {
-    const p=current(), t=M.totals(p,state.entries), seg=M.segments(t);
+    const p=current(), t=bankTotals(p,state.entries), seg=M.segments(t);
     return `<section class="b-card b-hero"><p class="b-kicker">Visão do período</p><div class="b-metrics">${metric('Orçamento',t.budget)}${metric('Consumido',t.consumed)}${metric('Reservado',t.reserved)}${metric('Saldo atual',t.balance)}${metric('Disponível para planejar',t.available)}${metric('Projeção',t.projection)}</div>
       <div class="b-bar" role="img" aria-label="Consumido ${M.fmt(t.consumed)} pontos, reservado ${M.fmt(t.reserved)} pontos${t.available==null?'':`, disponível ${M.fmt(t.available)} pontos`}">${seg.map(n=>`<span style="width:${n}%"></span>`).join('')}</div><p class="b-muted">Verde: consumido · Oliva claro: reservado · Claro: disponível</p><p class="b-muted">O saldo atual já contém os pontos reservados.</p>
-      ${t.budget==null?'<p class="b-alert">Somente registro: faltam metas para um ou mais dias. Não calculamos saldo disponível.</p>':''}
+      ${t.budget==null?'<p class="b-alert">Somente registro: faltam metas validadas para um ou mais dias. Não calculamos saldo disponível.</p>':''}
       ${t.balance<0?`<p class="b-alert">${M.fmt(-t.balance)} pontos acima da meta. Você ultrapassou a meta prevista. Continue registrando e siga a orientação da sua nutri.</p>`:''}
       ${t.available<0?`<p class="b-alert">A projeção está ${M.fmt(-t.available)} pontos acima do orçamento. Você pode revisar seu planejamento; isso não bloqueia os registros.</p>`:''}</section>`;
   }
   function days() {
     const p=current();
-    return `<div class="b-days">${M.periodDays(p).map(d=>{const t=M.totals(p,state.entries,d),status=p.dayStatus[d]||M.DAY_STATES[0];return `<article class="b-card"><h3>${M.dateLabel(d)}</h3><p class="b-muted">Meta: ${M.fmt(t.budget)}${t.budget==null?'':' pts'}</p><strong>${M.fmt(t.consumed)} pts consumidos</strong><p>${M.fmt(t.reserved)} pts reservados</p>${t.balance<0?`<p class="b-alert">${M.fmt(-t.balance)} pontos acima da meta diária.</p>`:''}<label>Situação do registro<select data-day="${d}" ${readOnly||p.closed?'disabled':''}>${M.DAY_STATES.map(x=>option(x,x,status)).join('')}</select></label>${status!=='Registro concluído'?'<small>Registro incompleto: ausência de lançamento não significa consumo zero.</small>':''}</article>`}).join('')}</div>`;
+    return `<div class="b-days">${M.periodDays(p).map(d=>{const t=bankTotals(p,state.entries,d),status=p.dayStatus[d]||M.DAY_STATES[0];return `<article class="b-card"><h3>${M.dateLabel(d)}</h3><p class="b-muted">Meta: ${M.fmt(t.budget)}${t.budget==null?'':' pts'}</p><strong>${M.fmt(t.consumed)} pts consumidos</strong><p>${M.fmt(t.reserved)} pts reservados</p>${t.balance<0?`<p class="b-alert">${M.fmt(-t.balance)} pontos acima da meta diária.</p>`:''}<label>Situação do registro<select data-day="${d}" ${readOnly||p.closed?'disabled':''}>${M.DAY_STATES.map(x=>option(x,x,status)).join('')}</select></label>${status!=='Registro concluído'?'<small>Registro incompleto: ausência de lançamento não significa consumo zero.</small>':''}</article>`}).join('')}</div>`;
   }
   function entryList(entries) {
     if (!entries.length) return '<div class="b-empty">Nenhum registro aqui ainda. Comece com uma refeição ou um alimento.</div>';
@@ -75,16 +83,16 @@ export async function mountBank(root, store, { name = 'paciente', readOnly = fal
       ${!readOnly&&!current().closed?`<div class="b-row">${e.status==='planned'?btn('consume','Registrar consumo',e.id,'b-primary')+btn('cancel-plan','Cancelar reserva',e.id):''}${e.status!=='cancelled'?btn('edit','Editar',e.id):''}${btn('duplicate','Repetir / outra data',e.id)}${btn('delete','Excluir',e.id,'b-danger')}</div>`:''}</article>`).join('');
   }
   function history() {
-    const p=current(), t=M.totals(p,state.entries), entries=state.entries.filter(e=>e.period===selected);
+    const p=current(), t=bankTotals(p,state.entries), entries=state.entries.filter(e=>e.period===selected);
     const plans=entries.filter(e=>!e.planId && (e.status==='planned'||e.status==='cancelled'));
-    return `<section class="b-card"><div class="b-row b-between"><h3>Resumo do final de semana</h3><div class="b-row b-controls">${btn('print','Imprimir / PDF')}${!readOnly?btn('closing',p.closed?'Reabrir período':'Encerrar período'):''}</div></div><div class="b-scroll"><table><thead><tr><th>Dia</th><th>Meta</th><th>Consumido</th><th>Diferença</th><th>Situação</th></tr></thead><tbody>${M.periodDays(p).map(d=>{const x=M.totals(p,entries,d);return `<tr><td>${M.dateLabel(d)}</td><td>${M.fmt(x.budget)}</td><td>${M.fmt(x.consumed)}</td><td>${M.fmt(x.balance)}</td><td>${esc(p.dayStatus[d]||M.DAY_STATES[0])}</td></tr>`}).join('')}<tr><th>Total</th><td>${M.fmt(t.budget)}</td><td>${M.fmt(t.consumed)}</td><td>${M.fmt(t.balance)}</td><td>pontos = kcal</td></tr></tbody></table></div><p class="b-muted">Diferença = meta − consumo. Dias incompletos não permitem concluir que houve baixo consumo.</p><p>${M.fmt(t.reserved)} pontos em reservas pendentes${p.pendingDecision==='unconfirmed'?' · mantidas sem confirmação no fechamento':''}.</p><h3 class="b-heading">Planejado × realizado</h3>${plans.length?plans.map(plan=>{const actual=entries.filter(e=>e.planId===plan.id&&e.status==='consumed').reduce((s,e)=>s+M.entryTotal(e),0);return `<p>${esc(plan.name)}: previsto ${M.fmt(plan.originalReserved??M.entryTotal(plan))} pts · registrado ${M.fmt(actual)} pts · ${plan.status==='planned'?'reserva pendente':'reserva encerrada'}</p>`}).join(''):'<p class="b-muted">Sem refeições planejadas neste período.</p>'}
+    return `<section class="b-card"><div class="b-row b-between"><h3>Resumo do final de semana</h3><div class="b-row b-controls">${btn('print','Imprimir / PDF')}${!readOnly?btn('closing',p.closed?'Reabrir período':'Encerrar período'):''}</div></div><div class="b-scroll"><table><thead><tr><th>Dia</th><th>Meta</th><th>Consumido</th><th>Diferença</th><th>Situação</th></tr></thead><tbody>${M.periodDays(p).map(d=>{const x=bankTotals(p,entries,d);return `<tr><td>${M.dateLabel(d)}</td><td>${M.fmt(x.budget)}</td><td>${M.fmt(x.consumed)}</td><td>${M.fmt(x.balance)}</td><td>${esc(p.dayStatus[d]||M.DAY_STATES[0])}</td></tr>`}).join('')}<tr><th>Total</th><td>${M.fmt(t.budget)}</td><td>${M.fmt(t.consumed)}</td><td>${M.fmt(t.balance)}</td><td>pontos = kcal</td></tr></tbody></table></div><p class="b-muted">Diferença = meta − consumo. Dias incompletos não permitem concluir que houve baixo consumo.</p><p>${M.fmt(t.reserved)} pontos em reservas pendentes${p.pendingDecision==='unconfirmed'?' · mantidas sem confirmação no fechamento':''}.</p><h3 class="b-heading">Planejado × realizado</h3>${plans.length?plans.map(plan=>{const actual=entries.filter(e=>e.planId===plan.id&&e.status==='consumed').reduce((s,e)=>s+M.entryTotal(e),0);return `<p>${esc(plan.name)}: previsto ${M.fmt(plan.originalReserved??M.entryTotal(plan))} pts · registrado ${M.fmt(actual)} pts · ${plan.status==='planned'?'reserva pendente':'reserva encerrada'}</p>`}).join(''):'<p class="b-muted">Sem refeições planejadas neste período.</p>'}
       <h3 class="b-heading">Reflexões</h3>${['O que funcionou?','Qual foi a maior dificuldade?','O que quero organizar melhor?'].map((q,i)=>`<p><strong>${q}</strong><br>${esc(p.reflection[i]||'Não informado.')}</p>`).join('')}${!readOnly&&!p.closed?btn('reflection','Editar reflexões'):''}</section>
       <section class="b-card"><h3>Registros do período</h3>${entryList(entries.sort(chronological))}</section><section class="b-card"><h3>Outros finais de semana</h3><div class="b-row">${state.periods.slice().sort((a,b)=>b.id.localeCompare(a.id)).map(p=>btn('period',M.dateLabel(p.id),p.id)).join('')}</div></section>`;
   }
   const chronological = (a,b) => (a.date+a.time).localeCompare(b.date+b.time);
   function render() {
     const p=current(), entries=state.entries.filter(e=>e.period===selected), plans=entries.filter(e=>e.status==='planned').sort(chronological);
-    main.innerHTML=header()+`<div class="b-stack">${!state.onboarded?`<section class="b-card"><h3>${readOnly?'O paciente ainda não configurou o Banco de Pontos.':'Primeiro, vamos conhecer seu período.'}</h3><p>1 ponto equivale a 1 kcal. Sem uma meta orientada pela nutricionista, use Somente registro.</p>${!readOnly?btn('settings','Começar','', 'b-primary'):''}</section>`:''}
+    main.innerHTML=header()+approvalPanel()+`<div class="b-stack">${!state.onboarded?`<section class="b-card"><h3>${readOnly?'O paciente ainda não configurou o Banco de Pontos.':'Primeiro, vamos conhecer seu período.'}</h3><p>1 ponto equivale a 1 kcal. Sem uma meta orientada pela nutricionista, use Somente registro.</p>${!readOnly?btn('settings','Começar','', 'b-primary'):''}</section>`:''}
       ${view==='balance'?summary()+help()+`<div class="b-row b-actions b-controls">${!readOnly&&!p.closed?btn('new-consumed','Registrar alimento','','b-primary')+btn('new-planned','Planejar refeição'):''}</div>`+days()+`<section class="b-card"><h3>Próxima refeição planejada</h3>${entryList(plans.slice(0,1))}</section><section class="b-card"><h3>Registros recentes</h3>${entryList(entries.filter(e=>e.status==='consumed').sort(chronological).reverse().slice(0,8))}</section>`:''}
       ${view==='plan'?`<div class="b-row b-between"><h3>Planeje suas escolhas.</h3>${!readOnly&&!p.closed?btn('new-planned','Planejar refeição','','b-primary'):''}</div>${summary()}<section class="b-card">${entryList(plans)}</section>`:''}
       ${view==='register'?`<div class="b-row b-controls">${!readOnly&&!p.closed?btn('new-consumed','Registrar alimento','','b-primary'):''}${!readOnly?btn('recipes','Minhas receitas')+btn('library','Biblioteca e fontes'):''}</div><section class="b-card">${entryList(entries.filter(e=>e.status==='consumed').sort(chronological).reverse())}</section>`:''}
@@ -138,7 +146,7 @@ export async function mountBank(root, store, { name = 'paciente', readOnly = fal
     const target=dialog.querySelector('#b-live'); if(!target)return;
     try {
       const f=dialog.querySelector('form'), total=editorMode==='recipe'||f.elements.entryMode?.value==='foods'?draftItems.reduce((s,i)=>s+M.itemPoints(i),0):M.number(f.elements.amount.value);
-      const p=current(), existing=state.entries.filter(e=>e.id!==draftEntry?.id), t=M.totals(p,existing);
+      const p=current(), existing=state.entries.filter(e=>e.id!==draftEntry?.id), t=bankTotals(p,existing);
       const projection=t.projection+total;
       target.textContent=`${M.fmt(total)} pontos na composição.${editorMode!=='recipe'&&t.budget!=null&&projection>t.budget?` Projeção ${M.fmt(projection-t.budget)} pontos acima da meta. Você pode revisar, sem bloqueio do registro.`:''}`;
     } catch {target.textContent='Informe uma quantidade válida para calcular os pontos.';}
@@ -174,7 +182,9 @@ export async function mountBank(root, store, { name = 'paciente', readOnly = fal
       case 'prev': selected=M.shift(selected,-7);render();break;
       case 'next': selected=M.shift(selected,7);render();break;
       case 'period': selected=id;render();break;
-      case 'refresh': state=await store.load();undo=null;render();say('Dados atualizados.');break;
+      case 'request-targets': if(readOnly)break; await save(state); await store.requestTargets(selected); approvals=await store.approvals();render();say('Solicitação enviada para a nutricionista.');break;
+      case 'approve-targets': case 'reject-targets': if(!readOnly)break; if(!confirm('Confirmar a revisão destes valores para este período?'))break; await store.reviewTargets(id,action==='approve-targets');approvals=await store.approvals();render();say('Revisão registrada.');break;
+      case 'refresh': state=await store.load(); approvals=store.approvals?await store.approvals():[];undo=null;render();say('Dados atualizados.');break;
       case 'settings': if(current().closed)throw Error('Reabra o período para alterar as metas.');openSettings();break;
       case 'new-consumed': case 'new-planned': if(!state.onboarded){openSettings();break;}entryEditor(blankEntry(action==='new-planned'?'planned':'consumed'));break;
       case 'edit': entryEditor(state.entries.find(e=>e.id===id));break;
@@ -289,5 +299,5 @@ export async function mountBank(root, store, { name = 'paciente', readOnly = fal
     }catch(error){report(error);}
   });
   render();
-  return { refresh: async()=>{state=await store.load();render();} };
+  return { refresh: async()=>{state=await store.load();approvals=store.approvals?await store.approvals():[];render();} };
 }

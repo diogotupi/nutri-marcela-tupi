@@ -2,6 +2,8 @@
 
 O site é estático no GitHub Pages. Login, admin e dietas usam **Supabase** (banco + autenticação).
 
+> Plataforma atual: consulte `PLATFORM-DELIVERY.md` na raiz. No projeto existente, aplique somente migrations novas; não recrie tabelas nem sobrescreva contas. A pasta `migrations/` acompanha as versões aplicadas no servidor. As funções `create-patient` e `manage-patient-access` validam a sessão e o papel administrativo no backend. O agendador interno é `care-automations`, e as regras são ativadas em Configurações do admin.
+
 ## 1. Criar projeto no Supabase
 
 1. Acesse [supabase.com](https://supabase.com) e crie um projeto.

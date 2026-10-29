@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../app/app.css">
   <script src="../../js/config.js"></script>
-</head>
+<style>#diet-print{display:none}@media print{body:has(#diet-print) .app-shell{display:none!important}#diet-print{display:block}#diet-print article{break-inside:avoid}.app-sidebar,.app-actions,.diet-meal-nav,.diet-panel__foot,.row-remove{display:none!important}.app-shell{display:block}.app-main{margin:0;padding:0}input,textarea,select{border:0!important}}</style></head>
 <body class="app-body">
   <div class="app-shell">
     <aside class="app-sidebar">
@@ -35,10 +35,10 @@
       <div class="app-topbar">
         <div>
           <h1 id="builder-title">Plano alimentar</h1>
-          <p id="builder-subtitle">Monte as refeições do dia — estilo WebDiet, simples e visual.</p>
+          <p id="builder-subtitle">Horários, substituições e orientações com histórico preservado.</p>
         </div>
         <div class="app-actions">
-          <button type="button" class="app-btn app-btn--ghost" id="save-draft-btn">Salvar rascunho</button>
+          <button type="button" class="app-btn app-btn--ghost" id="duplicate-diet-btn">Duplicar como modelo</button><button type="button" class="app-btn app-btn--ghost" id="print-diet-btn">Imprimir / PDF</button><button type="button" class="app-btn app-btn--ghost" id="save-draft-btn">Salvar rascunho</button>
           <button type="button" class="app-btn app-btn--primary" id="activate-diet-btn">Ativar dieta</button>
         </div>
       </div>

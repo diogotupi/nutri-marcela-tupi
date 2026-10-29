@@ -42,6 +42,9 @@ Deno.serve(async (req) => {
       return json({ error: 'SessÃ£o invÃ¡lida.' }, 401)
     }
 
+    const { data: permitted, error: permissionError } = await userClient.rpc('is_admin')
+    if (permissionError || permitted !== true) return json({ error: 'Acesso administrativo e verificação em dois fatores necessários.' }, 403)
+
     const adminClient = createClient(supabaseUrl, serviceRoleKey)
     const { data: adminProfile, error: adminError } = await adminClient
       .from('profiles')
@@ -65,8 +68,8 @@ Deno.serve(async (req) => {
       }, 400)
     }
 
-    if (password.length < 6) {
-      return json({ error: 'A senha deve ter pelo menos 6 caracteres.' }, 400)
+    if (password.length < 12) {
+      return json({ error: 'A senha deve ter pelo menos 12 caracteres.' }, 400)
     }
 
     if (!fullName) {

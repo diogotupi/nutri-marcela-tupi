@@ -5,6 +5,7 @@ import {
   getLocalDateString,
   showToast,
   statusLabel,
+  getSupabase,
 } from '../js/app-core.js';
 import {
   addWaterIntake,
@@ -15,10 +16,10 @@ import {
   requireAuth,
   signOut,
   toggleItemCheck,
-  toggleMealCheck,
 } from '../js/auth.js';
 import { initGuidesPanel } from './guides-panel.js';
 import { initPointsPanel, loadPointsPanel } from './points-panel.js';
+import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js';
 
 const greeting = document.getElementById('patient-greeting');
 const sidebarUser = document.getElementById('sidebar-user');
@@ -34,13 +35,21 @@ const h2oGoal = document.getElementById('h2o-goal');
 const today = getLocalDateString();
 let tracking = { mealIds: new Set(), itemIds: new Set(), water: { amount_ml: 0, goal_ml: 2000 } };
 let activeDiet = null;
+let mealReports = new Map();
 let pointsLoaded = false;
+let profile = null;
+let lastWater = null;
+let pendingWater = null;
+let pendingUndo = null;
+let validatedWaterGoal = null;
 
 const panels = {
   diet: document.getElementById('panel-diet'),
   points: document.getElementById('panel-points'),
   guides: document.getElementById('panel-guides'),
   account: document.getElementById('panel-account'),
+  plan: document.getElementById('panel-plan'),
+  evolution: document.getElementById('panel-evolution'),
 };
 
 document.getElementById('logout-btn').addEventListener('click', async () => {
@@ -51,10 +60,11 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
 todayLabel.textContent = formatTodayLabel();
 
 function renderWater() {
-  const { amount_ml, goal_ml } = tracking.water;
-  const pct = Math.min(100, Math.round((amount_ml / goal_ml) * 100));
+  const { amount_ml } = tracking.water;
+  const goal_ml = validatedWaterGoal?.water_ml;
+  const pct = goal_ml > 0 ? Math.min(100, Math.round((amount_ml / goal_ml) * 100)) : 0;
   h2oAmount.textContent = `${amount_ml} ml`;
-  h2oGoal.textContent = `Meta: ${goal_ml} ml · ${pct}%`;
+  h2oGoal.textContent = goal_ml > 0 ? `Meta definida pela Marcela: ${goal_ml} ml · ${pct}%` : 'Meta individual ainda não definida pela nutricionista.';
   h2oFill.style.width = `${pct}%`;
 }
 
@@ -76,6 +86,8 @@ function renderDietCard(diet, container) {
   const mealsHtml = diet.meals.map((meal) => {
     const items = (meal.diet_items || []).filter((item) => item.food_name);
     const mealChecked = tracking.mealIds.has(meal.id);
+    const report = mealReports.get(meal.id);
+    const reportStatus = report?.status || (mealChecked ? 'done' : '');
     const progress = mealProgress(meal);
 
     const itemsHtml = items.map((item) => {
@@ -94,6 +106,7 @@ function renderDietCard(diet, container) {
             <span class="check-row__meta">
               ${escapeHtml([item.quantity, item.unit].filter(Boolean).join(' ') || '—')}
               ${item.notes ? ` · ${escapeHtml(item.notes)}` : ''}
+              ${item.substitutions ? `<br>Substituições orientadas: ${escapeHtml(item.substitutions)}` : ''}
             </span>
           </span>
         </label>
@@ -111,13 +124,14 @@ function renderDietCard(diet, container) {
           >
           <span class="meal-check__box" aria-hidden="true"></span>
           <span class="meal-check__label">
-            <span>${escapeHtml(meal.name)}</span>
+            <span>${escapeHtml(meal.name)}${meal.scheduled_time ? ` · ${escapeHtml(meal.scheduled_time.slice(0,5))}` : ''}</span>
             ${typeof progress === 'object'
               ? `<small>${progress.done}/${progress.total} itens</small>`
               : ''}
           </span>
         </label>
         ${itemsHtml ? `<div class="meal-items">${itemsHtml}</div>` : ''}
+        <form data-meal-report="${meal.id}" class="patient-meal-report"><label>Como foi esta refeição?<select name="status">${[['','Sem registro'],['done','Realizada'],['partial','Parcial'],['skipped','Não realizada']].map(([value,label])=>`<option value="${value}" ${reportStatus===value?'selected':''}>${label}</option>`).join('')}</select></label><label>Comentário (opcional)<input name="comment" maxlength="2000" value="${escapeHtml(report?.comment || '')}"></label><button class="app-btn app-btn--ghost">Salvar relato</button><p role="status"></p></form>
       </div>
     `;
   }).join('');
@@ -141,25 +155,41 @@ function renderDietCard(diet, container) {
 }
 
 function bindCheckEvents(container) {
+  container.querySelectorAll('[data-meal-report]').forEach(form=>form.addEventListener('submit',async event=>{
+    event.preventDefault(); const mealId=form.dataset.mealReport, status=form.elements.status.value || null, comment=form.elements.comment.value.trim() || null;
+    const button=form.querySelector('button'),message=form.querySelector('[role=status]');button.disabled=true;message.textContent='Salvando…';
+    try { const {error}=await getSupabase().rpc('report_meal',{p_meal:mealId,p_date:today,p_status:status,p_comment:comment});if(error)throw error;
+      if(status)mealReports.set(mealId,{status,comment});else mealReports.delete(mealId);
+      if(status==='done')tracking.mealIds.add(mealId);else tracking.mealIds.delete(mealId);
+      renderDietCard(activeDiet,activeDietCard);updateNextMeal();showToast('Relato salvo.');
+    }catch(error){message.textContent=error.message;button.disabled=false;}
+  }));
   container.querySelectorAll('[data-meal-id]').forEach((input) => {
     input.addEventListener('change', async () => {
       const mealId = input.dataset.mealId;
+      input.disabled = true;
       try {
-        await toggleMealCheck(mealId, today, input.checked);
+        const reportStatus = input.checked ? 'done' : null;
+        const {error} = await getSupabase().rpc('report_meal',{p_meal:mealId,p_date:today,p_status:reportStatus,p_comment:mealReports.get(mealId)?.comment || null});
+        if(error) throw error;
+        if(reportStatus) mealReports.set(mealId,{status:reportStatus,comment:mealReports.get(mealId)?.comment}); else mealReports.delete(mealId);
         if (input.checked) tracking.mealIds.add(mealId);
         else tracking.mealIds.delete(mealId);
         input.closest('.patient-meal-block')?.classList.toggle('is-meal-checked', input.checked);
         showToast(input.checked ? 'Refeição marcada!' : 'Refeição desmarcada.');
+        updateNextMeal();
+        renderDietCard(activeDiet,activeDietCard);
       } catch (error) {
         input.checked = !input.checked;
         showToast(error.message, 'error');
-      }
+      } finally { input.disabled = false; }
     });
   });
 
   container.querySelectorAll('[data-item-id]').forEach((input) => {
     input.addEventListener('change', async () => {
       const itemId = input.dataset.itemId;
+      input.disabled = true;
       try {
         await toggleItemCheck(itemId, today, input.checked);
         if (input.checked) tracking.itemIds.add(itemId);
@@ -169,7 +199,7 @@ function bindCheckEvents(container) {
       } catch (error) {
         input.checked = !input.checked;
         showToast(error.message, 'error');
-      }
+      } finally { input.disabled = false; }
     });
   });
 }
@@ -177,7 +207,9 @@ function bindCheckEvents(container) {
 function switchTab(tabId) {
   document.querySelectorAll('.dashboard-tab').forEach((tab) => {
     tab.classList.toggle('is-active', tab.dataset.tab === tabId);
+    tab.setAttribute('aria-current', tab.dataset.tab === tabId ? 'page' : 'false');
   });
+  if (tabId === 'evolution' && profile) loadEvolution(profile.id).catch(error => { document.getElementById('evolution-content').textContent = error.message; });
 
   Object.entries(panels).forEach(([id, panel]) => {
     panel.hidden = id !== tabId;
@@ -199,13 +231,21 @@ document.querySelectorAll('.dashboard-tab').forEach((tab) => {
 document.querySelectorAll('[data-water]').forEach((button) => {
   button.addEventListener('click', async () => {
     const delta = Number(button.dataset.water);
+    const buttons = document.querySelectorAll('[data-water], #water-undo');
+    buttons.forEach(item => item.disabled = true);
+    document.getElementById('water-status').textContent = 'Salvando…';
     try {
-      tracking.water = await addWaterIntake(today, delta);
+      if (!pendingWater || pendingWater.delta !== delta) pendingWater = {delta,id:crypto.randomUUID()};
+      tracking.water = await addWaterIntake(today, delta, pendingWater.id);
+      pendingWater = null;
       renderWater();
+      lastWater = delta;
+      document.getElementById('water-status').textContent = 'Salvo no seu acompanhamento.';
       showToast(delta > 0 ? `+${delta} ml registrados` : 'Ajuste feito');
     } catch (error) {
       showToast(error.message, 'error');
-    }
+      document.getElementById('water-status').textContent = 'Não foi possível confirmar o salvamento. Verifique a conexão e tente novamente.';
+    } finally { buttons.forEach(item => item.disabled = false); document.getElementById('water-undo').disabled = !lastWater; }
   });
 });
 
@@ -214,6 +254,12 @@ async function loadDashboard(profile) {
   sidebarUser.textContent = profile.username;
 
   tracking = await fetchTodayTracking(today);
+  const reportResult=await getSupabase().from('meal_reports').select('meal_id,status,comment').eq('patient_id',profile.id).eq('report_date',today);
+  if(reportResult.error)throw reportResult.error;
+  mealReports=new Map(reportResult.data.map(row=>[row.meal_id,row]));
+  const goalResult = await getSupabase().from('patient_goals').select('water_ml,valid_from').eq('patient_id',profile.id).lte('valid_from',today).order('valid_from',{ascending:false}).limit(1).maybeSingle();
+  if(goalResult.error) throw goalResult.error;
+  validatedWaterGoal = goalResult.data;
   renderWater();
 
   const diets = await fetchMyDiets();
@@ -222,9 +268,16 @@ async function loadDashboard(profile) {
   if (active) {
     const fullDiet = await fetchDietWithMeals(active.id);
     renderDietCard(fullDiet, activeDietCard);
+    const preview = activeDietCard.cloneNode(true);
+    preview.querySelectorAll('input').forEach(input => input.remove());
+    preview.querySelectorAll('.diet-card__hint, .patient-meal-report, .meal-check__box, .check-row__box, .meal-check__label small').forEach(el => el.remove());
+    preview.querySelectorAll('.is-checked, .is-meal-checked').forEach(el=>el.classList.remove('is-checked','is-meal-checked'));
+    document.getElementById('plan-preview').innerHTML = preview.innerHTML;
   } else {
     activeDietCard.innerHTML = '<div class="patient-diet-card app-empty">Você ainda não tem uma dieta ativa. A nutricionista vai liberar em breve.</div>';
+    document.getElementById('plan-preview').innerHTML = activeDietCard.innerHTML;
   }
+  updateNextMeal();
 
   const history = diets.filter((diet) => diet.status !== 'active');
   if (!history.length) {
@@ -256,22 +309,26 @@ passwordForm.addEventListener('submit', async (event) => {
   }
 
   try {
+    passwordForm.querySelector('button').disabled = true;
     await changePassword(newPassword);
     passwordForm.reset();
     showToast('Senha alterada com sucesso.');
   } catch (error) {
     passwordError.textContent = error.message;
-  }
+  } finally { passwordForm.querySelector('button').disabled = false; }
 });
 
 async function init() {
   const auth = await requireAuth({ role: 'patient' });
   if (!auth) return;
+  profile = auth.profile;
+  document.getElementById('profile-label').textContent = `${profile.full_name} · ${profile.username}`;
 
   initPointsPanel(auth.profile);
   initGuidesPanel();
   // Open the new weekend bank first; diet and tracking remain available in the sidebar.
-  switchTab('points');
+  switchTab('diet');
+  initPatientCare(profile).catch(error => { document.getElementById('patient-reminders').textContent = error.message; });
 
   try {
     await loadDashboard(auth.profile);
@@ -281,3 +338,22 @@ async function init() {
 }
 
 init();
+
+function updateNextMeal() {
+  const time = new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date());
+  const scheduled = (activeDiet?.meals || []).filter(meal=>meal.scheduled_time).sort((a,b)=>a.scheduled_time.localeCompare(b.scheduled_time));
+  const next = scheduled.find(meal=>meal.scheduled_time.slice(0,5)>=time);
+  document.getElementById('next-meal').textContent = next ? `${next.scheduled_time.slice(0,5)} · ${next.name}` : activeDiet ? scheduled.length ? 'Não há mais refeições previstas para hoje' : 'Horários ainda não definidos' : 'Seu acompanhamento começa aqui';
+  document.getElementById('next-meal-detail').textContent = 'Horário de Brasília. Os checks representam seu relato. Sem registro não significa que você deixou de comer.';
+}
+document.getElementById('water-undo').addEventListener('click', async () => {
+  if (!lastWater) return;
+  const button = document.getElementById('water-undo'); button.disabled = true;
+  try { pendingUndo ||= crypto.randomUUID(); tracking.water = await addWaterIntake(today, -lastWater, pendingUndo); pendingUndo = null; lastWater = null; renderWater(); document.getElementById('water-status').textContent = 'Último incremento desfeito.'; }
+  catch (error) { showToast(error.message, 'error'); button.disabled = false; }
+});
+document.getElementById('print-plan').addEventListener('click', () => window.print());
+document.getElementById('export-patient-data').addEventListener('click', () => exportPatientData(profile));
+document.getElementById('evolution-range').addEventListener('change', () => loadEvolution(profile.id).catch(error => { document.getElementById('evolution-content').textContent = error.message; }));
+function connectionStatus() { const el = document.getElementById('connection-status'); el.hidden = navigator.onLine; el.textContent = 'Você está sem conexão. Aguarde reconectar antes de salvar registros.'; }
+addEventListener('online', connectionStatus); addEventListener('offline', connectionStatus); connectionStatus();

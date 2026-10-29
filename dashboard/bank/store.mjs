@@ -6,6 +6,21 @@ export function cloudStore(client, userId, name, readOnly = false) {
   let revision = null;
   return {
     isSynced: true,
+    async approvals() {
+      const { data, error } = await client.from('bank_target_requests').select('id, period, snapshot, status, requested_at, reviewed_at').eq('user_id', userId).order('requested_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    async requestTargets(period) {
+      if (readOnly) throw Error('Somente o paciente pode solicitar validação.');
+      const { error } = await client.rpc('request_bank_targets', { p_period: period });
+      if (error) throw error;
+    },
+    async reviewTargets(requestId, approve) {
+      if (!readOnly) throw Error('Validação exclusiva da nutricionista.');
+      const { error } = await client.rpc('review_bank_targets', { p_request: requestId, p_approve: approve });
+      if (error) throw error;
+    },
     async load() {
       const { data, error } = await client.from('weekend_banks').select('payload, revision, updated_at').eq('user_id', userId).maybeSingle();
       if (error) throw error;

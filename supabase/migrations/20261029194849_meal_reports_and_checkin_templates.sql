@@ -1,0 +1,21 @@
+create table public.meal_reports(patient_id uuid not null references public.profiles(id),meal_id uuid not null references public.diet_meals(id),report_date date not null,status text not null check(status in ('done','partial','skipped')),comment text,created_at timestamptz default now(),updated_at timestamptz default now(),primary key(patient_id,meal_id,report_date));
+alter table public.meal_reports enable row level security;
+create policy meal_reports_read on public.meal_reports for select to authenticated using(public.is_admin() or patient_id=public.current_profile_id());
+grant select on public.meal_reports to authenticated;
+create function public.report_meal(p_meal uuid,p_date date,p_status text,p_comment text default null) returns void language plpgsql security definer set search_path='' as $$ declare pid uuid:=public.current_profile_id(); begin
+ if pid is null or not exists(select 1 from public.diet_meals m join public.diets d on d.id=m.diet_id where m.id=p_meal and d.patient_id=pid) then raise exception 'Refeição não autorizada' using errcode='42501'; end if;
+ if p_status is not null and p_status not in ('done','partial','skipped') then raise exception 'Situação inválida'; end if;
+ perform pg_advisory_xact_lock(hashtextextended(pid::text||p_meal::text||p_date::text,0));
+ if p_status is null then delete from public.meal_reports where patient_id=pid and meal_id=p_meal and report_date=p_date;
+ else insert into public.meal_reports(patient_id,meal_id,report_date,status,comment) values(pid,p_meal,p_date,p_status,p_comment) on conflict(patient_id,meal_id,report_date) do update set status=excluded.status,comment=excluded.comment,updated_at=now(); end if;
+ if p_status='done' then insert into public.patient_meal_checks(patient_id,meal_id,check_date) values(pid,p_meal,p_date) on conflict(patient_id,meal_id,check_date) do nothing;
+ else delete from public.patient_meal_checks where patient_id=pid and meal_id=p_meal and check_date=p_date; end if;
+ end $$;
+revoke all on function public.report_meal(uuid,date,text,text) from public,anon;
+grant execute on function public.report_meal(uuid,date,text,text) to authenticated;
+create table public.checkin_templates(id uuid primary key default gen_random_uuid(),name text not null,fields jsonb not null check(jsonb_typeof(fields)='array'),active boolean not null default true,created_at timestamptz default now(),created_by uuid default public.current_profile_id() references public.profiles(id));
+alter table public.checkin_templates enable row level security;
+create policy templates_admin on public.checkin_templates for all to authenticated using(public.is_admin()) with check(public.is_admin());
+create policy templates_active on public.checkin_templates for select to authenticated using(active);
+grant select,insert,update,delete on public.checkin_templates to authenticated;
+insert into public.checkin_templates(name,fields,created_by) values('Check-in semanal','[{"key":"hunger","label":"Fome","type":"scale","min":1,"max":5},{"key":"satiety","label":"Saciedade","type":"scale","min":1,"max":5},{"key":"energy","label":"Energia","type":"scale","min":1,"max":5},{"key":"sleep_hours","label":"Horas de sono","type":"number","min":0,"max":24},{"key":"difficulty","label":"Dificuldades","type":"text"},{"key":"achievement","label":"Conquistas","type":"text"},{"key":"notes","label":"Algo que gostaria de conversar?","type":"text"}]',null);

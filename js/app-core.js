@@ -56,20 +56,20 @@ export const UNIT_OPTIONS = [
 
 export function formatDate(value) {
   if (!value) return '—';
-  const date = new Date(value);
+  const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? `${value}T12:00:00-03:00` : value);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleDateString('pt-BR');
+  return date.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 }
 
 export function getLocalDateString(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
+  const value = type => parts.find(part => part.type === type).value;
+  return `${value('year')}-${value('month')}-${value('day')}`;
 }
 
 export function formatTodayLabel() {
   return new Date().toLocaleDateString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
     weekday: 'long',
     day: 'numeric',
     month: 'long',

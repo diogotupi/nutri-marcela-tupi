@@ -126,3 +126,17 @@ test('cloud store saves, reloads, isolates by user ID, and detects concurrent wr
   assert.equal(rows.get('patient-a').payload.entries[0].amount,500);
   assert.deepEqual(queries.filter(q=>q[0]==='read').map(q=>q[1]),['patient-a','patient-b','patient-a']);
 });
+
+test('only matching professional approval enables budgets, old records remain unvalidated',()=>{
+ const s=setup(),p=s.periods[0];s.entries=[entry('actual','consumed',1000)];
+ const approval={id:'r1',period:p.id,status:'approved',snapshot:M.targetSnapshot(p.settings)};
+ assert.equal(M.validatedTotals(p,s.entries,[]).budget,null);
+ assert.equal(M.validatedTotals(p,s.entries,[{...approval,status:'pending'}]).budget,null);
+ assert.equal(M.validatedTotals(p,s.entries,[approval]).budget,3600);
+ assert.equal(M.validatedTotals(p,s.entries,[approval]).consumed,1000);
+ const changed=M.copy(p);changed.settings.targets[6]=1700;
+ assert.equal(M.validatedTotals(changed,s.entries,[approval]).budget,null);
+ assert.equal(M.validatedTotals(p,s.entries,[{...approval,status:'superseded'}]).budget,null);
+ assert.equal(M.validatedTotals({...p,id:M.shift(p.id,7)},s.entries,[approval]).budget,null);
+ assert.equal(M.validatedTotals(p,s.entries,[approval]).budget,3600);
+});

@@ -9,12 +9,13 @@ import {
   fetchPatient,
   requireAuth,
   saveDietBuilder,
+  createDiet,
   signOut,
 } from '../../js/auth.js';
 
 const params = new URLSearchParams(window.location.search);
 const patientId = params.get('patient');
-const dietId = params.get('diet');
+let dietId = params.get('diet');
 
 const mealNav = document.getElementById('meal-nav');
 const mealPanel = document.getElementById('meal-panel');
@@ -29,7 +30,7 @@ let mealsState = DEFAULT_MEALS.map((name) => ({ name, items: [] }));
 document.getElementById('back-patient-link').href = `/admin/patient/?id=${patientId}`;
 document.getElementById('logout-btn').addEventListener('click', async () => {
   await signOut();
-  window.location.href = '/login/';
+  window.location.href = '/admin/login/';
 });
 
 function unitOptions(selected = '') {
@@ -69,7 +70,7 @@ function renderMealPanel() {
 
   mealPanel.innerHTML = `
     <div class="diet-panel__head">
-      <h3>${escapeHtml(meal.name)}</h3>
+      <h3>${escapeHtml(meal.name)}</h3><label>Horário previsto <input type="time" id="meal-time" value="${escapeHtml(meal.scheduled_time||'')}"></label>
       <span style="color:var(--color-text-muted);font-size:0.82rem">${meal.items.length} item(ns)</span>
     </div>
     <table class="diet-items-table">
@@ -78,7 +79,7 @@ function renderMealPanel() {
           <th>Alimento</th>
           <th>Qtd</th>
           <th>Medida</th>
-          <th>Obs.</th>
+          <th>Obs.</th><th>Substituições</th>
           <th></th>
         </tr>
       </thead>
@@ -89,7 +90,7 @@ function renderMealPanel() {
             <td><input type="text" value="${escapeHtml(item.quantity)}" data-field="quantity" placeholder="2"></td>
             <td><select data-field="unit">${unitOptions(item.unit)}</select></td>
             <td><input type="text" value="${escapeHtml(item.notes)}" data-field="notes" placeholder="Opcional"></td>
-            <td><button type="button" class="row-remove" data-remove-item="${itemIndex}" aria-label="Remover">×</button></td>
+            <td><input type="text" value="${escapeHtml(item.substitutions||'')}" data-field="substitutions" placeholder="Alternativas e medidas"></td><td><button type="button" class="row-remove" data-remove-item="${itemIndex}" aria-label="Remover">×</button></td>
           </tr>
         `).join('')}
       </tbody>
@@ -100,6 +101,7 @@ function renderMealPanel() {
     </div>
   `;
 
+  document.getElementById('meal-time').addEventListener('input', event => { mealsState[activeMealIndex].scheduled_time = event.target.value || null; });
   mealPanel.querySelectorAll('[data-field]').forEach((input) => {
     input.addEventListener('input', () => {
       const row = input.closest('tr');
@@ -144,6 +146,7 @@ function collectPayload(statusOverride) {
     status: statusOverride || dietStatus.value,
     meals: mealsState.map((meal) => ({
       name: meal.name,
+      scheduled_time: meal.scheduled_time || null,
       items: meal.items,
     })),
   };
@@ -151,7 +154,8 @@ function collectPayload(statusOverride) {
 
 async function save(statusOverride) {
   const payload = collectPayload(statusOverride);
-  await saveDietBuilder(dietId, payload);
+  const savedId = await saveDietBuilder(dietId, payload);
+  if (savedId) { dietId = savedId; history.replaceState({}, '', `?patient=${patientId}&diet=${dietId}`); }
   dietStatus.value = payload.status;
 }
 
@@ -182,11 +186,13 @@ function hydrateFromDiet(diet) {
   if (diet.meals?.length) {
     mealsState = diet.meals.map((meal) => ({
       name: meal.name,
+      scheduled_time: meal.scheduled_time || null,
       items: (meal.diet_items || []).map((item) => ({
         food_name: item.food_name || '',
         quantity: item.quantity || '',
         unit: item.unit || 'g',
         notes: item.notes || '',
+        substitutions: item.substitutions || '',
       })),
     }));
   }
@@ -216,4 +222,11 @@ async function init() {
   }
 }
 
+document.getElementById('duplicate-diet-btn').addEventListener('click', async () => {
+  try { const id = await createDiet(patientId, dietTitle.value + ' — cópia'); const saved = await saveDietBuilder(id, collectPayload('draft')); location.href = `/admin/diet/?patient=${patientId}&diet=${saved || id}`; } catch(error) { showToast(error.message, 'error'); }
+});
+document.getElementById('print-diet-btn').addEventListener('click', () => {
+  document.getElementById('diet-print')?.remove();
+  const paper = document.createElement('section'); paper.id = 'diet-print'; paper.innerHTML = `<h1>${escapeHtml(dietTitle.value)}</h1><p>${escapeHtml(document.getElementById('builder-subtitle').textContent)}</p>${mealsState.map(m=>`<article><h2>${escapeHtml(m.name)} ${escapeHtml(m.scheduled_time || '')}</h2>${m.items.filter(i=>i.food_name).map(i=>`<p><strong>${escapeHtml(i.food_name)}</strong> — ${escapeHtml([i.quantity,i.unit].filter(Boolean).join(' '))}<br>${escapeHtml(i.notes || '')}${i.substitutions ? '<br>Substituições: '+escapeHtml(i.substitutions) : ''}</p>`).join('')}</article>`).join('')}<p>${escapeHtml(dietNotes.value)}</p>`; document.body.append(paper); window.print();
+});
 init();
