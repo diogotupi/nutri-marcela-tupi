@@ -26,4 +26,3 @@ create or replace function public.process_care_automations() returns int languag
  end;
  end loop; end loop; return n;
 end $$;
-

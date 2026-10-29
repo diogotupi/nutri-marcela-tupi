@@ -114,4 +114,3 @@ async (existingPage) => {
     return {passed:true,mobile:390,desktop:1440,waterRequests:operations.length,clinicalVersions:clinical.length,mealChecks:checks.length,checks:['layout mobile/desktop','water failed-response retry idempotency','water undo','meal status/checkbox consistency and keyboard','backend draft and recovery','versioned submission','configurable check-in snapshot','empty assessment','read-only plan','structured data export'],productionWrites:0};
   } catch(error) { return {error:error.message, state:await page.evaluate(()=>({tab:document.querySelector('#panel-diet')?.hidden,rect:document.querySelector('[data-water]')?.getBoundingClientRect().toJSON(),html:document.querySelector('#panel-diet')?.outerHTML.slice(0,1000),css:getComputedStyle(document.querySelector('[data-water]')).display})),errors}; } finally { await page.close(); }
 }
-
