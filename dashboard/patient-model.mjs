@@ -11,6 +11,12 @@ export function waterTimeline(rows, goals, end, count) {
     return {date:day,amount:row?.amount_ml!=null&&Number.isFinite(Number(row.amount_ml))&&Number(row.amount_ml)>=0?Number(row.amount_ml):null,goal:goal?.water_ml>0?Number(goal.water_ml):null};
   });
 }
+export function hydrationMeter(amount, goal) {
+  const volume = Number.isFinite(Number(amount)) ? Math.max(0, Number(amount)) : 0;
+  const target = Number(goal) > 0 && Number.isFinite(Number(goal)) ? Number(goal) : null;
+  const scale = target || Math.max(1000, Math.ceil(volume / 1000) * 1000);
+  return {volume, target, scale, percent: Math.min(100, volume / scale * 100)};
+}
 export function intensityLabel(value) {
   const n=Number(value);
   if(!Number.isInteger(n)||n<1||n>10)throw Error('Escolha uma intensidade de 1 a 10.');

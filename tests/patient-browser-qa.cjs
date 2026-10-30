@@ -10,7 +10,7 @@ async (existingPage) => {
   const uid='11111111-1111-4111-8111-111111111111', pid='22222222-2222-4222-8222-222222222222';
   const today = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const profile={id:pid,user_id:uid,username:'demonstracao',full_name:'Paciente Demonstração',role:'patient'};
-  let water=0, failNextWater=true, failNextLapse=true, failClinical=false;
+  let water=0, failNextWater=true, failNextLapse=true, failClinical=false, noWaterGoal=false;
   const applied = new Map();
   const assert = (condition,message) => {if(!condition) throw Error(message);};
   const apiData = async route => {
@@ -25,7 +25,7 @@ async (existingPage) => {
     }
     let body=req.postData()?JSON.parse(req.postData()):null, data=[];
     if(table==='profiles') data=[profile];
-    if(table==='patient_goals') data=[{id:'g1',patient_id:pid,water_ml:1800,valid_from:'2020-01-01'}];
+    if(table==='patient_goals') data=noWaterGoal?[]:[{id:'g1',patient_id:pid,water_ml:1800,valid_from:'2020-01-01'}];
     if(table==='patient_water_logs') data=water?[{id:'water1',patient_id:pid,log_date:today,amount_ml:water,goal_ml:1800}]:[];
     if(table==='diets') data=[{id:'diet1',patient_id:pid,title:'Plano DEMONSTRAÇÃO',status:'active',start_date:today,created_at:new Date().toISOString()}];
     if(table==='diet_meals') data=[{id:'meal1',name:'Café da manhã — demonstração',sort_order:0,diet_items:[{id:'item1',food_name:'Alimento demonstrativo',quantity:'1',unit:'unidade',sort_order:0}]}];
@@ -163,6 +163,18 @@ async (existingPage) => {
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Desktop horizontal overflow');
     assert(errors.length===0,errors.join('\n'));
     await page.screenshot({path:'C:/Users/diogo/AppData/Local/Temp/patient-demo-desktop.png',fullPage:true,animations:'disabled'});
-    return {passed:true,mobile:390,desktop:1440,waterRequests:operations.length,clinicalVersions:clinical.length,mealChecks:checks.length,checks:['layout mobile/desktop','water failed-response retry idempotency','water undo','meal status/checkbox consistency and keyboard','training intensity/date','meal difficulty idempotent retry','meal WebP upload','profile photo','live hydration refresh and isolated clinical failure','configurable check-in snapshot','empty assessment','read-only plan','structured data export'],productionWrites:0};
+    noWaterGoal=true;
+    await page.reload();
+    await page.locator('#h2o-goal').filter({hasText:'ainda não definiu'}).waitFor();
+    assert(await page.locator('#h2o-fill').evaluate(e=>e.style.width)==='50%','No-goal meter must display recorded 500ml');
+    await page.getByRole('button',{name:'+250 ml',exact:true}).click();
+    await page.waitForFunction(()=>document.querySelector('#h2o-fill').style.width==='75%');
+    assert((await page.locator('#h2o-scale').textContent()).includes('sem meta definida'),'Visual scale must not claim a prescribed target');
+    await page.getByRole('button',{name:'Desfazer último registro'}).click();
+    await page.waitForFunction(()=>document.querySelector('#h2o-fill').style.width==='50%');
+    await page.reload();
+    await page.locator('#h2o-goal').filter({hasText:'ainda não definiu'}).waitFor();
+    assert(await page.locator('#h2o-fill').evaluate(e=>e.style.width)==='50%','No-goal meter must restore the persisted volume');
+    return {passed:true,mobile:390,desktop:1440,waterRequests:operations.length,clinicalVersions:clinical.length,mealChecks:checks.length,checks:['layout mobile/desktop','water failed-response retry idempotency','water undo','meal status/checkbox consistency and keyboard','training intensity/date','meal difficulty idempotent retry','meal WebP upload','profile photo','live hydration refresh and isolated clinical failure','configurable check-in snapshot','empty assessment','read-only plan','structured data export','no-goal meter update, undo and reload'],productionWrites:0};
   } catch(error) { return {error:error.message, state:await page.evaluate(()=>({tab:document.querySelector('#panel-diet')?.hidden,rect:document.querySelector('[data-water]')?.getBoundingClientRect().toJSON(),html:document.querySelector('#panel-diet')?.outerHTML.slice(0,1000),css:getComputedStyle(document.querySelector('[data-water]')).display})),errors}; } finally { await page.close(); }
 }

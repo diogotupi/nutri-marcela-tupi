@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {civilRange,waterTimeline,intensityLabel} from './patient-model.mjs';
+import {civilRange,waterTimeline,intensityLabel,hydrationMeter} from './patient-model.mjs';
 import {fittedDimensions,validatePhoto} from '../js/media-sizing.mjs';
 
 test('water timeline includes missing days, keeps explicit zero, and uses historically valid goals',()=>{
@@ -26,4 +26,12 @@ test('photo validation rejects unsupported formats and oversized input',()=>{
 });
 test('training scale is bounded and has requested endpoints',()=>{
   assert.equal(intensityLabel(1),'FOFO');assert.equal(intensityLabel(10),'Hiper pesado');assert.equal(intensityLabel(5),'Moderado');assert.throws(()=>intensityLabel(11));assert.throws(()=>intensityLabel(1.5));
+});
+test('hydration meter moves without a prescribed goal and never treats the visual scale as a goal',()=>{
+  assert.deepEqual(hydrationMeter(0,null),{volume:0,target:null,scale:1000,percent:0});
+  assert.deepEqual(hydrationMeter(250,null),{volume:250,target:null,scale:1000,percent:25});
+  assert.deepEqual(hydrationMeter(500,undefined),{volume:500,target:null,scale:1000,percent:50});
+  assert.deepEqual(hydrationMeter(1250,null),{volume:1250,target:null,scale:2000,percent:62.5});
+  assert.equal(hydrationMeter(250,1800).scale,1800);
+  assert.equal(hydrationMeter(3000,1800).percent,100);
 });

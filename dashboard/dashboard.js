@@ -21,6 +21,7 @@ import { initGuidesPanel } from './guides-panel.js';
 import { initPointsPanel, loadPointsPanel } from './points-panel.js';
 import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js';
 import { initPatientExtras, bindMealExtras, mealExtrasMarkup, notifyPatientSaved } from './patient-extras.js';
+import { hydrationMeter } from './patient-model.mjs';
 
 const greeting = document.getElementById('patient-greeting');
 const sidebarUser = document.getElementById('sidebar-user');
@@ -61,12 +62,15 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
 todayLabel.textContent = formatTodayLabel();
 
 function renderWater() {
-  const { amount_ml } = tracking.water;
-  const goal_ml = validatedWaterGoal?.water_ml;
-  const pct = goal_ml > 0 ? Math.min(100, Math.round((amount_ml / goal_ml) * 100)) : 0;
-  h2oAmount.textContent = `${amount_ml} ml`;
-  h2oGoal.textContent = goal_ml > 0 ? `Meta definida pela Marcela: ${goal_ml} ml · ${pct}%` : 'Meta individual ainda não definida pela nutricionista.';
-  h2oFill.style.width = `${pct}%`;
+  const meter = hydrationMeter(tracking.water.amount_ml, validatedWaterGoal?.water_ml);
+  h2oAmount.textContent = `${meter.volume} ml`;
+  h2oGoal.textContent = meter.target
+    ? `Meta definida pela Marcela: ${meter.target} ml · ${Math.round(meter.percent)}%`
+    : 'Volume registrado hoje. A Marcela ainda não definiu sua meta individual.';
+  h2oFill.style.width = `${meter.percent}%`;
+  const axis = document.getElementById('h2o-scale');
+  axis.textContent = `0 ml → ${meter.scale} ml${meter.target ? ' · meta individual' : ' · escala de volume, sem meta definida'}`;
+  h2oAmount.setAttribute('aria-label', `${meter.volume} mililitros registrados hoje`);
 }
 
 function mealProgress(meal) {
