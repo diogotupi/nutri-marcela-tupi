@@ -115,7 +115,7 @@ ul {
 
 .logo .logo-mark {
   width: auto;
-  height: clamp(83px, 11.7vw, 119px);
+  height: 64px;
   transition: transform var(--transition);
 }
 
@@ -262,6 +262,13 @@ ul {
   text-align: right;
   width: min(100%, 360px);
   padding-bottom: clamp(3rem, 5vw, 4.25rem);
+}
+
+.hero-brand__logo {
+  display: block;
+  width: min(100%, 320px);
+  height: auto;
+  margin-left: auto;
 }
 
 .hero-media__name {
@@ -1172,7 +1179,7 @@ ul {
 }
 
 .footer-logo {
-  width: 80px;
+  width: clamp(180px, 20vw, 230px);
   height: auto;
   flex-shrink: 0;
 }
@@ -1281,6 +1288,11 @@ ul {
     padding-bottom: 0;
   }
 
+  .hero-brand__logo {
+    width: min(85%, 286px);
+    margin-inline: auto;
+  }
+
   .hero-media__name {
     font-size: clamp(2.1rem, 9vw, 2.75rem);
   }
@@ -1354,7 +1366,7 @@ ul {
   }
 
   .logo .logo-mark {
-    height: clamp(72px, 18vw, 90px);
+    height: 48px;
   }
 
   .nav-toggle {
