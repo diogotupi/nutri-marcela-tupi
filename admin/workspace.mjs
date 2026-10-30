@@ -1,4 +1,4 @@
-import {mountCRM,capabilityLabels} from './crm.mjs?v=20261030-crm';
+import {mountCRM,capabilityLabels} from './crm.mjs?v=20261030-client';
 import { getSupabase, escapeHtml as esc } from '../js/app-core.js';
 import { requireAuth, signOut, createPatient, createDiet, fetchPatient, fetchPatientDiets, fetchDietWithMeals } from '../js/auth.js';
 import { listClinical, addClinical, reviewClinical, listAppointments, addAppointment, listTasks, addTask, updateTask, uploadAttachment, getSignedAttachment } from '../js/clinical.js';
