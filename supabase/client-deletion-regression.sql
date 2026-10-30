@@ -16,6 +16,7 @@ do $$ declare au uuid:=gen_random_uuid();pu uuid:=gen_random_uuid();su uuid:=gen
  insert into public.staff_tasks(patient_id,title,created_by) values(pp,'QA staff task',ap);
  begin perform public.crm_delete_client(pp,'QA deletion patient',true);raise exception 'FAIL active period no acknowledgement';exception when raise_exception then if sqlerrm like 'FAIL%' then raise;end if;end;
  begin perform public.crm_delete_client(pp,'QA deletion patient',true,true,'wrong');raise exception 'FAIL active period no typed confirmation';exception when raise_exception then if sqlerrm like 'FAIL%' then raise;end if;end;
+ begin perform public.crm_delete_client(pp,'QA deletion patient',true,true,null);raise exception 'FAIL active period null confirmation';exception when raise_exception then if sqlerrm like 'FAIL%' then raise;end if;end;
  perform set_config('request.jwt.claims',jsonb_build_object('sub',su,'role','authenticated','aal','aal1')::text,true);
  begin perform public.crm_delete_client(pp,'QA deletion patient',true,true,'EXCLUIR');raise exception 'FAIL secretary can delete';exception when insufficient_privilege then null;end;
  perform set_config('request.jwt.claims',jsonb_build_object('sub',pu,'role','authenticated','aal','aal1')::text,true);
