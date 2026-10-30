@@ -1,31 +1,73 @@
 const clean=s=>s.normalize('NFKC').replace(/\s+/g,' ').trim();
 const key=s=>clean(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+const append=(object,field,text)=>{object[field]+=(object[field]?'\n':'')+text;};
+const isTime=s=>/^\d{2}:\d{2}$/.test(s);
+const isMetadata=s=>/^Marcela Tupinambá$/i.test(s)||/^CRN\s*-/i.test(s)||/^Acesse o app e veja o conte[uú]do completo da sua consulta\.?/i.test(s)||/^P[aá]gina\s+\d+\s*\/\s*\d+\s*\|/i.test(s);
+
 export function parseWebdietPages(pages){
- const result={title:'Plano alimentar',notes:'',meals:[],warnings:[]};let meal=null,option=null,mode='',target=null;
- for(const page of pages){const lines=page.map(clean).flatMap(s=>{const m=s.match(/^(.*\S)\s+(\d{2}:\d{2})$/);return m?[m[1],m[2]]:[s];}).filter(s=>s&&!/^Marcela Tupinambá$/i.test(s)&&!/^CRN\s*-/i.test(s));
-  let timeAt=lines.findIndex(s=>/^\d{2}:\d{2}$/.test(s));
-  if(timeAt>=1){const heading=lines[timeAt-1];
-   if(key(heading)==='orientacoes'){result.title=lines.slice(0,timeAt-1).join(' ')||result.title;mode='global';meal=null;option=null;}
-   else {const m=heading.match(/^(.*?)\s+(?:opção|opcao)\s+(.+)$/i),name=m?m[1]:heading,time=lines[timeAt];
-    meal=m?result.meals.find(x=>key(x.name)===key(name)&&x.scheduled_time===time):null;
-    if(!meal){meal={name,scheduled_time:time,notes:'',options:[]};result.meals.push(meal);}
-    option={name:m?`${name} ${m[2]}`:`${name} A`,notes:'',items:[]};meal.options.push(option);mode='food';
-   }lines.splice(0,timeAt+1);
-  }
-  for(let n=0;n<lines.length;n++){const line=lines[n];
-   if(/^Observações\s*:/i.test(line)){mode=meal?'notes':'global';continue;}
+ const result={title:'Plano alimentar',notes:'',meals:[],warnings:[]};
+ let meal=null,option=null,mode='',target=null,preamble=[],appendices=[];
+ function useTitle(){
+  const lines=preamble.filter(s=>!/^Planejamento alimentar$/i.test(s));
+  if(lines.length&&result.title==='Plano alimentar')result.title=lines.shift();
+  for(const line of lines)append(result,'notes',line);
+  preamble=[];
+ }
+ function startMeal(heading,time){
+  useTitle();target=null;
+  if(key(heading)==='orientacoes'){meal=null;option=null;mode='global';return;}
+  const match=heading.match(/^(.*?)\s+op[cç][aã]o\s+(.+)$/i),name=match?match[1]:heading;
+  meal=match?result.meals.find(m=>key(m.name)===key(name)&&m.scheduled_time===time):null;
+  if(!meal){meal={name,scheduled_time:time,notes:'',options:[]};result.meals.push(meal);}
+  option={name:match?`${meal.name} ${match[2]}`:`${name} A`,notes:'',items:[]};
+  meal.options.push(option);mode='food';
+ }
+ for(const page of pages){
+  const lines=page.map(clean).flatMap(s=>{
+   // Some exports place the clock to the right of the title, others on the next row.
+   const m=s.match(/^(.*\S)\s+(\d{2}:\d{2})$/);
+   return m?[m[1],m[2]]:[s];
+  }).filter(s=>s&&!isMetadata(s));
+  for(let n=0;n<lines.length;n++){
+   const line=lines[n],timed=line.match(/^(\d{2}:\d{2})\s*[-–—]\s*(\S.*)$/);
+   if(timed){startMeal(timed[2],timed[1]);continue;}
+   if(n+1<lines.length&&isTime(lines[n+1])){startMeal(line,lines[++n]);continue;}
+   if(/^Lista de (?:substitui[cç][aã]o|compras)$/i.test(line)||key(lines[n+1]||'')==='receita culinaria'){
+    useTitle();mode='appendix';meal=null;option=null;target=null;
+   }
+   // Reference lists and recipes are kept in general notes, never as extra foods.
+   if(mode==='appendix'){appendices.push(line);continue;}
+   if(/^Observa[cç][oõ]es\s*:/i.test(line)){mode=option?'notes':'global';continue;}
+   if(!option){if(mode==='global')append(result,'notes',line);else preamble.push(line);continue;}
+   if(mode==='notes'){append(option,'notes',line);continue;}
    const sub=line.match(/^SUBSTITUA O\s+(.+?)\s+POR$/i);
-   if(sub&&option){target=option.items.find(i=>key(i.food_name)===key(sub[1]));mode='sub';if(!target)result.warnings.push(`Confira a substituição de ${sub[1]}.`);continue;}
-   if(mode==='global'||!option){result.notes+=(result.notes?'\n':'')+line;continue;}
-   if(mode==='notes'){option.notes+=(option.notes?'\n':'')+line;continue;}
-   if(mode==='sub'){if(target)target.substitutions+=(target.substitutions?'\n':'')+line;else option.notes+=(option.notes?'\n':'')+line;continue;}
-   let match=line.match(/^(.*?)\s+(\d+(?:[.,]\d+)?\s*(?:g\b|ml\b|[a-zÀ-ÿ].*))$/i);
-   if(!match&&n+1<lines.length&&/^\d/.test(lines[n+1]))match=[null,line,lines[++n]];
-   if(match&&match[1])option.items.push({food_name:match[1],quantity:match[2],unit:'',notes:'',substitutions:''});
-   else {option.notes+=(option.notes?'\n':'')+line;result.warnings.push(`Texto a conferir em ${meal.name}: ${line}`);}
+   if(sub){
+    target=option.items.find(i=>key(i.food_name)===key(sub[1]));mode='sub';
+    if(!target){append(option,'notes',line);result.warnings.push(`Confira a substituição de ${sub[1]}.`);}
+    continue;
+   }
+   if(/^(?:Ou\s+|Alternativa\s*:)/i.test(line)){
+    target=option.items.at(-1);mode='sub';
+    if(target)append(target,'substitutions',line);else{append(option,'notes',line);result.warnings.push(`Confira a alternativa em ${meal.name}.`);}
+    continue;
+   }
+   const bullet=/^[•●▪]\s*/.test(line);
+   if(bullet)mode='food';
+   if(mode==='sub'){append(target||option,target?'substitutions':'notes',line);continue;}
+   const body=line.replace(/^[•●▪]\s*/,'');
+   let match=bullet?body.match(/^(.*?)\s+[-–—]\s+(.+)$/):null;
+   match||=body.match(/^(.*?)\s+(\d+(?:[.,]\d+)?\s*(?:g\b|ml\b|[a-zÀ-ÿ].*))$/i);
+   if(!match&&n+1<lines.length&&/^\d/.test(lines[n+1]))match=[null,body,lines[++n]];
+   if(match&&match[1]){
+    option.items.push({food_name:match[1],quantity:match[2],unit:'',notes:'',substitutions:''});
+   }else{
+    append(option,'notes',line);result.warnings.push(`Texto a conferir em ${meal.name}: ${line}`);
+   }
   }
+  if(mode==='appendix')appendices.push('');
  }
  if(!result.meals.length)throw Error('Não reconheci refeições neste PDF. Use um PDF de texto do Webdiet ou monte a dieta manualmente.');
+ if(appendices.length)result.notes+=(result.notes?'\n\n':'')+'Anexos do PDF\n'+appendices.join('\n').trim();
  return result;
 }
 export async function readWebdiet(file){

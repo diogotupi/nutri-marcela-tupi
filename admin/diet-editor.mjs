@@ -1,5 +1,5 @@
 import {escapeHtml as esc} from '../js/app-core.js';
-import {readWebdiet} from './webdiet.mjs';
+import {readWebdiet} from './webdiet.mjs?v=20261030-pdf2';
 export const blankDiet=()=>({title:'Plano alimentar',notes:'',meals:[]});
 export function dietFromRows(d){return {title:d.title,notes:d.notes||'',meals:d.meals.map(m=>({name:m.name,scheduled_time:m.scheduled_time?.slice(0,5)||'',notes:m.notes||'',options:(m.options?.length?m.options:[{name:'Opção A'}]).map(o=>({...o,items:m.diet_items.filter(i=>!i.option_name||i.option_name===o.name).map(i=>({...i}))}))}))};}
 export function mountDietEditor(root,draft,{onChange=()=>{}}={}){

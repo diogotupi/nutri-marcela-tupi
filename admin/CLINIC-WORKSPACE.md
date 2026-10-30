@@ -17,6 +17,8 @@ PDF.js 6.4.299 fica em `vendor/pdfjs/`, com licença. O arquivo é processado no
 
 O exemplo real de 12 páginas foi conferido: 7 refeições por nome/horário, 4 opções de lanche, 26 alimentos, 15 substituições e continuação de observações. O arquivo clínico original não foi incluído no repositório.
 
+A importação também reconhece o formato impresso do Webdiet: `08:00 - Café da manhã`, alimentos com marcadores, quantidades como “à vontade”/“mínimo”, alternativas com “Ou” e referências aos grupos de substituição. Percorre todos os títulos da página, agrupando opções de mesmo nome/horário mesmo com diferenças de acentuação. Listas de substituição, compras e receitas são preservadas nas orientações gerais; cabeçalhos e rodapés de identificação não entram nos registros. O segundo exemplo real de 16 páginas foi validado na prévia e no envio do formulário: 5 grupos de refeições, 7 opções e 26 alimentos, sem gravações reais.
+
 As opções ficam em `diet_meals.options`; os alimentos reais conservam IDs próprios com `diet_items.option_name`. O renderer do paciente mantém sua estrutura e exibe as alternativas dentro da mesma refeição. A versão anterior permanece no histórico. O endereço antigo `/admin/diet/` encaminha para o editor integrado.
 
 ## Logs
@@ -29,7 +31,7 @@ Exclusões exigem confirmação extra para acompanhamento ativo. O manifesto pri
 
 ## Validação
 
-- `npm test`: 30 testes de modelos, incluindo cores, datas, importação e agrupamento dos relatos.
+- `npm test`: 33 testes de modelos, incluindo cores, datas, os dois formatos de importação, anexos e agrupamento dos relatos.
 - `tests/clinic-browser-qa.cjs`: calendário, ficha, chat persistente, cadastro de quatro campos, acompanhamento, opções, celular e painel da secretária, sem gravações reais.
 - `tests/patient-browser-qa.cjs`: fluxos existentes do paciente, com APIs interceptadas.
 - SQL transacional com rollback: `clinic-regression.sql`, `crm-regression.sql`, `patient-chat-regression.sql`, `client-deletion-regression.sql`, `management-regression.sql`, `progress-regression.sql`. O primeiro cobre painel compartilhado, autoria, logs, login, isolamento e idempotência; substitui o antigo teste de equipe com permissões diferentes.
