@@ -21,7 +21,7 @@ import { initGuidesPanel } from './guides-panel.js';
 import { initPointsPanel, loadPointsPanel } from './points-panel.js';
 import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js';
 import { initPatientExtras, bindMealExtras, mealExtrasMarkup, notifyPatientSaved } from './patient-extras.js';
-import { hydrationMeter } from './patient-model.mjs';
+import { hydrationMeter } from './patient-model.mjs?v=20261030-water';
 
 const greeting = document.getElementById('patient-greeting');
 const sidebarUser = document.getElementById('sidebar-user');
