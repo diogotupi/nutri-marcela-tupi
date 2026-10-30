@@ -115,7 +115,8 @@ body:has(.hero) .hero h1 { font-weight: 600; letter-spacing: -.035em; }
 body:has(.hero) .hero h1 em { color: #537c68; }
 body:has(.hero) .hero-media__name { font-family: var(--font-display); font-weight: 700; letter-spacing: -.06em; }
 body:has(.hero) .hero-media__name-line--accent { font-style: normal; }
-.featured-depoimento__box, .testimonial-card { border: 1.5px solid #688078; box-shadow: 5px 6px 0 #e8baaa; }
+.featured-depoimento__box, .featured-video { border: 0; box-shadow: none; }
+.testimonial-card { border: 1.5px solid #688078; box-shadow: 5px 6px 0 #e8baaa; }
 .section-label { color: #576b38; }
 .cta-box { border: 1.5px solid #688078; box-shadow: 6px 7px 0 #e8baaa; }
 @media(max-width:760px) {
