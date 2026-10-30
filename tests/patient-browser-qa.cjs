@@ -132,10 +132,11 @@ async (existingPage) => {
     assert(clinical[0].payload.template.id==='template-demo','Template snapshot missing');
     await page.getByRole('button',{name:'Evolução',exact:true}).click();
     await page.getByRole('heading',{name:'Hidratação diária'}).waitFor();
-    assert(await page.locator('[data-water-index]').count()===30,'Hydration chart must include missing days');
+    assert(await page.locator('[data-water-index]').count()===0,'Empty hydration period must not render missing-day markers');
     water=500;
     await page.getByRole('button',{name:'Atualizar registros',exact:true}).click();
     await page.locator('[data-water-index="29"]').filter({has:page.locator('title',{hasText:'500 ml'})}).waitFor();
+    assert(await page.locator('.patient-chart').filter({has:page.getByRole('heading',{name:'Hidratação diária',exact:true})}).locator('tbody tr').count()===1,'Hydration table must contain only recorded dates');
     await page.locator('[data-water-index="29"]').press('Enter');
     assert((await page.locator('#water-day-detail').textContent()).includes('500 ml'),'Hydration refresh/details stale');
     await page.screenshot({path:'C:/Users/diogo/AppData/Local/Temp/patient-demo-water.png',fullPage:true,animations:'disabled'});

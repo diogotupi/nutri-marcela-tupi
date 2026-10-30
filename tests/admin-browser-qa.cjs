@@ -26,8 +26,11 @@ async (existingPage) => {
   if(await page.locator('svg.chart').count()!==2)throw Error('Weight and BMI charts did not render.');
   if((await page.locator('#page-content').innerHTML()).includes('NaN'))throw Error('Invalid chart coordinates.');
   await page.getByRole('tab',{name:'Diário e refeições',exact:true}).dispatchEvent('click');
+  if(await page.locator('.calendar-day').count()!==1)throw Error('Diary must show only recorded dates.');
   if(!(await page.locator('#page-content').innerText()).includes('◐ Parcial'))throw Error('Explicit partial meal report missing.');
   await page.getByRole('tab',{name:'Hidratação',exact:true}).dispatchEvent('click');
+  const waterCard=page.locator('.card').filter({has:page.getByRole('heading',{name:'Consumo diário de água',exact:true})});
+  if(await waterCard.locator('tbody tr').count()!==1)throw Error('Hydration table contains unrecorded dates.');
   if(!(await page.locator('#page-content').innerText()).includes('+200 ml'))throw Error('Water event missing.');
   await page.getByRole('tab',{name:'Anamnese',exact:true}).dispatchEvent('click');
   await page.getByRole('button',{name:'+ Nova anamnese',exact:true}).dispatchEvent('click');

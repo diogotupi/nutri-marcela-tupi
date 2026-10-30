@@ -19,7 +19,7 @@ import {
 } from '../js/auth.js';
 import { initGuidesPanel } from './guides-panel.js';
 import { initPointsPanel, loadPointsPanel } from './points-panel.js';
-import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js';
+import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js?v=20261030-records';
 import { initPatientExtras, bindMealExtras, mealExtrasMarkup, notifyPatientSaved } from './patient-extras.js';
 import { hydrationMeter } from './patient-model.mjs?v=20261030-water';
 
