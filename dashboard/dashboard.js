@@ -18,7 +18,6 @@ import {
   toggleItemCheck,
 } from '../js/auth.js';
 import { initGuidesPanel } from './guides-panel.js';
-import { initPointsPanel, loadPointsPanel } from './points-panel.js';
 import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js?v=20261030-records';
 import { initPatientExtras, bindMealExtras, mealExtrasMarkup, notifyPatientSaved } from './patient-extras.js';
 import { hydrationMeter } from './patient-model.mjs?v=20261030-water';
@@ -38,7 +37,6 @@ const today = getLocalDateString();
 let tracking = { mealIds: new Set(), itemIds: new Set(), water: { amount_ml: 0, goal_ml: 2000 } };
 let activeDiet = null;
 let mealReports = new Map();
-let pointsLoaded = false;
 let profile = null;
 let lastWater = null;
 let pendingWater = null;
@@ -47,7 +45,6 @@ let validatedWaterGoal = null;
 
 const panels = {
   diet: document.getElementById('panel-diet'),
-  points: document.getElementById('panel-points'),
   guides: document.getElementById('panel-guides'),
   account: document.getElementById('panel-account'),
   plan: document.getElementById('panel-plan'),
@@ -214,6 +211,7 @@ function bindCheckEvents(container) {
 }
 
 function switchTab(tabId) {
+  if (!Object.hasOwn(panels, tabId)) tabId = 'diet';
   document.querySelectorAll('.dashboard-tab').forEach((tab) => {
     tab.classList.toggle('is-active', tab.dataset.tab === tabId);
     tab.setAttribute('aria-current', tab.dataset.tab === tabId ? 'page' : 'false');
@@ -224,13 +222,6 @@ function switchTab(tabId) {
     panel.hidden = id !== tabId;
   });
 
-  if (tabId === 'points' && !pointsLoaded) {
-    pointsLoaded = true;
-    loadPointsPanel().catch((error) => {
-      pointsLoaded = false;
-      showToast(error.message, 'error');
-    });
-  }
 }
 
 document.querySelectorAll('.dashboard-tab').forEach((tab) => {
@@ -334,9 +325,7 @@ async function init() {
   profile = auth.profile;
   document.getElementById('profile-label').textContent = `${profile.full_name} · ${profile.username}`;
 
-  initPointsPanel(auth.profile);
   initGuidesPanel();
-  // Open the new weekend bank first; diet and tracking remain available in the sidebar.
   switchTab('diet');
   initPatientCare(profile).catch(error => { document.getElementById('patient-reminders').textContent = error.message; });
   initPatientExtras(profile).catch(error => { document.getElementById('patient-training').insertAdjacentHTML('beforeend',`<p role="status">${escapeHtml(error.message)}</p>`); });
