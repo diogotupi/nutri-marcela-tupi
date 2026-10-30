@@ -27,11 +27,7 @@ begin
  execute 'set local role authenticated';perform public.evaluate_badges();if exists(select 1 from public.patient_badges where patient_id=pp and badge_id='steady21') then raise exception 'FAIL missing day treated as evidence';end if;execute 'reset role';
  insert into public.patient_meal_checks(patient_id,meal_id,check_date) values(pp,m,t-10);
  execute 'set local role authenticated';perform public.evaluate_badges();if not exists(select 1 from public.patient_badges where patient_id=pp and badge_id='steady21') then raise exception 'FAIL 21 covered days';end if;execute 'reset role';
- insert into public.patient_care_settings(patient_id,started_on,ends_on) values(pp,t,t+14);
- perform public.generate_followup_tasks();perform public.generate_followup_tasks();
- if (select count(*) from public.staff_tasks where patient_id=pp and source_key like 'weekly:%')<>2 or exists(select 1 from public.staff_tasks where patient_id=pp and (due_at at time zone 'America/Sao_Paulo')::date not in(t+7,t+14)) then raise exception 'FAIL weekly due dates/idempotency/end';end if;
- update public.patient_care_settings set ends_on=t+7 where patient_id=pp;
- if (select count(*) from public.staff_tasks where patient_id=pp and source_key like 'weekly:%')<>1 then raise exception 'FAIL end date shortening';end if;
+ -- Contact recurrence is covered by crm-regression.sql; legacy weekly tasks are retired.
  insert into public.clinical_records(patient_id,kind,payload,visibility,status,created_by) values(pp,'note','{"text":"QA original"}','shared','reviewed',ap) returning id into r;
  execute 'set local role authenticated';
  begin perform public.edit_clinical_record(r,'{}',now());raise exception 'FAIL patient edit';exception when insufficient_privilege then null;end;
@@ -47,4 +43,4 @@ begin
  execute 'reset role';
 end $$;
 rollback;
-select 'PASS progress: evidence-backed badges, idempotency, lapse/coverage, admin-only awards, weekly calendar bounds, anamnesis denied, clinical revision/archive visibility' as result;
+select 'PASS progress: evidence-backed badges, idempotency, lapse/coverage, admin-only awards, anamnesis denied, clinical revision/archive visibility' as result;

@@ -14,8 +14,8 @@ do $$ declare au uuid:=gen_random_uuid(); pu uuid:=gen_random_uuid(); ap uuid:=g
  if exists(select 1 from public.patient_goals where id=gid) or exists(select 1 from public.patient_water_logs where patient_id=pp) then raise exception 'FAIL delete';end if;
  if (select count(*) from public.clinical_change_history where patient_id=pp)<3 then raise exception 'FAIL audit history';end if;
  insert into public.patient_care_settings(patient_id,started_on,ends_on) values(pp,current_date,current_date+14);
- select id into task_id from public.staff_tasks where patient_id=pp order by due_at limit 1;perform public.archive_staff_task(task_id);
- execute 'reset role';perform public.generate_followup_tasks();if (select count(*) from public.staff_tasks where patient_id=pp and status='pending')<>1 then raise exception 'FAIL cancelled task returned';end if;
+ insert into public.staff_tasks(patient_id,title,source_key,created_by) values(pp,'QA manual task','manual-qa-'||pp,ap) returning id into task_id;perform public.archive_staff_task(task_id);
+ execute 'reset role';perform public.generate_followup_tasks();if (select count(*) from public.staff_tasks where patient_id=pp and status='pending')<>0 then raise exception 'FAIL cancelled task returned';end if;
  perform set_config('request.jwt.claims',jsonb_build_object('sub',pu,'role','authenticated','aal','aal1')::text,true);execute 'set local role authenticated';
  begin perform public.admin_correct_water(pp,current_date,999,'QA');raise exception 'FAIL patient correction';exception when insufficient_privilege then null;end;
  if exists(select 1 from public.clinical_change_history where patient_id=pp) then raise exception 'FAIL private audit leak';end if;execute 'reset role';

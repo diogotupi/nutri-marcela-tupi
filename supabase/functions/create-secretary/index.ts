@@ -11,9 +11,9 @@ Deno.serve(async req=>{
  const {data:allowed,error:roleError}=await caller.rpc('is_admin');if(roleError||allowed!==true)return json({error:'Cadastro exclusivo da administradora autenticada.'},403);
  const body=await req.json(),username=String(body.username||'').trim().toLowerCase(),fullName=String(body.full_name||'').trim(),password=String(body.password||'');
  if(!/^[a-z0-9._-]{3,32}$/.test(username)||!fullName||fullName.length>150||password.length<12||password.length>128)return json({error:'Informe nome, usuário válido (3–32 caracteres) e senha de 12 a 128 caracteres.'},400);
- const permissionKeys=['view_tasks','complete_tasks','view_contact','schedule_appointments'];
+ const permissionKeys=['enabled','view_crm','manage_clients','manage_enrollments','complete_contacts','edit_observations','view_tasks','complete_tasks','view_contact','schedule_appointments'];
  const supplied=body.permissions||{};if(typeof supplied!=='object'||Array.isArray(supplied)||Object.entries(supplied).some(([k,v])=>!permissionKeys.includes(k)||typeof v!=='boolean'))return json({error:'Permissões inválidas.'},400);
- const permissions=Object.fromEntries(permissionKeys.map(k=>[k,supplied[k]??(k==='view_tasks')]));
+ const permissions=Object.fromEntries(permissionKeys.map(k=>[k,supplied[k]??(k==='view_tasks'||k==='enabled')]));
  const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});
  const {data:actor,error:actorError}=await admin.from('profiles').select('id').eq('user_id',auth.user.id).eq('role','admin').single();if(actorError||!actor)return json({error:'Administradora não encontrada.'},403);
  const {data:created,error:createError}=await admin.auth.admin.createUser({email:`${username}@app.nutrimarcelatupi.com`,password,email_confirm:true,user_metadata:{username,full_name:fullName}});

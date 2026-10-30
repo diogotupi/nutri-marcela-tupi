@@ -1,0 +1,6 @@
+export const categories={journey:{label:'Journey',days:90},legacy:{label:'Legacy',days:180},single:{label:'Consulta Avulsa',days:30}};
+export function endDate(start,category){if(!categories[category]||!/^\d{4}-\d{2}-\d{2}$/.test(start))throw Error('Selecione a modalidade e a data de início.');const d=new Date(start+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+categories[category].days);return d.toISOString().slice(0,10);}
+export function whatsapp(phone){let p=String(phone||'').replace(/\D/g,'');if(p.length===10||p.length===11)p='55'+p;return /^\d{10,15}$/.test(p)?`https://wa.me/${p}`:null;}
+export function matches(row,tab){return tab==='all'||tab==='nanny'&&row.nanny_enabled||tab==='ended'&&['closed','expired'].includes(row.state)||tab==='neutral'&&!row.enrollment_id||row.category===tab;}
+export function sortClients(rows){const rank={expired:0,pending:1,scheduled:2,normal:2,closed:3,neutral:4};return [...rows].sort((a,b)=>(rank[a.state]??5)-(rank[b.state]??5)||(a.pending_on||a.next_contact||'9999').localeCompare(b.pending_on||b.next_contact||'9999')||a.full_name.localeCompare(b.full_name,'pt-BR'));}
+export const stateLabels={normal:'Em dia',pending:'Atualização pendente',expired:'Acompanhamento vencido',closed:'Encerrado',scheduled:'Início agendado',neutral:'Sem acompanhamento'};
