@@ -11,7 +11,7 @@ async (existingPage) => {
   const today = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const profile={id:pid,user_id:uid,username:'demonstracao',full_name:'Paciente Demonstração',role:'patient'};
   let water=0, failNextWater=true, failNextLapse=true, failClinical=false, noWaterGoal=false, failNextMessage=true;
-  const applied = new Map();
+  const applied = new Map(); const itemChecks=[];
   const assert = (condition,message) => {if(!condition) throw Error(message);};
   const apiData = async route => {
     const req=route.request(),url=new URL(req.url()),table=url.pathname.split('/').at(-1),method=req.method();
@@ -27,11 +27,12 @@ async (existingPage) => {
     if(table==='profiles') data=[profile];
     if(table==='patient_goals') data=noWaterGoal?[]:[{id:'g1',patient_id:pid,water_ml:1800,valid_from:'2020-01-01'}];
     if(table==='patient_water_logs') data=water?[{id:'water1',patient_id:pid,log_date:today,amount_ml:water,goal_ml:1800}]:[];
-    if(table==='diets') data=[{id:'diet1',patient_id:pid,title:'Plano DEMONSTRAÇÃO',status:'active',start_date:today,created_at:new Date().toISOString()}];
-    if(table==='diet_meals') data=[{id:'meal1',name:'Café da manhã — demonstração',sort_order:0,diet_items:[{id:'item1',food_name:'Alimento demonstrativo',quantity:'1',unit:'unidade',sort_order:0}]}];
+    if(table==='diets') data=[{id:'diet1',patient_id:pid,title:'Plano DEMONSTRAÇÃO',notes:'Orientações de DEMONSTRAÇÃO\n\nAnexos do PDF\nLista de substituição\nReceita DEMONSTRAÇÃO <texto literal>',status:'active',start_date:today,created_at:new Date().toISOString()}];
+    if(table==='diet_meals') data=[{id:'meal1',name:'Café da manhã — demonstração',sort_order:0,options:[1,2,3,4].map(n=>({name:'Preparo '+n,notes:'Instruções de preparo DEMONSTRAÇÃO'})),diet_items:[{id:'item1',food_name:'Alimento demonstrativo',quantity:'1',unit:'unidade',sort_order:0,option_name:null},...[1,2,3,4].map(n=>({id:'prep'+n,food_name:'Receita demonstrativa '+n,quantity:'',unit:'',option_name:'Preparo '+n,sort_order:n}))]}];
     if(table==='checkin_templates') data=[{id:'template-demo',name:'DEMONSTRAÇÃO',fields:[{key:'energy',label:'Energia',type:'scale',min:1,max:5,required:true}]}];
     if(table==='meal_reports' && url.searchParams.get('order')?.split(',').some(part=>part.startsWith('id.'))) throw Error('meal_reports has no id column');
     if(table==='report_meal'){checks.push(body);data=null;}
+    if(table==='patient_item_checks'){if(method==='POST')itemChecks.push(body);data=[];}
     if(table==='patient_meal_checks') {if(method==='POST') checks.push(body);data=checks;}
     if(table==='record_water') {
       operations.push(body);
@@ -73,6 +74,12 @@ async (existingPage) => {
     await page.locator('#training-form').waitFor({state:'attached'});
     assert(await page.locator('[data-care="anamnesis"]').count()===0,'Patient anamnesis form must be removed');
     await page.locator('.patient-badge.is-earned').waitFor();
+    assert(await page.locator('#active-diet-card .diet-appendices').evaluate(e=>!e.open),'Imported appendix must start collapsed');
+    assert(await page.locator('.diet-card__notes').count()===2,'General notes remain readable in today and read-only plan');
+    assert(await page.locator('#active-diet-card .meal-option').count()===4,'Breakfast recipe choices missing');
+    await page.locator('[data-item-id=prep1]').focus();await page.locator('[data-item-id=prep1]').press('Space');await page.waitForFunction(()=>document.querySelector('[data-item-id=prep1]').closest('.check-row').classList.contains('is-checked'));
+    assert(itemChecks.length===1&&itemChecks[0].item_id==='prep1','Recipe choice was not stored as a patient food check');
+    assert(await page.locator('[data-item-id=item1]').count()===1,'Shared prescribed food must appear exactly once');
     await page.evaluate(()=>{const b=document.createElement('div');b.textContent='DEMONSTRAÇÃO — dados fictícios interceptados localmente';b.style='background:#feeac3;padding:10px;text-align:center;font-size:12px';document.body.prepend(b);});
     await page.locator('#h2o-goal').filter({hasText:'1800'}).waitFor();
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Mobile horizontal overflow');
@@ -114,7 +121,8 @@ async (existingPage) => {
     assert(clinical[0].kind==='exercise' && clinical[0].payload.date===today && clinical[0].payload.intensity===10,'Training payload/date invalid');
     await page.getByText('Chutei o balde',{exact:true}).click();
     await page.locator('[data-meal-difficulty] [name=foods]').fill('DEMONSTRAÇÃO: refeição fora da rotina');
-    await page.locator('[data-meal-difficulty] [name=feelings]').fill('DEMONSTRAÇÃO: cansado');
+    assert(await page.locator('[data-meal-difficulty] [name=feelings]').count()===0,'Feeling field must be removed');
+    assert((await page.locator('[data-meal-difficulty] [name=trigger]').getAttribute('placeholder')).includes('ansiedade'),'New trigger example missing');
     await page.locator('[data-meal-difficulty] [name=trigger]').fill('DEMONSTRAÇÃO: dia corrido');
     await page.getByRole('button',{name:'Compartilhar com a Marcela'}).click();
     await page.locator('[data-meal-difficulty] [role=status]').filter({hasText:'Não foi salvo'}).waitFor();
@@ -122,11 +130,13 @@ async (existingPage) => {
     await page.locator('[data-meal-difficulty] [role=status]').filter({hasText:'Relato salvo'}).waitFor();
     assert(clinical.filter(row=>row.payload.category==='meal_difficulty').length===1,'Lapse retry duplicated report');
     const imageBytes=await page.evaluate(async()=>{const canvas=document.createElement('canvas');canvas.width=2400;canvas.height=1600;const ctx=canvas.getContext('2d');ctx.fillStyle='#5c8c6c';ctx.fillRect(0,0,2400,1600);ctx.fillStyle='#fff';ctx.font='100px sans-serif';ctx.fillText('DEMONSTRAÇÃO',150,200);const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));return Array.from(new Uint8Array(await blob.arrayBuffer()));});
-    await page.getByText('Adicionar foto da refeição',{exact:true}).click();
-    await page.locator('[data-meal-photo] [name=photo]').setInputFiles({name:'demo-meal.png',mimeType:'image/png',buffer:Buffer.from(imageBytes)});
-    await page.locator('[data-meal-photo] input[type=checkbox]').check();
-    await page.locator('[data-meal-photo] button').click();
-    await page.locator('[data-meal-photo] [role=status]').filter({hasText:'Foto salva'}).waitFor();
+    await page.locator('[data-meal-photo-open=meal1]').click();
+    assert(await page.locator('.meal-photo-picker [name=camera]').getAttribute('capture')==='environment','Camera capture missing');
+    assert(await page.locator('.meal-photo-picker [name=gallery]').getAttribute('capture')===null,'Gallery must not force the camera');
+    await page.locator('.meal-photo-picker [name=gallery]').setInputFiles({name:'demo-meal.png',mimeType:'image/png',buffer:Buffer.from(imageBytes)});
+    await page.locator('[data-photo-send]').waitFor({state:'visible'});await page.locator('[data-photo-send]').click();
+    await page.locator('.meal-photo-picker').waitFor({state:'hidden'});
+    await page.locator('[data-photo-status]').filter({hasText:'Foto salva'}).waitFor();
     assert(uploads.length===1 && uploads[0].webp && uploads[0].bytes<901*1024,'Meal photo must be compressed WebP');
     assert(await page.locator('[data-care="checkin"],#patient-upload').count()===0,'Old patient forms remain');
     const chat=page.locator('#patient-chat');await chat.locator('textarea').fill('DEMONSTRAÇÃO: dúvida para a Marcela');await chat.getByRole('button',{name:'Enviar mensagem',exact:true}).click();await chat.locator('.chat-status').filter({hasText:'Não foi possível confirmar'}).waitFor();assert(await chat.locator('textarea').inputValue()==='DEMONSTRAÇÃO: dúvida para a Marcela','Failed send lost draft');await chat.getByRole('button',{name:'Enviar mensagem',exact:true}).click();await chat.locator('.chat-status').filter({hasText:'Mensagem enviada'}).waitFor();assert(messages.length===1&&messageOps[0].p_id===messageOps[1].p_id,'Chat retry duplicated message');
@@ -178,6 +188,6 @@ async (existingPage) => {
     await page.reload();
     await page.locator('#h2o-goal').filter({hasText:'ainda não definiu'}).waitFor();
     assert(await page.locator('#h2o-fill').evaluate(e=>e.style.width)==='50%','No-goal meter must restore the persisted volume');
-    return {passed:true,mobile:390,desktop:1440,waterRequests:operations.length,clinicalVersions:clinical.length,mealChecks:checks.length,checks:['layout mobile/desktop','water failed-response retry idempotency','water undo','meal status/checkbox consistency and keyboard','training intensity/date','meal difficulty idempotent retry','meal WebP upload','profile photo','live hydration refresh and isolated clinical failure','private chat retry, reply and PDF attachment','empty assessment','read-only plan','structured data export','no-goal meter update, undo and reload'],productionWrites:0};
+    return {passed:true,mobile:390,desktop:1440,waterRequests:operations.length,clinicalVersions:clinical.length,mealChecks:checks.length,checks:['layout mobile/desktop','water failed-response retry idempotency','water undo','meal status/checkbox consistency and keyboard','training intensity/date','meal difficulty idempotent retry','camera/gallery photo picker, preview and WebP upload','collapsed PDF appendices','checkable breakfast preparations','profile photo','live hydration refresh and isolated clinical failure','private chat retry, reply and PDF attachment','empty assessment','read-only plan','structured data export','no-goal meter update, undo and reload'],productionWrites:0};
   } catch(error) { return {error:error.message, state:await page.evaluate(()=>({tab:document.querySelector('#panel-diet')?.hidden,rect:document.querySelector('[data-water]')?.getBoundingClientRect().toJSON(),html:document.querySelector('#panel-diet')?.outerHTML.slice(0,1000),css:getComputedStyle(document.querySelector('[data-water]')).display})),errors}; } finally { await page.close(); }
 }

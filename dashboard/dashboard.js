@@ -20,7 +20,8 @@ import {
 } from '../js/auth.js?v=20261030-options';
 import { initGuidesPanel } from './guides-panel.js';
 import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js?v=20261030-chat';
-import { initPatientExtras, bindMealExtras, mealExtrasMarkup, notifyPatientSaved } from './patient-extras.js';
+import { initPatientExtras, bindMealExtras, mealExtrasMarkup, notifyPatientSaved } from './patient-extras.js?v=20261030-patient2';
+import {splitDietNotes} from '../js/diet-content.mjs?v=20261030-patient2';
 import { hydrationMeter } from './patient-model.mjs?v=20261030-water';
 
 const greeting = document.getElementById('patient-greeting');
@@ -108,7 +109,7 @@ function renderDietCard(diet, container) {
           <span class="check-row__content">
             <span class="check-row__name">${escapeHtml(item.food_name)}</span>
             <span class="check-row__meta">
-              ${escapeHtml([item.quantity, item.unit].filter(Boolean).join(' ') || '—')}
+              ${escapeHtml([item.quantity, item.unit].filter(Boolean).join(' '))}
               ${item.notes ? ` · ${escapeHtml(item.notes)}` : ''}
               ${item.substitutions ? `<br>Substituições orientadas: ${escapeHtml(item.substitutions)}` : ''}
             </span>
@@ -116,7 +117,8 @@ function renderDietCard(diet, container) {
         </label>
       `;
     };
-    const itemsHtml = meal.options?.length>1 ? `<p class="diet-card__hint">Escolha uma das opções desta refeição.</p>${meal.options.map((o,index)=>`<details class="meal-option" ${index===0?'open':''}><summary>${escapeHtml(o.name)}</summary>${o.notes?`<p style="white-space:pre-wrap">${escapeHtml(o.notes)}</p>`:''}${items.filter(i=>i.option_name===o.name).map(renderItem).join('')}</details>`).join('')}` : items.map(renderItem).join('')+(meal.options?.[0]?.notes?`<p style="white-space:pre-wrap">${escapeHtml(meal.options[0].notes)}</p>`:'');
+    const shared=items.filter(i=>!i.option_name);
+    const itemsHtml = meal.options?.length>1 ? `${shared.map(renderItem).join('')}<p class="diet-card__hint">Escolha uma das opções desta refeição.</p>${meal.options.map((o,index)=>`<details class="meal-option" ${index===0?'open':''}><summary>${escapeHtml(o.name)}</summary>${o.notes?`<p style="white-space:pre-wrap">${escapeHtml(o.notes)}</p>`:''}${items.filter(i=>i.option_name===o.name).map(renderItem).join('')}</details>`).join('')}` : items.map(renderItem).join('')+(meal.options?.[0]?.notes?`<p style="white-space:pre-wrap">${escapeHtml(meal.options[0].notes)}</p>`:'');
 
     return `
       <div class="patient-meal-block ${mealChecked ? 'is-meal-checked' : ''}">
@@ -142,6 +144,7 @@ function renderDietCard(diet, container) {
     `;
   }).join('');
 
+  const notes=splitDietNotes(diet.notes);
   container.innerHTML = `
     <div class="patient-diet-card">
       <div class="diet-card__head">
@@ -151,7 +154,8 @@ function renderDietCard(diet, container) {
         </div>
         <span class="app-badge app-badge--${diet.status}">${statusLabel(diet.status)}</span>
       </div>
-      ${diet.notes ? `<p class="diet-card__notes">${escapeHtml(diet.notes)}</p>` : ''}
+      ${notes.general ? `<p class="diet-card__notes" style="white-space:pre-wrap">${escapeHtml(notes.general)}</p>` : ''}
+      ${notes.appendix?`<details class="diet-appendices"><summary>Listas de substituição, compras e receitas</summary><div class="diet-appendices__content">${escapeHtml(notes.appendix)}</div></details>`:''}
       <p class="diet-card__hint">Marque cada refeição ou alimento conforme for fazendo hoje.</p>
       ${mealsHtml || '<div class="app-empty">Sem alimentos cadastrados.</div>'}
     </div>

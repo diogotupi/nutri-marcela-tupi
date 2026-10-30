@@ -17,7 +17,9 @@ PDF.js 6.4.299 fica em `vendor/pdfjs/`, com licença. O arquivo é processado no
 
 O exemplo real de 12 páginas foi conferido: 7 refeições por nome/horário, 4 opções de lanche, 26 alimentos, 15 substituições e continuação de observações. O arquivo clínico original não foi incluído no repositório.
 
-A importação também reconhece o formato impresso do Webdiet: `08:00 - Café da manhã`, alimentos com marcadores, quantidades como “à vontade”/“mínimo”, alternativas com “Ou” e referências aos grupos de substituição. Percorre todos os títulos da página, agrupando opções de mesmo nome/horário mesmo com diferenças de acentuação. Listas de substituição, compras e receitas são preservadas nas orientações gerais; cabeçalhos e rodapés de identificação não entram nos registros. O segundo exemplo real de 16 páginas foi validado na prévia e no envio do formulário: 5 grupos de refeições, 7 opções e 26 alimentos, sem gravações reais.
+A importação também reconhece o formato impresso do Webdiet: `08:00 - Café da manhã`, alimentos com marcadores, quantidades como “à vontade”/“mínimo”, alternativas com “Ou” e referências aos grupos de substituição. Percorre todos os títulos da página, agrupando opções de mesmo nome/horário mesmo com diferenças de acentuação. Listas de substituição, compras e receitas são preservadas nas orientações gerais, em uma seção recolhida na tela do paciente; cabeçalhos e rodapés de identificação não entram nos registros. O segundo exemplo de 16 páginas conserva seus 26 alimentos e agora tem quatro preparos de café marcáveis.
+
+Opções de preparo listadas em observações (dois ou mais blocos `Opção 1`, `Opção 2` etc.) são estruturadas somente quando ainda não há alternativas estruturadas para a refeição. O nome do preparo vira um item marcável, sem inventar porções ou ingredientes. Os alimentos e quantidades comuns ficam em `shared_items` no editor e em `diet_items.option_name=null` no banco. As observações comuns, como as do almoço, permanecem intactas. O editor permite alterar esses alimentos sem duplicá-los entre as opções. A correção da dieta já publicada preservou os IDs/quantidades/checks originais e guardou a versão anterior em `clinic_audit` como `import_repair`.
 
 As opções ficam em `diet_meals.options`; os alimentos reais conservam IDs próprios com `diet_items.option_name`. O renderer do paciente mantém sua estrutura e exibe as alternativas dentro da mesma refeição. A versão anterior permanece no histórico. O endereço antigo `/admin/diet/` encaminha para o editor integrado.
 
@@ -31,9 +33,9 @@ Exclusões exigem confirmação extra para acompanhamento ativo. O manifesto pri
 
 ## Validação
 
-- `npm test`: 33 testes de modelos, incluindo cores, datas, os dois formatos de importação, anexos e agrupamento dos relatos.
+- `npm test`: 36 testes de modelos, incluindo cores, datas, formatos de importação, anexos, preparos marcáveis e preservação de quantidades.
 - `tests/clinic-browser-qa.cjs`: calendário, ficha, chat persistente, cadastro de quatro campos, acompanhamento, opções, celular e painel da secretária, sem gravações reais.
-- `tests/patient-browser-qa.cjs`: fluxos existentes do paciente, com APIs interceptadas.
+- `tests/patient-browser-qa.cjs`: fluxos existentes do paciente, registro de preparos, anexos recolhidos e envio de foto com escolha câmera/galeria, prévia, compressão e compartilhamento privado. O “chutei o balde” registra alimentos e gatilho, sem o campo de sentimento; relatos anteriores são preservados. APIs interceptadas, sem gravações reais.
 - SQL transacional com rollback: `clinic-regression.sql`, `crm-regression.sql`, `patient-chat-regression.sql`, `client-deletion-regression.sql`, `management-regression.sql`, `progress-regression.sql`. O primeiro cobre painel compartilhado, autoria, logs, login, isolamento e idempotência; substitui o antigo teste de equipe com permissões diferentes.
 
 Limpeza solicitada: os dois pacientes anteriores foram removidos com os registros, contas e arquivos; a conta administrativa foi preservada. Nenhuma amostra de teste fica no banco.

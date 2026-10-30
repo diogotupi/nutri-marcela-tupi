@@ -2,6 +2,7 @@ import { getSupabase, getLocalDateString, escapeHtml as esc } from '../js/app-co
 import { addClinical, uploadAttachment, getSignedAttachment } from '../js/clinical.js';
 import { preparePhotoUpload } from '../js/media-upload.js';
 import { intensityLabel } from './patient-model.mjs';
+import {openMealPhotoPicker} from './meal-photo.js?v=20261030-patient2';
 
 const db=()=>getSupabase();
 const pendingClinical=new WeakMap();
@@ -53,17 +54,13 @@ export async function initPatientExtras(profile) {
   const {error}=await db().rpc('record_patient_visit');if(error)console.warn('Não foi possível registrar a atividade de acesso.');
 }
 export function bindMealExtras(container,profile) {
-  container.querySelectorAll('[data-meal-photo]').forEach(form=>form.addEventListener('submit',async event=>{
-    event.preventDefault();const button=form.querySelector('button'),status=form.querySelector('[role=status]');button.disabled=true;status.textContent='Preparando foto…';
-    try {const file=await preparePhotoUpload(form.photo.files[0]);await addClinical(profile.id,'consent',{scope:'meal_photo',status:'accepted',policy_version:1});const day=getLocalDateString();await uploadAttachment(profile.id,file,{category:'meal',meal_id:form.dataset.mealPhoto,date:day,measured_at:`${day}T12:00:00-03:00`});form.reset();status.textContent='Foto salva. A Marcela pode consultar no seu diário.';notifyPatientSaved();}
-    catch(error){status.textContent=`Não foi enviada: ${error.message}`;}finally{button.disabled=false;}
-  }));
+  container.querySelectorAll('[data-meal-photo-open]').forEach(button=>button.onclick=()=>openMealPhotoPicker({patientId:profile.id,mealId:button.dataset.mealPhotoOpen,onSent:()=>{const status=button.parentElement.querySelector('[data-photo-status]');if(status)status.textContent='Foto salva. A Marcela já pode acompanhar.';notifyPatientSaved();}}));
   container.querySelectorAll('[data-meal-difficulty]').forEach(form=>form.addEventListener('submit',async event=>{
     event.preventDefault();const button=form.querySelector('button'),status=form.querySelector('[role=status]');button.disabled=true;status.textContent='Salvando seu relato…';
-    try {const day=getLocalDateString(),payload={category:'meal_difficulty',meal_id:form.dataset.mealDifficulty,date:day,feelings:form.feelings.value.trim(),trigger:form.trigger.value.trim(),foods:form.foods.value.trim(),reported_by:'patient'};await addClinical(profile.id,'checkin',payload,{id:operationFor(form,payload),occurredAt:`${day}T12:00:00-03:00`});pendingClinical.delete(form);form.reset();status.textContent='Relato salvo. Obrigada por compartilhar; a Marcela pode te ajudar com isso.';notifyPatientSaved();}
+    try {const day=getLocalDateString(),payload={category:'meal_difficulty',meal_id:form.dataset.mealDifficulty,date:day,trigger:form.trigger.value.trim(),foods:form.foods.value.trim(),reported_by:'patient'};await addClinical(profile.id,'checkin',payload,{id:operationFor(form,payload),occurredAt:`${day}T12:00:00-03:00`});pendingClinical.delete(form);form.reset();status.textContent='Relato salvo. Obrigada por compartilhar; a Marcela pode te ajudar com isso.';notifyPatientSaved();}
     catch(error){status.textContent=`Não foi salvo: ${error.message}`;}finally{button.disabled=false;}
   }));
 }
 export function mealExtrasMarkup(mealId) {
-  return `<div class="meal-extra-actions"><details class="meal-photo-panel"><summary>Adicionar foto da refeição</summary><form data-meal-photo="${esc(mealId)}" class="app-form"><label>Escolher foto<input name="photo" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" required></label><label class="photo-consent"><input type="checkbox" required> Concordo em compartilhar esta foto de forma privada com a equipe da Marcela.</label><button class="app-btn app-btn--ghost">Enviar foto</button><p role="status"></p></form></details><details class="meal-difficulty-panel"><summary>Chutei o balde</summary><p>Acontece. Este é um espaço para entender o momento, sem culpa ou julgamento.</p><form data-meal-difficulty="${esc(mealId)}" class="app-form"><label>O que você comeu?<textarea name="foods" rows="2" maxlength="4000" required></textarea></label><label>Como você se sentiu?<textarea name="feelings" rows="2" maxlength="4000" required></textarea></label><label>Percebeu algum gatilho? (opcional)<textarea name="trigger" rows="2" maxlength="4000" placeholder="Pode ser fome, cansaço, situação social…"></textarea></label><button class="app-btn app-btn--primary">Compartilhar com a Marcela</button><p role="status"></p></form></details></div>`;
+  return `<div class="meal-extra-actions"><div class="meal-photo-action"><button type="button" class="app-btn app-btn--ghost" data-meal-photo-open="${esc(mealId)}">Enviar foto</button><p data-photo-status role="status"></p></div><details class="meal-difficulty-panel"><summary>Chutei o balde</summary><p>Acontece. Este é um espaço para entender o momento, sem culpa ou julgamento.</p><form data-meal-difficulty="${esc(mealId)}" class="app-form"><label>O que você comeu?<textarea name="foods" rows="2" maxlength="4000" required></textarea></label><label>Percebeu algum gatilho? (opcional)<textarea name="trigger" rows="2" maxlength="4000" placeholder="Pode ser fome, cansaço, ansiedade…"></textarea></label><button class="app-btn app-btn--primary">Compartilhar com a Marcela</button><p role="status"></p></form></details></div>`;
 }
