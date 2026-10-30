@@ -173,7 +173,7 @@ export async function fetchDietWithMeals(dietId) {
 
   const { data: meals, error: mealsError } = await supabase
     .from('diet_meals')
-    .select('id, name, scheduled_time, sort_order, diet_items(id, food_name, quantity, unit, notes, substitutions, sort_order)')
+    .select('id, name, scheduled_time, notes, options, sort_order, diet_items(id, food_name, quantity, unit, notes, substitutions, option_name, sort_order)')
     .eq('diet_id', dietId)
     .order('sort_order');
 

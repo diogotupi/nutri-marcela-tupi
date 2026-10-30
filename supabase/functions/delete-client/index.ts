@@ -1,14 +1,27 @@
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 const cors={'Access-Control-Allow-Origin':'https://nutrimarcelatupi.com','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, OPTIONS'};
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...cors,'Content-Type':'application/json','Cache-Control':'no-store'}});
+// These jobs already contain an authorized deletion. Retrying cannot delete a new client.
+async function resumePendingDeletions(){
+ const url=Deno.env.get('SUPABASE_URL'),service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');if(!url||!service)return;
+ const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});
+ const {data:jobs}=await admin.from('client_deletion_jobs').select('id,user_id,files').eq('status','pending').order('created_at').limit(10);
+ for(const job of jobs||[])try{
+ const buckets=new Map<string,string[]>();for(const file of job.files||[]){if(!buckets.has(file.bucket))buckets.set(file.bucket,[]);buckets.get(file.bucket)!.push(file.path);}
+ for(const [bucket,paths]of buckets)for(let i=0;i<paths.length;i+=100){const {error}=await admin.storage.from(bucket).remove(paths.slice(i,i+100));if(error)throw error;}
+ if(job.user_id){const {error}=await admin.auth.admin.deleteUser(job.user_id);if(error&&error.status!==404)throw error;}
+ await admin.from('client_deletion_jobs').update({status:'completed',completed_at:new Date().toISOString(),user_id:null,files:[]}).eq('id',job.id);
+ }catch{/* The authorized manifest stays pending for the next invocation. */}
+}
 Deno.serve(async req=>{
  if(req.method==='OPTIONS')return new Response('ok',{headers:cors});if(req.method!=='POST')return json({error:'Método não permitido.'},405);
+ EdgeRuntime.waitUntil(resumePendingDeletions());
  try{
  const url=Deno.env.get('SUPABASE_URL'),key=Deno.env.get('SUPABASE_ANON_KEY'),service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');if(!url||!key||!service)return json({error:'Configuração incompleta.'},503);
  const authorization=req.headers.get('Authorization');if(!authorization)return json({error:'Autenticação necessária.'},401);
  const caller=createClient(url,key,{global:{headers:{Authorization:authorization}},auth:{persistSession:false,autoRefreshToken:false}});
  const {data:auth,error:authError}=await caller.auth.getUser();if(authError||!auth.user)return json({error:'Sessão inválida.'},401);
- const {data:allowed,error:roleError}=await caller.rpc('is_admin');if(roleError||allowed!==true)return json({error:'Exclusão exclusiva da administradora.'},403);
+ const {data:allowed,error:roleError}=await caller.rpc('is_clinic_staff');if(roleError||allowed!==true)return json({error:'Acesso da equipe autenticada necessário. Verifique sua autenticação em dois fatores.'},403);
  const body=await req.json();let jobId=body.job_id;
  if(!jobId){const {data,error}=await caller.rpc('crm_delete_client',{p_patient:body.patient_id,p_name:body.name,p_confirmed:body.confirmed===true,p_active_ack:body.active_ack===true,p_confirmation:String(body.confirmation||'')});if(error)return json({error:error.message},400);jobId=data;}
  if(typeof jobId!=='string'||!/^[0-9a-f-]{36}$/i.test(jobId))return json({error:'Exclusão inválida.'},400);

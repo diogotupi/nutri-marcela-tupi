@@ -8,7 +8,7 @@ Deno.serve(async req=>{
  const authorization=req.headers.get('Authorization');if(!authorization)return json({error:'Autenticação necessária.'},401);
  const caller=createClient(url,key,{global:{headers:{Authorization:authorization}},auth:{persistSession:false,autoRefreshToken:false}});
  const {data:auth,error:authError}=await caller.auth.getUser();if(authError||!auth.user)return json({error:'Sessão inválida.'},401);
- const {data:allowed,error:roleError}=await caller.rpc('is_admin');if(roleError||allowed!==true)return json({error:'Apenas a administradora pode liberar login.'},403);
+ const {data:allowed,error:roleError}=await caller.rpc('is_clinic_staff');if(roleError||allowed!==true)return json({error:'Acesso da equipe autenticada necessário. Verifique sua autenticação em dois fatores.'},403);
  const body=await req.json(),patient=String(body.patient_id||''),username=String(body.username||'').trim().toLowerCase(),password=String(body.password||'');
  if(!/^[0-9a-f-]{36}$/i.test(patient)||!/^[a-z0-9._-]{3,32}$/.test(username)||password.length<12||password.length>128)return json({error:'Informe cliente, usuário válido e senha de 12 a 128 caracteres.'},400);
  const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});

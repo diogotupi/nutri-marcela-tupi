@@ -35,12 +35,12 @@ do $$ declare au uuid:=gen_random_uuid();su uuid:=gen_random_uuid();pu uuid:=gen
  if (select ends_on from public.care_attention() where patient_id=pp) is not null then raise exception 'FAIL treated period still showing expiry alert';end if;
  perform set_config('request.jwt.claims',jsonb_build_object('sub',su,'role','authenticated','aal','aal1')::text,true);
  payload:=public.crm_profile(client);
- if payload->'client'->>'phone' is not null or payload->'client'->>'username' is not null then raise exception 'FAIL restricted phone/login leaked';end if;
- if exists(select 1 from public.profiles where id=client) or exists(select 1 from public.clinical_records where patient_id=client) or exists(select 1 from public.crm_enrollments where patient_id=client) then raise exception 'FAIL direct staff clinical reads';end if;
+ if payload->'client'->>'phone' is null then raise exception 'FAIL shared contact access';end if;
+ if not exists(select 1 from public.profiles where id=client) or not exists(select 1 from public.clinical_records where patient_id=client) or not exists(select 1 from public.crm_enrollments where patient_id=client) then raise exception 'FAIL shared staff clinical reads';end if;
  perform public.crm_save_observations(enrollment,'QA staff observation');
- begin perform public.crm_save_client(client,'Unauthorized edit','21999118877');raise exception 'FAIL staff client write';exception when insufficient_privilege then null;end;
- begin perform public.crm_save_enrollment(enrollment,client,'journey',t-15,t+75);raise exception 'FAIL staff enrollment write';exception when insufficient_privilege then null;end;
- begin perform public.crm_update_staff(su,'Escalated','{"manage_clients":true}');raise exception 'FAIL staff self escalation';exception when insufficient_privilege then null;end;
+ perform public.crm_save_client(client,'QA staff edit','21999118877');
+ perform public.crm_save_enrollment(enrollment,client,'journey',t-15,t+75);
+ if exists(select 1 from public.clinic_audit) then raise exception 'FAIL staff audit access';end if;
  execute 'reset role';insert into auth.mfa_factors(id,user_id,factor_type,status,created_at,updated_at) values(gen_random_uuid(),su,'totp','verified',now(),now());execute 'set local role authenticated';
  begin perform public.crm_list();raise exception 'FAIL staff MFA bypass';exception when insufficient_privilege then null;end;
  perform set_config('request.jwt.claims',jsonb_build_object('sub',su,'role','authenticated','aal','aal2')::text,true);perform public.crm_list();

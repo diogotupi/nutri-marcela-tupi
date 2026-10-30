@@ -11,13 +11,13 @@ export async function mountPatientChat(root,{patientId,admin=false,name='pacient
  const bottom=()=>log.scrollHeight-log.scrollTop-log.clientHeight<40;
  const state=(text,error=false)=>{status.textContent=text;status.classList.toggle('chat-error',error);};
  function draw({prepend=false}={}){const atBottom=bottom(),height=log.scrollHeight,top=log.scrollTop;
- log.innerHTML=messages.length?messages.map(m=>`<article class="chat-bubble ${(m.sender_role==='admin')===admin?'is-mine':'is-theirs'}" data-message-id="${m.id}"><span class="chat-author">${m.sender_role==='admin'?'Marcela':'Paciente'}</span>${m.body?`<p>${esc(m.body)}</p>`:''}${m.attachment_path?`<button type="button" class="chat-file" data-chat-path="${esc(m.attachment_path)}">↗ ${esc(m.attachment_name||'Abrir arquivo')}</button>`:''}<time datetime="${esc(m.created_at)}">${time(m.created_at)}</time></article>`).join(''):'<p class="chat-empty">Sua conversa começa aqui. Envie uma mensagem para a Marcela.</p>';
+ log.innerHTML=messages.length?messages.map(m=>`<article class="chat-bubble ${(m.sender_role==='admin')===admin?'is-mine':'is-theirs'}" data-message-id="${m.id}"><span class="chat-author">${esc(m.sender_name||(m.sender_role==='admin'?'Marcela':'Paciente'))}</span>${m.body?`<p>${esc(m.body)}</p>`:''}${m.attachment_path?`<button type="button" class="chat-file" data-chat-path="${esc(m.attachment_path)}">↗ ${esc(m.attachment_name||'Abrir arquivo')}</button>`:''}<time datetime="${esc(m.created_at)}">${time(m.created_at)}</time></article>`).join(''):'<p class="chat-empty">Sua conversa começa aqui. Envie uma mensagem para a Marcela.</p>';
  if(prepend)log.scrollTop=top+log.scrollHeight-height;else if(atBottom)log.scrollTop=log.scrollHeight;older.hidden=!hasOlder;
  }
  async function markRead(){if(!alive||reading||!visible||document.hidden||root.closest('[hidden]')||!bottom()||!messages.length)return;const last=messages.at(-1);if(last.id===readId)return;reading=true;try{await rpc('mark_patient_chat_read',{p_patient:patientId,p_message:last.id});readId=last.id;root.dispatchEvent(new CustomEvent('chat:read',{bubbles:true}));}catch{/* A read receipt never blocks the conversation. */}finally{reading=false;}}
  function merge(rows){const map=new Map(messages.map(m=>[m.id,m]));for(const row of rows)map.set(row.id,row);messages=[...map.values()].sort((a,b)=>Number(a.seq)-Number(b.seq));}
  async function load({previous=false}={}){if(fetching||!alive)return;fetching=true;const refresh=root.querySelector('[data-chat-refresh]');refresh.disabled=true;older.disabled=true;
- try{let q=db.from('patient_messages').select('id,seq,sender_role,body,attachment_path,attachment_name,created_at').eq('patient_id',patientId);
+ try{let q=db.from('patient_messages').select('id,seq,sender_role,sender_name,body,attachment_path,attachment_name,created_at').eq('patient_id',patientId);
  if(previous&&messages.length)q=q.lt('seq',messages[0].seq).order('seq',{ascending:false}).limit(50);
  else if(ready&&messages.length)q=q.gt('seq',messages.at(-1).seq).order('seq').limit(100);
  else q=q.order('seq',{ascending:false}).limit(50);

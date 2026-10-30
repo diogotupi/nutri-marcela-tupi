@@ -1,4 +1,4 @@
-import {mountPatientChat} from '../js/patient-chat.js?v=20261030-chat';
+import {mountPatientChat} from '../js/patient-chat.js?v=20261030-team';
 import {
   escapeHtml,
   formatDate,
@@ -17,7 +17,7 @@ import {
   requireAuth,
   signOut,
   toggleItemCheck,
-} from '../js/auth.js';
+} from '../js/auth.js?v=20261030-options';
 import { initGuidesPanel } from './guides-panel.js';
 import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js?v=20261030-chat';
 import { initPatientExtras, bindMealExtras, mealExtrasMarkup, notifyPatientSaved } from './patient-extras.js';
@@ -74,8 +74,9 @@ function renderWater() {
 function mealProgress(meal) {
   const items = (meal.diet_items || []).filter((item) => item.food_name);
   if (!items.length) return tracking.mealIds.has(meal.id);
-  const done = items.filter((item) => tracking.itemIds.has(item.id)).length;
-  return { done, total: items.length, complete: done === items.length };
+  const options = meal.options?.length ? meal.options : [{name:null}];
+  const progress = options.map(o => {const group=items.filter(i=>!i.option_name||i.option_name===o.name);const done=group.filter(i=>tracking.itemIds.has(i.id)).length;return {done,total:group.length,complete:group.length>0&&done===group.length};});
+  return progress.sort((a,b)=>b.done/Math.max(b.total,1)-a.done/Math.max(a.total,1))[0];
 }
 
 function renderDietCard(diet, container) {
@@ -93,7 +94,7 @@ function renderDietCard(diet, container) {
     const reportStatus = report?.status || (mealChecked ? 'done' : '');
     const progress = mealProgress(meal);
 
-    const itemsHtml = items.map((item) => {
+    const renderItem = (item) => {
       const checked = tracking.itemIds.has(item.id);
       return `
         <label class="check-row ${checked ? 'is-checked' : ''}">
@@ -114,7 +115,8 @@ function renderDietCard(diet, container) {
           </span>
         </label>
       `;
-    }).join('');
+    };
+    const itemsHtml = meal.options?.length>1 ? `<p class="diet-card__hint">Escolha uma das opções desta refeição.</p>${meal.options.map((o,index)=>`<details class="meal-option" ${index===0?'open':''}><summary>${escapeHtml(o.name)}</summary>${o.notes?`<p style="white-space:pre-wrap">${escapeHtml(o.notes)}</p>`:''}${items.filter(i=>i.option_name===o.name).map(renderItem).join('')}</details>`).join('')}` : items.map(renderItem).join('')+(meal.options?.[0]?.notes?`<p style="white-space:pre-wrap">${escapeHtml(meal.options[0].notes)}</p>`:'');
 
     return `
       <div class="patient-meal-block ${mealChecked ? 'is-meal-checked' : ''}">
@@ -133,7 +135,7 @@ function renderDietCard(diet, container) {
               : ''}
           </span>
         </label>
-        ${itemsHtml ? `<div class="meal-items">${itemsHtml}</div>` : ''}
+        ${meal.notes?`<p style="white-space:pre-wrap">${escapeHtml(meal.notes)}</p>`:''}${itemsHtml ? `<div class="meal-items">${itemsHtml}</div>` : ''}
         <form data-meal-report="${meal.id}" class="patient-meal-report"><label>Como foi esta refeição?<select name="status">${[['','Sem registro'],['done','Realizada'],['partial','Parcial'],['skipped','Não realizada']].map(([value,label])=>`<option value="${value}" ${reportStatus===value?'selected':''}>${label}</option>`).join('')}</select></label><label>Comentário (opcional)<input name="comment" maxlength="2000" value="${escapeHtml(report?.comment || '')}"></label><button class="app-btn app-btn--ghost">Salvar relato</button><p role="status"></p></form>
         ${mealExtrasMarkup(meal.id)}
       </div>

@@ -8,14 +8,14 @@ Deno.serve(async req=>{
  const authorization=req.headers.get('Authorization');if(!authorization)return json({error:'Autenticação necessária.'},401);
  const caller=createClient(url,key,{global:{headers:{Authorization:authorization}},auth:{persistSession:false,autoRefreshToken:false}});
  const {data:auth,error:authError}=await caller.auth.getUser();if(authError||!auth.user)return json({error:'Sessão inválida.'},401);
- const {data:allowed,error:roleError}=await caller.rpc('is_admin');if(roleError||allowed!==true)return json({error:'Cadastro exclusivo da administradora autenticada.'},403);
+ const {data:allowed,error:roleError}=await caller.rpc('is_clinic_staff');if(roleError||allowed!==true)return json({error:'Acesso da equipe autenticada necessário. Verifique sua autenticação em dois fatores.'},403);
  const body=await req.json(),username=String(body.username||'').trim().toLowerCase(),fullName=String(body.full_name||'').trim(),password=String(body.password||'');
  if(!/^[a-z0-9._-]{3,32}$/.test(username)||!fullName||fullName.length>150||password.length<12||password.length>128)return json({error:'Informe nome, usuário válido (3–32 caracteres) e senha de 12 a 128 caracteres.'},400);
  const permissionKeys=['enabled','view_crm','manage_clients','manage_enrollments','complete_contacts','edit_observations','view_tasks','complete_tasks','view_contact','schedule_appointments'];
  const supplied=body.permissions||{};if(typeof supplied!=='object'||Array.isArray(supplied)||Object.entries(supplied).some(([k,v])=>!permissionKeys.includes(k)||typeof v!=='boolean'))return json({error:'Permissões inválidas.'},400);
  const permissions=Object.fromEntries(permissionKeys.map(k=>[k,supplied[k]??(k==='view_tasks'||k==='enabled')]));
  const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});
- const {data:actor,error:actorError}=await admin.from('profiles').select('id').eq('user_id',auth.user.id).eq('role','admin').single();if(actorError||!actor)return json({error:'Administradora não encontrada.'},403);
+ const {data:actor,error:actorError}=await admin.from('profiles').select('id,full_name,role').eq('user_id',auth.user.id).in('role',['admin','secretary']).single();if(actorError||!actor)return json({error:'Administradora não encontrada.'},403);
  const {data:created,error:createError}=await admin.auth.admin.createUser({email:`${username}@app.nutrimarcelatupi.com`,password,email_confirm:true,user_metadata:{username,full_name:fullName}});
  if(createError||!created.user)return json({error:createError?.message?.toLowerCase().includes('already')?'Este usuário já existe.':'Não foi possível cadastrar. Confira os requisitos da senha e tente novamente.'},400);
  const userId=created.user.id;
@@ -23,7 +23,7 @@ Deno.serve(async req=>{
  if(profileError||!profile){await admin.auth.admin.deleteUser(userId);return json({error:'Não foi possível criar o perfil da secretária.'},500);}
  const {error:permissionError}=await admin.from('staff_permissions').insert({user_id:userId,...permissions});
  if(permissionError){await admin.from('profiles').delete().eq('id',profile.id);await admin.auth.admin.deleteUser(userId);return json({error:'Não foi possível salvar as permissões. Cadastro desfeito.'},500);}
- const {error:auditError}=await admin.from('care_audit').insert({table_name:'profiles',record_id:profile.id,actor_id:auth.user.id,action:'secretary_created'});
+ const {error:auditError}=await admin.from('clinic_audit').insert({actor_id:actor.id,actor_name:actor.full_name,actor_role:actor.role,source:'team',action:'secretary_created',record_id:profile.id,after_data:{full_name:fullName,username}});
  return json({secretary:profile,warning:auditError?'Cadastro concluído, mas o registro de auditoria falhou. Contate o suporte.':null});
  }catch{return json({error:'Não foi possível concluir o cadastro.'},500);}
 });

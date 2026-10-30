@@ -10,7 +10,7 @@ Deno.serve(async req=>{
     const authorization=req.headers.get('Authorization');if(!authorization)return json({error:'Autenticação necessária.'},401);
     const caller=createClient(url,anonKey,{global:{headers:{Authorization:authorization}},auth:{persistSession:false,autoRefreshToken:false}});
     const {data:user,error:authError}=await caller.auth.getUser();if(authError||!user.user)return json({error:'Sessão inválida.'},401);
-    const {data:allowed,error:roleError}=await caller.rpc('is_admin');if(roleError||allowed!==true)return json({error:'Acesso exclusivo da administradora. Verifique sua autenticação em dois fatores.'},403);
+    const {data:allowed,error:roleError}=await caller.rpc('is_clinic_staff');if(roleError||allowed!==true)return json({error:'Acesso da equipe autenticada necessário. Verifique sua autenticação em dois fatores.'},403);
     const body=await req.json();const patientId=String(body.patient_id||''),password=String(body.new_password||'');
     if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(patientId)||password.length<12||password.length>128)return json({error:'Informe um paciente válido e uma senha de 12 a 128 caracteres.'},400);
     const admin=createClient(url,serviceKey,{auth:{persistSession:false,autoRefreshToken:false}});
@@ -18,7 +18,7 @@ Deno.serve(async req=>{
     if(patientError||!patient)return json({error:'Paciente não encontrado.'},404);
     const {error:updateError}=await admin.auth.admin.updateUserById(patient.user_id,{password});
     if(updateError)return json({error:'Não foi possível redefinir a senha. Confira os requisitos de segurança.'},400);
-    const {error:auditError}=await admin.from('care_audit').insert({table_name:'profiles',record_id:patientId,actor_id:user.user.id,action:'password_reset_by_admin'});
+    const {data:actor}=await admin.from('profiles').select('id,full_name,role').eq('user_id',user.user.id).single(); const {error:auditError}=await admin.from('clinic_audit').insert({actor_id:actor.id,actor_name:actor.full_name,actor_role:actor.role,patient_id:patientId,source:'access',action:'password_reset'});
     return json({success:true,warning:auditError?'Senha redefinida; falha ao registrar auditoria. Contate o suporte.':null});
   } catch {return json({error:'Não foi possível concluir a solicitação.'},500);}
 });

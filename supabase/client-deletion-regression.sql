@@ -18,7 +18,7 @@ do $$ declare au uuid:=gen_random_uuid();pu uuid:=gen_random_uuid();su uuid:=gen
  begin perform public.crm_delete_client(pp,'QA deletion patient',true,true,'wrong');raise exception 'FAIL active period no typed confirmation';exception when raise_exception then if sqlerrm like 'FAIL%' then raise;end if;end;
  begin perform public.crm_delete_client(pp,'QA deletion patient',true,true,null);raise exception 'FAIL active period null confirmation';exception when raise_exception then if sqlerrm like 'FAIL%' then raise;end if;end;
  perform set_config('request.jwt.claims',jsonb_build_object('sub',su,'role','authenticated','aal','aal1')::text,true);
- begin perform public.crm_delete_client(pp,'QA deletion patient',true,true,'EXCLUIR');raise exception 'FAIL secretary can delete';exception when insufficient_privilege then null;end;
+ begin perform public.crm_delete_client(pp,'QA deletion patient',true,false,'EXCLUIR');raise exception 'FAIL secretary bypasses active acknowledgement';exception when raise_exception then if sqlerrm like 'FAIL%' then raise;end if;end;
  perform set_config('request.jwt.claims',jsonb_build_object('sub',pu,'role','authenticated','aal','aal1')::text,true);
  begin perform public.crm_delete_client(pp,'QA deletion patient',true,true,'EXCLUIR');raise exception 'FAIL patient can delete';exception when insufficient_privilege then null;end;
  if exists(select 1 from public.client_deletion_jobs) then raise exception 'FAIL deletion jobs exposed to patient';end if;
@@ -30,5 +30,5 @@ do $$ declare au uuid:=gen_random_uuid();pu uuid:=gen_random_uuid();su uuid:=gen
  execute 'reset role';
  if (select banned_until from auth.users where id=pu)<=now() then raise exception 'FAIL access not blocked';end if;
 end $$;
-select 'PASS client deletion: explicit confirmation, active period extra acknowledgement, admin-only, dependent data removed, access blocked, private cleanup job, team preserved' as result;
+select 'PASS client deletion: explicit confirmation, active period acknowledgement for all staff, patient denied, dependent data removed, access blocked, private cleanup job, team preserved' as result;
 rollback;
