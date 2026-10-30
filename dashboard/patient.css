@@ -26,3 +26,7 @@
 .photo-picker-preview button{width:100%;margin:12px 0}
 .photo-share-note,.meal-photo-picker>[role=status]{font-size:.8rem;line-height:1.5;color:#64705f}
 @media(max-width:760px){.app-sidebar .app-brand img{max-width:190px}.meal-photo-picker{margin:auto auto 14px;padding:20px}.diet-appendices__content{max-height:45vh}}
+.profile-photo-control{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:3px 0 8px;min-width:0}
+.patient-avatar .profile-photo-select{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:46px;padding:11px 17px;border:1px solid #688078;background:#fffdf9;color:#29483f;border-radius:12px;box-shadow:2px 3px 0 #e8baaa;cursor:pointer;font-weight:600;flex:none}
+.profile-photo-select svg{flex:none}
+.profile-photo-filename{font-size:.8rem;color:#64705f;overflow-wrap:anywhere;min-width:0;flex:1 1 150px}

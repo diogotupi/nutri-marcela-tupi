@@ -20,7 +20,7 @@ import {
 } from '../js/auth.js?v=20261030-options';
 import { initGuidesPanel } from './guides-panel.js';
 import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js?v=20261030-chat';
-import { initPatientExtras, bindMealExtras, mealExtrasMarkup, notifyPatientSaved } from './patient-extras.js?v=20261030-patient2';
+import { initPatientExtras, bindMealExtras, mealExtrasMarkup, notifyPatientSaved } from './patient-extras.js?v=20261030-profile-photo';
 import {splitDietNotes} from '../js/diet-content.mjs?v=20261030-patient2';
 import { hydrationMeter } from './patient-model.mjs?v=20261030-water';
 
