@@ -63,3 +63,10 @@ Migrações `crm_enrollments_and_contact_cycles`, `crm_team_management`, `crm_en
 A limpeza pontual autorizada removeu as quatro contas de pacientes iniciais e seus registros/acessos, preservando a administradora. Essa limpeza não faz parte de migrações reproduzíveis e não será repetida em novos cadastros.
 
 Validação: 26 testes unitários; SQL transacional do CRM, equipe, progresso e correções administrativas; Playwright do CRM, prontuário, editor de refeições e área do paciente. Fixtures SQL são revertidas e o navegador usa dados interceptados, sem cadastrar pacientes fictícios em produção. Os testes não usaram credenciais reais da Marcela ou da equipe.
+# Exclusão de clientes
+
+No perfil do CRM, **Excluir cliente** é exclusivo da Marcela. A confirmação explica que cadastro, períodos, contatos, prontuário, arquivos e acesso serão removidos. Há uma caixa de confirmação obrigatória para todos; se houver período ativo ou agendado, o formulário destaca os contratos e exige confirmação adicional e a palavra `EXCLUIR`. O banco confere novamente os períodos para impedir exclusão com aviso desatualizado.
+
+A remoção dos registros e o bloqueio das sessões são transacionais. Storage e conta Auth são eliminados pela função `delete-client` usando as APIs do serviço. Se essa limpeza externa falhar, o CRM mostra **Finalizar exclusão** para repetir a etapa sem recriar registros ou repetir o apagamento. O registro técnico de exclusão tem RLS exclusiva da administradora e não guarda nome ou dados clínicos. Nenhum cliente real foi apagado durante os testes.
+
+Validação: `supabase/client-deletion-regression.sql` usa fixtures e rollback para confirmar exclusão, proteção de conta administrativa, permissão, remoção de vínculos e bloqueio de acesso; `tests/crm-browser-qa.cjs` cobre cancelar, confirmação comum, confirmação de acompanhamento ativo e ausência do botão para secretárias.

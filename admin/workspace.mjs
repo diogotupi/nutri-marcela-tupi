@@ -1,4 +1,4 @@
-import {mountCRM,capabilityLabels} from './crm.mjs?v=20261030-client';
+import {mountCRM,capabilityLabels} from './crm.mjs?v=20261030-delete';
 import { getSupabase, escapeHtml as esc } from '../js/app-core.js';
 import { requireAuth, signOut, createPatient, createDiet, fetchPatient, fetchPatientDiets, fetchDietWithMeals } from '../js/auth.js';
 import { listClinical, addClinical, reviewClinical, listAppointments, addAppointment, listTasks, addTask, updateTask, uploadAttachment, getSignedAttachment } from '../js/clinical.js';
@@ -40,7 +40,7 @@ $('#patient-list').onclick=e=>{const p=e.target.closest('[data-patient]'),s=e.ta
 document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>navigate(b.dataset.page));
 function markNavigation(){document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('selected',b.dataset.page===page));$('#breadcrumb').textContent=`CONSULTÓRIO / ${({overview:'VISÃO GERAL',patients:'PACIENTES',agenda:'AGENDA',tasks:'PENDÊNCIAS',content:'CONTEÚDOS',settings:'CONFIGURAÇÕES',crm:'CRM',team:'EQUIPE'})[page]}`;$('#patient-rail').hidden=page!=='patients';}
 async function navigate(next){delete content.dataset.crmMount;page=next;markNavigation();history.replaceState({},'',page==='patients'&&patient?`?patient=${patient.id}`:`?view=${page}`);try{await refresh();}catch(error){errorView(error);}}
-async function showCRM(options={}){page='crm';markNavigation();return mountCRM(content,{admin:true,onPatient:openPatient,onChanged:()=>loadPatients(true),...options});}
+async function showCRM(options={}){page='crm';markNavigation();return mountCRM(content,{admin:true,onPatient:openPatient,onChanged:async()=>{patient=null;await loadPatients(true)},...options});}
 async function refresh(){if(page==='crm')return showCRM();if(page==='team')return teamPage();if(page==='patients'&&patient)return loadPatient(patient.id);if(page==='patients'){content.innerHTML=`<div class="heading"><div><span class="kicker">ACOMPANHAMENTO INDIVIDUAL</span><h1>Seu cuidado começa aqui.</h1><p class="subtitle">Selecione um paciente na lateral para abrir o prontuário.</p></div><button data-action="create-patient">+ Novo paciente</button></div>${empty('Busque um nome, escolha uma ficha e acompanhe os registros reais do paciente.')}`;return;}if(page==='overview')return overview();if(page==='agenda')return agenda();if(page==='tasks')return tasks();if(page==='content')return contents();if(page==='settings')return settings();}
 async function openPatient(id){delete content.dataset.crmMount;page='patients';selectedTab='summary';markNavigation();history.replaceState({},'',`?patient=${id}`);try{await loadPatient(id);}catch(error){errorView(error);}}
 async function saveFavorites(){await query(db.from('admin_preferences').upsert({user_id:profile.user_id,payload:{favorites:[...favorites]}},{onConflict:'user_id'}).select());}

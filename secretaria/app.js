@@ -1,4 +1,4 @@
-import {mountCRM} from '../admin/crm.mjs?v=20261030-client';
+import {mountCRM} from '../admin/crm.mjs?v=20261030-delete';
 import { getSupabase, escapeHtml as esc } from '../js/app-core.js';
 import { requireAuth, signOut } from '../js/auth.js';
 const $=id=>document.getElementById(id);const db=getSupabase();

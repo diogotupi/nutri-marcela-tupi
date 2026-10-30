@@ -77,3 +77,8 @@ Validação: 26 testes unitários passaram; `crm-regression.sql`, `secretary-reg
 Limpeza autorizada: quatro pacientes originais, seus registros e contas de autenticação foram removidos em uma transação restrita; administradora preservada. Verificado ao fim: zero pacientes, zero períodos/contatos e uma conta administrativa. A limpeza não está embutida nas migrações.
 
 Para começar, a Marcela cadastra a equipe em **Equipe administrativa**, define as permissões, cadastra os clientes no CRM e adiciona os acompanhamentos. Login de paciente é opcional e liberado pelo perfil. Não há configuração de serviço externo adicional nem disparo automático de WhatsApp. Datas usam America/Sao_Paulo. Notas sobre recuperação de senha, cotas de Storage e proteção contra senhas vazadas nas seções históricas continuam aplicáveis.
+# Exclusão pelo CRM
+
+Incluída ação administrativa **Excluir cliente** com confirmação obrigatória. Acompanhamento ativo/agendado exige aviso destacado, confirmação adicional e digitação de `EXCLUIR`, conferidos novamente no servidor. Exclusão de registros é transacional; sessões são revogadas e a conta fica bloqueada antes da limpeza de arquivos/conta Auth via API. Falhas externas deixam uma pendência administrativa de limpeza com ação de repetição. Secretárias não recebem essa capacidade.
+
+Migrações de exclusão e função `delete-client` publicadas. Teste SQL com rollback e teste de navegador do CRM passaram. Os testes usaram fixtures; nenhum cliente real foi excluído.
