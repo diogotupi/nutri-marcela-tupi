@@ -1,3 +1,4 @@
+import {mountPatientChat} from '../js/patient-chat.js?v=20261030-chat';
 import {
   escapeHtml,
   formatDate,
@@ -18,7 +19,7 @@ import {
   toggleItemCheck,
 } from '../js/auth.js';
 import { initGuidesPanel } from './guides-panel.js';
-import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js?v=20261030-records';
+import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js?v=20261030-chat';
 import { initPatientExtras, bindMealExtras, mealExtrasMarkup, notifyPatientSaved } from './patient-extras.js';
 import { hydrationMeter } from './patient-model.mjs?v=20261030-water';
 
@@ -326,6 +327,7 @@ async function init() {
   document.getElementById('profile-label').textContent = `${profile.full_name} · ${profile.username}`;
 
   initGuidesPanel();
+  mountPatientChat(document.getElementById('patient-chat'),{patientId:profile.id}).catch(()=>{document.getElementById('patient-chat').textContent='Não foi possível abrir a conversa. Atualize a página.';});
   switchTab('diet');
   initPatientCare(profile).catch(error => { document.getElementById('patient-reminders').textContent = error.message; });
   initPatientExtras(profile).catch(error => { document.getElementById('patient-training').insertAdjacentHTML('beforeend',`<p role="status">${escapeHtml(error.message)}</p>`); });

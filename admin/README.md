@@ -70,3 +70,12 @@ No perfil do CRM, **Excluir cliente** é exclusivo da Marcela. A confirmação e
 A remoção dos registros e o bloqueio das sessões são transacionais. Storage e conta Auth são eliminados pela função `delete-client` usando as APIs do serviço. Se essa limpeza externa falhar, o CRM mostra **Finalizar exclusão** para repetir a etapa sem recriar registros ou repetir o apagamento. O registro técnico de exclusão tem RLS exclusiva da administradora e não guarda nome ou dados clínicos. Nenhum cliente real foi apagado durante os testes.
 
 Validação: `supabase/client-deletion-regression.sql` usa fixtures e rollback para confirmar exclusão, proteção de conta administrativa, permissão, remoção de vínculos e bloqueio de acesso; `tests/crm-browser-qa.cjs` cobre cancelar, confirmação comum, confirmação de acompanhamento ativo e ausência do botão para secretárias.
+# Chat privado com pacientes
+
+O paciente agora tem **Chat com a nutri** no lugar dos formulários “Como foi sua semana?” e “Enviar foto ou documento”. Pode escrever e anexar JPG/PNG/WebP ou PDF. Fotos são comprimidas antes do envio e os anexos continuam no Storage privado. Os relatos e arquivos antigos permanecem no histórico.
+
+A Marcela responde em **Chat com pacientes**, no menu administrativo, ou na aba **Chat com paciente** do prontuário. A caixa mostra mensagens não lidas e busca por nome. Conversas atualizam a cada 10 segundos enquanto a tela está visível; o indicador no menu é consultado a cada 30 segundos. Não há resposta automática, WhatsApp ou notificação externa.
+
+Tabelas `patient_messages` e `patient_chat_reads` possuem RLS. Apenas o paciente da conversa e a administradora autorizada podem ler/enviar. O servidor define autoria, valida anexos e deduplica tentativas pelo identificador de envio. A secretária não recebe acesso pelo CRM. Histórico é paginado e exportado junto com os registros; excluir o cliente remove também a conversa.
+
+Validação: SQL transacional de isolamento, autoria, anexos, leitura, repetição e exclusão do cliente; navegador do paciente com envio após falha, resposta e PDF; navegador da Marcela com resposta, histórico anterior, texto escapado e layout mobile. Nenhuma mensagem foi enviada a paciente real durante os testes.

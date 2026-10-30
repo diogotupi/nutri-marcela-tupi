@@ -5,12 +5,12 @@ async (existingPage) => {
   const page = await context.newPage();
   await page.setViewportSize({width:390,height:844});
   page.setDefaultTimeout(10000);
-  const errors = [], operations = [], clinical = [], checks = [], uploads = [];
+  const errors = [], operations = [], clinical = [], checks = [], uploads = [], messages = [], messageOps = [];
   page.on('pageerror', error => errors.push(error.message));
   const uid='11111111-1111-4111-8111-111111111111', pid='22222222-2222-4222-8222-222222222222';
   const today = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const profile={id:pid,user_id:uid,username:'demonstracao',full_name:'Paciente Demonstração',role:'patient'};
-  let water=0, failNextWater=true, failNextLapse=true, failClinical=false, noWaterGoal=false;
+  let water=0, failNextWater=true, failNextLapse=true, failClinical=false, noWaterGoal=false, failNextMessage=true;
   const applied = new Map();
   const assert = (condition,message) => {if(!condition) throw Error(message);};
   const apiData = async route => {
@@ -49,6 +49,9 @@ async (existingPage) => {
       data=method==='POST'?[clinical[0]]:clinical;
       if(url.searchParams.get('id')?.startsWith('eq.'))data=data.filter(row=>row.id===url.searchParams.get('id').slice(3));
     }
+    if(table==='patient_messages') { data=messages;const seq=url.searchParams.get('seq');if(seq?.startsWith('gt.'))data=data.filter(m=>m.seq>Number(seq.slice(3)));if(seq?.startsWith('lt.'))data=data.filter(m=>m.seq<Number(seq.slice(3)));}
+    if(table==='send_patient_message') { messageOps.push(body);let row=messages.find(m=>m.id===body.p_id);if(!row){row={id:body.p_id,seq:messages.length+1,patient_id:pid,sender_role:'patient',body:body.p_body,attachment_path:body.p_attachment,attachment_name:body.p_attachment?'QA document.pdf':null,created_at:new Date().toISOString()};messages.push(row);}if(failNextMessage){failNextMessage=false;return route.abort('failed');}data=row;}
+    if(table==='mark_patient_chat_read')data=null;
     if(table==='record_patient_visit')data=null;
     if(table==='set_profile_photo'){profile.photo_path=body.p_path;data=null;}
     if(table==='evaluate_badges')data=[{id:'water3',title:'Hidratação em dia',description:'DEMONSTRAÇÃO: meta atingida em três dias',earned_at:new Date().toISOString()}];
@@ -125,11 +128,10 @@ async (existingPage) => {
     await page.locator('[data-meal-photo] button').click();
     await page.locator('[data-meal-photo] [role=status]').filter({hasText:'Foto salva'}).waitFor();
     assert(uploads.length===1 && uploads[0].webp && uploads[0].bytes<901*1024,'Meal photo must be compressed WebP');
-    await page.getByText('Como foi sua semana? Enviar check-in',{exact:true}).click();
-    await page.locator('[data-care="checkin"] [name="energy"]').selectOption('4');
-    await page.getByRole('button',{name:'Enviar check-in',exact:true}).click();
-    await page.locator('[data-care="checkin"] [role=status]').filter({hasText:'Salvo.'}).waitFor();
-    assert(clinical[0].payload.template.id==='template-demo','Template snapshot missing');
+    assert(await page.locator('[data-care="checkin"],#patient-upload').count()===0,'Old patient forms remain');
+    const chat=page.locator('#patient-chat');await chat.locator('textarea').fill('DEMONSTRAÇÃO: dúvida para a Marcela');await chat.getByRole('button',{name:'Enviar mensagem',exact:true}).click();await chat.locator('.chat-status').filter({hasText:'Não foi possível confirmar'}).waitFor();assert(await chat.locator('textarea').inputValue()==='DEMONSTRAÇÃO: dúvida para a Marcela','Failed send lost draft');await chat.getByRole('button',{name:'Enviar mensagem',exact:true}).click();await chat.locator('.chat-status').filter({hasText:'Mensagem enviada'}).waitFor();assert(messages.length===1&&messageOps[0].p_id===messageOps[1].p_id,'Chat retry duplicated message');
+    messages.push({id:'33333333-3333-4333-8333-333333333333',seq:2,patient_id:pid,sender_role:'admin',body:'DEMONSTRAÇÃO: resposta da Marcela',created_at:new Date().toISOString()});await chat.getByRole('button',{name:'Atualizar',exact:true}).click();await chat.getByText('DEMONSTRAÇÃO: resposta da Marcela',{exact:true}).waitFor();
+    await chat.locator('[name=file]').setInputFiles({name:'QA document.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4 DEMONSTRAÇÃO')});await chat.locator('[name=consent]').check();await chat.getByRole('button',{name:'Enviar mensagem',exact:true}).click();await chat.locator('.chat-status').filter({hasText:'Mensagem enviada'}).waitFor();assert(messages.at(-1).attachment_path&&uploads.length===2,'Chat document not sent');
     await page.getByRole('button',{name:'Evolução',exact:true}).click();
     await page.getByRole('heading',{name:'Hidratação diária'}).waitFor();
     assert(await page.locator('[data-water-index]').count()===0,'Empty hydration period must not render missing-day markers');
@@ -156,7 +158,7 @@ async (existingPage) => {
     await page.locator('#profile-photo-form [name=consent]').check();
     await page.getByRole('button',{name:'Salvar foto',exact:true}).click();
     await page.locator('#profile-photo-form [role=status]').filter({hasText:'atualizada'}).waitFor();
-    assert(Boolean(profile.photo_path)&&uploads.length===2&&uploads[1].webp,'Profile avatar not stored/linked');
+    assert(Boolean(profile.photo_path)&&uploads.length===3&&uploads[2].webp,'Profile avatar not stored/linked');
     await page.getByRole('button',{name:'Exportar meus registros',exact:true}).click();
     await page.locator('#export-status').filter({hasText:'Registros exportados'}).waitFor();
     await page.getByRole('button',{name:'Meu plano',exact:true}).click();
@@ -176,6 +178,6 @@ async (existingPage) => {
     await page.reload();
     await page.locator('#h2o-goal').filter({hasText:'ainda não definiu'}).waitFor();
     assert(await page.locator('#h2o-fill').evaluate(e=>e.style.width)==='50%','No-goal meter must restore the persisted volume');
-    return {passed:true,mobile:390,desktop:1440,waterRequests:operations.length,clinicalVersions:clinical.length,mealChecks:checks.length,checks:['layout mobile/desktop','water failed-response retry idempotency','water undo','meal status/checkbox consistency and keyboard','training intensity/date','meal difficulty idempotent retry','meal WebP upload','profile photo','live hydration refresh and isolated clinical failure','configurable check-in snapshot','empty assessment','read-only plan','structured data export','no-goal meter update, undo and reload'],productionWrites:0};
+    return {passed:true,mobile:390,desktop:1440,waterRequests:operations.length,clinicalVersions:clinical.length,mealChecks:checks.length,checks:['layout mobile/desktop','water failed-response retry idempotency','water undo','meal status/checkbox consistency and keyboard','training intensity/date','meal difficulty idempotent retry','meal WebP upload','profile photo','live hydration refresh and isolated clinical failure','private chat retry, reply and PDF attachment','empty assessment','read-only plan','structured data export','no-goal meter update, undo and reload'],productionWrites:0};
   } catch(error) { return {error:error.message, state:await page.evaluate(()=>({tab:document.querySelector('#panel-diet')?.hidden,rect:document.querySelector('[data-water]')?.getBoundingClientRect().toJSON(),html:document.querySelector('#panel-diet')?.outerHTML.slice(0,1000),css:getComputedStyle(document.querySelector('[data-water]')).display})),errors}; } finally { await page.close(); }
 }

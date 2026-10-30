@@ -82,3 +82,8 @@ Para começar, a Marcela cadastra a equipe em **Equipe administrativa**, define 
 Incluída ação administrativa **Excluir cliente** com confirmação obrigatória. Acompanhamento ativo/agendado exige aviso destacado, confirmação adicional e digitação de `EXCLUIR`, conferidos novamente no servidor. Exclusão de registros é transacional; sessões são revogadas e a conta fica bloqueada antes da limpeza de arquivos/conta Auth via API. Falhas externas deixam uma pendência administrativa de limpeza com ação de repetição. Secretárias não recebem essa capacidade.
 
 Migrações de exclusão e função `delete-client` publicadas. Teste SQL com rollback e teste de navegador do CRM passaram. Os testes usaram fixtures; nenhum cliente real foi excluído.
+# Chat com a nutri
+
+Substituídos os dois formulários do paciente por uma conversa privada com texto e anexos. Criada caixa administrativa **Chat com pacientes**, aba no prontuário e indicador de mensagens não lidas. Histórico persistente/paginado, anexos privados, compressão de fotos, envio idempotente e preservação do texto em falhas. Atualização automática por consulta periódica, sem envio ou resposta externos.
+
+Migrações `private_patient_chat` e `patient_chat_unread_badge` aplicadas. RLS e RPCs restringem a conversa ao paciente correspondente e à administradora; equipe administrativa não recebe acesso. Exclusão do cliente remove mensagens e marcadores de leitura. Os check-ins e arquivos anteriores permanecem no histórico. Testes SQL, testes de navegador do paciente e do administrativo, e os 26 testes unitários passaram. Testes não enviaram mensagens reais.

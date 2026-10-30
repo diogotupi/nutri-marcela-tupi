@@ -1,8 +1,6 @@
 import { getSupabase, escapeHtml as esc, getLocalDateString } from '../js/app-core.js';
-import { listClinical, addClinical, listAppointments, uploadAttachment, getSignedAttachment } from '../js/clinical.js';
-import { preparePhotoUpload } from '../js/media-upload.js';
+import { listClinical, listAppointments, getSignedAttachment } from '../js/clinical.js';
 import { waterTimeline, civilRange } from './patient-model.mjs';
-import { notifyPatientSaved } from './patient-extras.js';
 import { fetchMyActiveTournaments } from '../js/tournaments.js';
 const date = value => new Date(value.length === 10 ? `${value}T12:00:00-03:00` : value).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 let evolutionRequest = 0;
@@ -14,9 +12,6 @@ function waterChartMarkup(timeline,goalsError) {
   return `<section class="app-card patient-chart"><h2>Hidratação diária</h2><p>${known.length} dia(s) com registros no período.</p>${goalsError?'<p role="status">Não foi possível carregar suas metas. Os volumes registrados estão disponíveis.</p>':''}<p class="patient-chart-key">Verde: volume registrado · linha dourada: meta individual</p><div class="water-chart-scroll"><svg class="water-history-chart" viewBox="0 0 ${width} 205" style="min-width:${width}px" role="group" aria-label="Hidratação em mililitros. Selecione um dia ou consulte a tabela."><text x="5" y="20" font-size="11" fill="#52645a">${max} ml</text><line x1="35" y1="170" x2="${width}" y2="170" stroke="#c6d1c9"/>${timeline.map((day,index)=>{if(day.amount===null)return '';const x=40+index*step;return `<g role="button" tabindex="0" data-water-index="${index}" aria-label="${esc(label(day))}"><title>${esc(label(day))}</title><rect x="${x-2}" y="25" width="${step}" height="150" fill="transparent"/>${day.amount===null?`<path d="M${x} 168h${Math.max(2,step-5)}" stroke="#8d9b92" stroke-width="2" stroke-dasharray="2 2"/>`:day.amount===0?`<circle cx="${x+(step-5)/2}" cy="168" r="2.5" fill="#42775a"/>`:`<rect x="${x}" y="${y(day.amount)}" width="${Math.max(2,step-5)}" height="${170-y(day.amount)}" rx="2" fill="#42775a"/>`}${day.goal?`<path d="M${x-1} ${y(day.goal)}h${Math.max(3,step-3)}" stroke="#af792f" stroke-width="2"/>`:''}${index%Math.max(1,Math.ceil(timeline.length/8))===0?`<text x="${x}" y="190" font-size="10" fill="#52645a">${date(day.date).slice(0,5)}</text>`:''}</g>`;}).join('')}</svg></div><p id="water-day-detail" role="status">Selecione um dia no gráfico para consultar o valor.</p><details><summary>Ver registros em tabela</summary><div class="app-table-wrap"><table class="app-table"><thead><tr><th>Data</th><th>Registrado (ml)</th><th>Meta individual (ml)</th></tr></thead><tbody>${known.map(day=>`<tr><td>${date(day.date)}</td><td>${day.amount===null?'Sem registro':day.amount}</td><td>${day.goal||'Não definida'}</td></tr>`).join('')}</tbody></table></div></details></section>`;
 }
 function bindWaterChart(root,timeline){root.querySelectorAll('[data-water-index]').forEach(item=>{const choose=()=>{const day=timeline[Number(item.dataset.waterIndex)];document.getElementById('water-day-detail').textContent=`${date(day.date)} · ${day.amount===null?'Sem registro':`${day.amount} ml registrados`}${day.goal?` · meta ${day.goal} ml`:''}`;};item.addEventListener('click',choose);item.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();choose();}});});}
-const field = (name, label, type = 'text') => `<label>${label}<input name="${name}" type="${type}" ${type === 'number' ? 'min="0" max="24" step="0.5"' : ''}></label>`;
-const text = (name, label) => `<label>${label}<textarea name="${name}" rows="2" maxlength="4000"></textarea></label>`;
-const scale = (name, label) => `<label>${label}<select name="${name}"><option value="">Prefiro não responder</option>${[1,2,3,4,5].map(n => `<option value="${n}">${n}</option>`).join('')}</select></label>`;
 function lineChart(rows, key, unit) {
   const points = rows.map(r => ({ date: r.occurred_at, value: key === 'bmi' ? (Number(r.payload.weight_kg)>0&&Number(r.payload.height_cm)>0 ? Number(r.payload.weight_kg)/(Number(r.payload.height_cm)/100)**2 : NaN) : Number(r.payload[key]) })).filter(p => Number.isFinite(p.value) && p.value > 0);
   if (!points.length) return '<p>Sem medições válidas no período.</p>';
@@ -26,44 +21,11 @@ function lineChart(rows, key, unit) {
   return `<svg viewBox="0 0 600 185" role="img" aria-label="Evolução em ${unit}; valores detalhados na tabela de avaliações"><polyline fill="none" stroke="#45745b" stroke-width="3" points="${coords.map(p=>`${p.x},${p.y}`).join(' ')}"/>${coords.map(p=>`<circle cx="${p.x}" cy="${p.y}" r="5" fill="#234a36"><title>${date(p.date)}: ${p.value.toFixed(1)} ${unit}</title></circle>`).join('')}<text x="30" y="180" font-size="12">${date(points[0].date)}</text><text x="570" y="180" text-anchor="end" font-size="12">${date(points.at(-1).date)}</text></svg>`;
 }
 export async function initPatientCare(profile) {
-  const root = document.getElementById('patient-reminders');
-  root.innerHTML = '<p class="app-empty">Buscando suas orientações…</p>';
-  const [clinical, appointments, notificationResult, tournaments, templateResult] = await Promise.allSettled([
-    listClinical(profile.id), listAppointments(profile.id), getSupabase().from('care_notifications').select('id,title,body,read_at,created_at').eq('patient_id', profile.id).order('created_at', { ascending: false }).limit(20), fetchMyActiveTournaments(), getSupabase().from('checkin_templates').select('id,name,fields').eq('active',true).order('created_at',{ascending:false}).limit(1),
-  ]);
-  const records = clinical.status === 'fulfilled' ? clinical.value : [];
-  const next = appointments.status === 'fulfilled' ? appointments.value.find(item => new Date(item.starts_at) >= new Date() && item.status !== 'cancelled') : null;
-  const notifications = notificationResult.status === 'fulfilled' && !notificationResult.value.error ? notificationResult.value.data : [];
-  const checkinTemplate = templateResult.status === 'fulfilled' && !templateResult.value.error ? templateResult.value.data?.[0] : null;
-  const checkinFields = (checkinTemplate?.fields || []).filter(f=>/^[a-z][a-z0-9_]{0,60}$/.test(f.key) && ['scale','text','number'].includes(f.type)).map(f=>{
-    const required=f.required?'required':''; const min=Number.isFinite(Number(f.min))?Number(f.min):0;const max=Number.isFinite(Number(f.max))?Number(f.max):24;
-    if(f.type==='text')return `<label>${esc(f.label)}<textarea name="${esc(f.key)}" maxlength="4000" ${required}></textarea></label>`;
-    if(f.type==='number')return `<label>${esc(f.label)}<input name="${esc(f.key)}" type="number" min="${min}" max="${max}" step="0.5" ${required}></label>`;
-    return `<label>${esc(f.label)} (${min} a ${max})<select name="${esc(f.key)}" ${required}><option value="">Selecione</option>${Array.from({length:Math.max(0,Math.min(10,max-min+1))},(_,i)=>`<option>${min+i}</option>`).join('')}</select></label>`;
-  }).join('');
-  root.innerHTML = `${next ? `<article class="app-card patient-notice"><span class="patient-eyebrow">PRÓXIMA CONSULTA</span><h2>${date(next.starts_at)}</h2><p>${new Date(next.starts_at).toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'})} · horário de Brasília</p></article>` : ''}
-    ${notifications.map(n => `<article class="app-card patient-notice"><h3>${esc(n.title)}</h3><p>${esc(n.body || '')}</p><small>${date(n.created_at)}</small></article>`).join('')}
-    <details class="app-card patient-form"><summary>Como foi sua semana? Enviar check-in</summary><p>Conte como você está. Siga a escala indicada em cada pergunta.</p><form data-care="checkin" class="app-form">${checkinFields || '<p>Não há formulário de check-in disponível. Aguarde as orientações da Marcela.</p>'}<label><input name="help_requested" type="checkbox"> Gostaria de ajuda da Marcela</label><button class="app-btn app-btn--primary" ${checkinTemplate?'':'disabled'}>Enviar check-in</button><p role="status"></p></form></details>
-    <details class="app-card patient-form"><summary>Enviar foto ou documento</summary><form id="patient-upload" class="app-form"><label>Tipo<select name="category"><option value="document">Documento ou exame</option><option value="photo">Foto de acompanhamento</option><option value="meal">Foto de refeição</option></select></label><label id="upload-meal-label" hidden>Refeição<select name="meal_id"></select></label>${field('measured_at','Data da foto ou documento','date')}<label>Posição da foto<select name="position"><option value="">Não se aplica</option><option>Frente</option><option>Lado</option><option>Costas</option></select></label>${text('description','Descrição')}<label>Arquivo (até 20 MB)<input name="file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required></label><label><input name="storage_consent" type="checkbox" required> Concordo em armazenar este arquivo com acesso privado para mim e para a equipe autorizada da Marcela. O compartilhamento com serviços externos está desativado.</label><button class="app-btn app-btn--primary">Enviar com acesso privado</button><p role="status"></p></form></details>
-    ${tournaments.status === 'fulfilled' && tournaments.value.length ? `<section class="app-card patient-notice"><h2>Seus desafios</h2><p>Participe no seu ritmo, seguindo suas metas individuais. Não é necessário ultrapassar sua meta de água.</p>${tournaments.value.map(t => `<h3>${esc(t.title)}</h3><p>${esc(t.description || '')}</p>`).join('')}</section>` : ''}
-    ${clinical.status === 'rejected' ? '<p role="status">Não foi possível carregar seu histórico clínico. Tente atualizar a página.</p>' : ''}`;
-  root.querySelectorAll('[data-care]:not([data-care="anamnesis"])').forEach(form => form.addEventListener('submit', async event => {
-    event.preventDefault(); const button = form.querySelector('button'); const status = form.querySelector('[role=status]'); button.disabled = true; status.textContent = 'Enviando…';
-    try {
-      const payload = Object.fromEntries(new FormData(form));
-      payload.reported_by = 'patient';
-      if (form.dataset.care === 'checkin') { payload.help_requested = form.elements.help_requested.checked; payload.scale_max = Math.max(1,...(checkinTemplate?.fields || []).filter(f=>f.type==='scale').map(f=>Number(f.max)||5)); payload.template = checkinTemplate; }
-      const prev = records.find(r => r.kind === form.dataset.care);
-      const record = await addClinical(profile.id, form.dataset.care, payload, { parentId: prev?.id, version: (prev?.version || 0) + 1, occurredAt: payload.date ? `${payload.date}T12:00:00-03:00` : undefined });
-      records.unshift(record); form.reset(); notifyPatientSaved(); status.textContent = 'Salvo. A Marcela pode consultar seu relato.';
-    } catch (error) { status.textContent = `Não foi salvo: ${error.message}`; } finally { button.disabled = false; }
-  }));
-  root.querySelector('#patient-upload [name=category]').addEventListener('change',event=>{const label=root.querySelector('#upload-meal-label');label.hidden=event.target.value!=='meal';label.querySelector('select').innerHTML='<option value="">Não vincular a uma refeição</option>'+Array.from(document.querySelectorAll('[data-meal-report]')).map(form=>`<option value="${esc(form.dataset.mealReport)}">${esc(form.closest('.patient-meal-block').querySelector('.meal-check__label span').textContent)}</option>`).join('');});
-  root.querySelector('#patient-upload').addEventListener('submit', async event => {
-    event.preventDefault(); const form = event.target; const button = form.querySelector('button'); const status = form.querySelector('[role=status]'); button.disabled = true; status.textContent = 'Enviando arquivo…';
-    try { const values = Object.fromEntries(new FormData(form)); let file = values.file; if(file.type.startsWith('image/'))file=await preparePhotoUpload(file); delete values.file; delete values.storage_consent; await addClinical(profile.id, 'consent', {scope:'storage',status:'accepted',policy_version:1}); if (values.measured_at) values.measured_at += 'T12:00:00-03:00'; await uploadAttachment(profile.id, file, values); form.reset(); notifyPatientSaved(); status.textContent = 'Arquivo salvo com acesso privado.'; }
-    catch (error) { status.textContent = `Não foi enviado: ${error.message}`; } finally { button.disabled = false; }
-  });
+ const root=document.getElementById('patient-reminders');
+ const [appointments,notifications,tournaments]=await Promise.allSettled([listAppointments(profile.id),getSupabase().from('care_notifications').select('id,title,body,created_at').eq('patient_id',profile.id).order('created_at',{ascending:false}).limit(20),fetchMyActiveTournaments()]);
+ const next=appointments.status==='fulfilled'?appointments.value.find(a=>new Date(a.starts_at)>=new Date()&&a.status!=='cancelled'):null;
+ const notices=notifications.status==='fulfilled'&&!notifications.value.error?notifications.value.data||[]:[];
+ root.innerHTML=`${next?`<article class="app-card patient-notice"><span class="patient-eyebrow">PRÓXIMA CONSULTA</span><h2>${date(next.starts_at)}</h2><p>${new Date(next.starts_at).toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'})} · horário de Brasília</p></article>`:''}${notices.map(n=>`<article class="app-card patient-notice"><h3>${esc(n.title)}</h3><p>${esc(n.body||'')}</p><small>${date(n.created_at)}</small></article>`).join('')}${tournaments.status==='fulfilled'&&tournaments.value.length?`<section class="app-card patient-notice"><h2>Seus desafios</h2>${tournaments.value.map(t=>`<h3>${esc(t.title)}</h3><p>${esc(t.description||'')}</p>`).join('')}</section>`:''}`;
 }
 export async function loadEvolution(patientId) {
   const request = ++evolutionRequest;
@@ -106,7 +68,7 @@ export async function exportPatientData(profile) {
   const button = document.getElementById('export-patient-data'); button.disabled = true;
   status.textContent = 'Preparando exportação completa dos registros acessíveis…';
   try {
-    const tables = ['clinical_records','patient_water_logs','patient_meal_checks','patient_item_checks','meal_reports','diets','appointments','care_notifications','patient_goals'];
+    const tables = ['clinical_records','patient_water_logs','patient_meal_checks','patient_item_checks','meal_reports','diets','appointments','care_notifications','patient_goals','patient_messages'];
     const values = await Promise.all(tables.map(table=>allRows(table,'patient_id',profile.id)));
     const records = Object.fromEntries(tables.map((table,i)=>[table,values[i]]));
     const plans = [];
