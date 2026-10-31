@@ -30,3 +30,22 @@
 .patient-avatar .profile-photo-select{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:46px;padding:11px 17px;border:1px solid #688078;background:#fffdf9;color:#29483f;border-radius:12px;box-shadow:2px 3px 0 #e8baaa;cursor:pointer;font-weight:600;flex:none}
 .profile-photo-select svg{flex:none}
 .profile-photo-filename{font-size:.8rem;color:#64705f;overflow-wrap:anywhere;min-width:0;flex:1 1 150px}
+
+/* All food belongs to a numbered, always visible option. */
+.patient-meal-block .meal-option{margin:12px 0;padding:16px;border:1px solid #d8dfd5;border-radius:16px;background:#fffdf9;min-width:0}
+.patient-meal-block .meal-option.is-selected{border-color:#79a68e;background:#f7fbf5}
+.meal-option__heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;color:#587068;font-size:.78rem;font-weight:700;letter-spacing:.04em;cursor:pointer}
+.meal-option__heading input{appearance:auto;width:20px;height:20px;margin:0;accent-color:#2d6149;cursor:pointer;flex:none}
+.meal-option__notes{white-space:pre-wrap;font-size:.88rem;line-height:1.6;color:#35534a;margin:10px 0;overflow-wrap:anywhere}
+#plan-preview .meal-option__heading{cursor:default}
+.meal-option .check-row:last-child{margin-bottom:0}
+.meal-option-extra{padding:10px 14px;border-radius:12px;background:#fff0e5;border:1px solid #e5bc9f;font-size:.83rem;color:#79502e}
+.meal-option-dialog{box-sizing:border-box;width:min(500px,calc(100% - 32px));max-height:calc(100dvh - 40px);overflow:auto;border:1px solid #71866d;border-radius:24px;padding:28px;background:#fffdf9;color:#24433b;box-shadow:5px 6px 0 #e8baaa}
+.meal-option-dialog::backdrop{background:rgb(24 44 37 / .4);backdrop-filter:blur(4px)}
+.meal-option-dialog h2{font-family:inherit;font-size:1.45rem;line-height:1.3;margin:8px 0 14px;letter-spacing:-.03em}
+.meal-option-dialog p{line-height:1.6}
+.meal-option-dialog__actions{display:grid;gap:10px;margin-top:22px}
+.meal-option-dialog .app-btn{width:100%;justify-content:center}
+.meal-option-dialog__hint{font-size:.8rem;color:#607267}
+.meal-option-dialog__cancel{display:block;margin:16px auto 0;padding:10px 18px;border:0;background:transparent;color:#36554a;font:inherit;text-decoration:underline;cursor:pointer}
+@media(max-width:480px){.patient-meal-block .meal-option{padding:12px}.meal-option-dialog{padding:22px}}

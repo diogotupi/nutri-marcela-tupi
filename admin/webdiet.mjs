@@ -1,4 +1,4 @@
-import {expandPreparationChoices} from '../js/diet-content.mjs';
+import {expandPreparationChoices,normalizeMealOptions} from '../js/diet-content.mjs?v=20261031-options';
 const clean=s=>s.normalize('NFKC').replace(/\s+/g,' ').trim();
 const key=s=>clean(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 const append=(object,field,text)=>{object[field]+=(object[field]?'\n':'')+text;};
@@ -69,7 +69,7 @@ export function parseWebdietPages(pages){
  }
  if(!result.meals.length)throw Error('Não reconheci refeições neste PDF. Use um PDF de texto do Webdiet ou monte a dieta manualmente.');
  if(appendices.length)result.notes+=(result.notes?'\n\n':'')+'Anexos do PDF\n'+appendices.join('\n').trim();
- result.meals=result.meals.map(expandPreparationChoices);
+ result.meals=result.meals.map(expandPreparationChoices).map(normalizeMealOptions);
  return result;
 }
 export async function readWebdiet(file){

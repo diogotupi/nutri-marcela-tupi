@@ -39,3 +39,13 @@ Exclusões exigem confirmação extra para acompanhamento ativo. O manifesto pri
 - SQL transacional com rollback: `clinic-regression.sql`, `crm-regression.sql`, `patient-chat-regression.sql`, `client-deletion-regression.sql`, `management-regression.sql`, `progress-regression.sql`. O primeiro cobre painel compartilhado, autoria, logs, login, isolamento e idempotência; substitui o antigo teste de equipe com permissões diferentes.
 
 Limpeza solicitada: os dois pacientes anteriores foram removidos com os registros, contas e arquivos; a conta administrativa foi preservada. Nenhuma amostra de teste fica no banco.
+
+
+## Opções de refeição (31/10/2026)
+
+- Todas as alternativas aparecem como Opção 1, Opção 2… abertas para o paciente, inclusive refeições com uma única opção.
+- Alimentos antigos sem `option_name` são a primeira alternativa. IDs, quantidades e checks anteriores são preservados; não são alimentos comuns às demais receitas.
+- O editor e as novas importações guardam os alimentos dentro das opções numeradas. As preparações vindas das observações são alternativas após a opção de alimentos original.
+- `set_meal_option_check` usa as permissões existentes do paciente e altera seus checks em uma transação. Ao entrar em outra alternativa, retorna conflito sem escrever; a confirmação explícita escolhe adicionar ou substituir. Substituir remove todos os checks das outras opções somente naquela refeição/data.
+- Mais de uma alternativa marcada aparece no painel do paciente e na visão/detalhe da refeição da equipe. O histórico depende dos checks persistidos, sem criar um segundo registro duplicado de consumo.
+- Verificação: `npm test`, `supabase/meal-options-regression.sql` (rollback), `tests/patient-browser-qa.cjs` e `tests/clinic-browser-qa.cjs` (APIs interceptadas, sem gravações reais).

@@ -3,6 +3,7 @@
 async (existingPage) => {
   const context = existingPage.context();
   const page = await context.newPage();
+  await page.bringToFront();
   await page.setViewportSize({width:390,height:844});
   page.setDefaultTimeout(10000);
   const errors = [], operations = [], clinical = [], checks = [], uploads = [], messages = [], messageOps = [];
@@ -11,7 +12,9 @@ async (existingPage) => {
   const today = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const profile={id:pid,user_id:uid,username:'demonstracao',full_name:'Paciente Demonstração',role:'patient'};
   let water=0, failNextWater=true, failNextLapse=true, failClinical=false, noWaterGoal=false, failNextMessage=true;
-  const applied = new Map(); const itemChecks=[];
+  const applied = new Map(); const itemChecks=[];const optionRequests=[];
+  const meal={id:'meal1',name:'Café da manhã — demonstração',scheduled_time:'08:00',sort_order:0,options:[1,2,3,4].map(n=>({name:'Preparo '+n,notes:'Instruções de preparo DEMONSTRAÇÃO'})),diet_items:[{id:'item1',food_name:'Alimento demonstrativo',quantity:'1',unit:'unidade',sort_order:0,option_name:null},{id:'item2',food_name:'Legumes demonstrativos',quantity:'150g',option_name:null,sort_order:1},...[1,2,3,4].map(n=>({id:'prep'+n,food_name:'Receita demonstrativa '+n,quantity:'',unit:'',option_name:'Preparo '+n,sort_order:n+1}))]};
+  const waitFor=fn=>page.waitForFunction(fn,null,{polling:100});
   const assert = (condition,message) => {if(!condition) throw Error(message);};
   const apiData = async route => {
     const req=route.request(),url=new URL(req.url()),table=url.pathname.split('/').at(-1),method=req.method();
@@ -28,11 +31,24 @@ async (existingPage) => {
     if(table==='patient_goals') data=noWaterGoal?[]:[{id:'g1',patient_id:pid,water_ml:1800,valid_from:'2020-01-01'}];
     if(table==='patient_water_logs') data=water?[{id:'water1',patient_id:pid,log_date:today,amount_ml:water,goal_ml:1800}]:[];
     if(table==='diets') data=[{id:'diet1',patient_id:pid,title:'Plano DEMONSTRAÇÃO',notes:'Orientações de DEMONSTRAÇÃO\n\nAnexos do PDF\nLista de substituição\nReceita DEMONSTRAÇÃO <texto literal>',status:'active',start_date:today,created_at:new Date().toISOString()}];
-    if(table==='diet_meals') data=[{id:'meal1',name:'Café da manhã — demonstração',sort_order:0,options:[1,2,3,4].map(n=>({name:'Preparo '+n,notes:'Instruções de preparo DEMONSTRAÇÃO'})),diet_items:[{id:'item1',food_name:'Alimento demonstrativo',quantity:'1',unit:'unidade',sort_order:0,option_name:null},...[1,2,3,4].map(n=>({id:'prep'+n,food_name:'Receita demonstrativa '+n,quantity:'',unit:'',option_name:'Preparo '+n,sort_order:n}))]}];
+    if(table==='diet_meals') data=[meal];
     if(table==='checkin_templates') data=[{id:'template-demo',name:'DEMONSTRAÇÃO',fields:[{key:'energy',label:'Energia',type:'scale',min:1,max:5,required:true}]}];
     if(table==='meal_reports' && url.searchParams.get('order')?.split(',').some(part=>part.startsWith('id.'))) throw Error('meal_reports has no id column');
     if(table==='report_meal'){checks.push(body);data=null;}
-    if(table==='patient_item_checks'){if(method==='POST')itemChecks.push(body);data=[];}
+    if(table==='patient_item_checks'){if(method==='POST')itemChecks.push(body);data=itemChecks;}
+    if(table==='set_meal_option_check'){
+      optionRequests.push(body);const item=meal.diet_items.find(i=>i.id===body.p_item),key=item.option_name;
+      const same=i=>i.option_name===key;
+      const chosen=meal.diet_items.filter(i=>itemChecks.some(c=>c.item_id===i.id));
+      const conflict=body.p_checked&&chosen.some(i=>!same(i))&&!chosen.some(same);
+      if(!conflict||body.p_resolution){
+        if(body.p_checked){
+          if(body.p_resolution==='replace')for(let i=itemChecks.length-1;i>=0;i--)if(!same(meal.diet_items.find(food=>food.id===itemChecks[i].item_id)))itemChecks.splice(i,1);
+          for(const food of meal.diet_items.filter(i=>i.id===item.id||(body.p_whole_option&&same(i))))if(!itemChecks.some(c=>c.item_id===food.id))itemChecks.push({item_id:food.id});
+        }else for(let i=itemChecks.length-1;i>=0;i--)if(itemChecks[i].item_id===item.id||(body.p_whole_option&&same(meal.diet_items.find(food=>food.id===itemChecks[i].item_id))))itemChecks.splice(i,1);
+      }
+      data={conflict:conflict&&!body.p_resolution,item_ids:itemChecks.map(i=>i.item_id)};
+    }
     if(table==='patient_meal_checks') {if(method==='POST') checks.push(body);data=checks;}
     if(table==='record_water') {
       operations.push(body);
@@ -76,9 +92,29 @@ async (existingPage) => {
     await page.locator('.patient-badge.is-earned').waitFor();
     assert(await page.locator('#active-diet-card .diet-appendices').evaluate(e=>!e.open),'Imported appendix must start collapsed');
     assert(await page.locator('.diet-card__notes').count()===2,'General notes remain readable in today and read-only plan');
-    assert(await page.locator('#active-diet-card .meal-option').count()===4,'Breakfast recipe choices missing');
-    await page.locator('[data-item-id=prep1]').focus();await page.locator('[data-item-id=prep1]').press('Space');await page.waitForFunction(()=>document.querySelector('[data-item-id=prep1]').closest('.check-row').classList.contains('is-checked'));
+    assert(await page.locator('#active-diet-card .meal-option').count()===5,'Original foods must form option 1, followed by all recipes');
+    assert(await page.locator('#active-diet-card details.meal-option').count()===0,'Food options must never collapse');
+    assert(await page.locator('#active-diet-card .meal-option__heading span').allTextContents().then(v=>v.join(',')==='Opção 1,Opção 2,Opção 3,Opção 4,Opção 5'),'Option numbering missing');
+    assert(await page.locator('[data-item-id=item1]').evaluate(e=>e.closest('.meal-option')?.querySelector('.meal-option__heading').textContent.trim()==='Opção 1'),'Original food is outside an option');
+    await page.locator('[data-item-id=prep1]').focus();await page.locator('[data-item-id=prep1]').press('Space');await waitFor(()=>document.querySelector('[data-item-id=prep1]').closest('.check-row').classList.contains('is-checked'));
     assert(itemChecks.length===1&&itemChecks[0].item_id==='prep1','Recipe choice was not stored as a patient food check');
+    const toggle=async selector=>{await page.locator(selector).focus();await page.locator(selector).press('Space');};
+    await page.locator('#active-diet-card .patient-meal-block').screenshot({path:'.playwright-mcp/meal-options-mobile.png'});
+    await toggle('[data-item-id=item1]');await page.locator('.meal-option-dialog').waitFor();
+    await page.locator('.meal-option-dialog').screenshot({path:'.playwright-mcp/meal-option-confirmation.png'});
+    assert(itemChecks.length===1,'Prompt must not save the second option before a decision');
+    await page.getByRole('button',{name:'Cancelar',exact:true}).click();await page.locator('.meal-option-dialog').waitFor({state:'hidden'});
+    assert(itemChecks.length===1&&itemChecks[0].item_id==='prep1','Cancel must preserve the original choice');
+    await toggle('[data-option-index="0"]');await page.locator('.meal-option-dialog').waitFor();
+    await page.getByRole('button',{name:'Marcar as duas',exact:true}).click();await page.locator('.meal-option-extra').waitFor();
+    assert(itemChecks.length===3,'Adding a whole option must keep previous choice and select both foods');
+    await toggle('[data-item-id=prep2]');await page.locator('.meal-option-dialog').waitFor();
+    await page.getByRole('button',{name:'Substituir as anteriores',exact:true}).click();await waitFor(()=>document.querySelector('[data-item-id=prep2]').closest('.check-row').classList.contains('is-checked'));
+    assert(itemChecks.length===1&&itemChecks[0].item_id==='prep2','Replace must clear all previously selected options');
+    assert(await page.locator('.meal-option-extra').count()===0,'Extra-consumption notice must clear after replacement');
+    await page.setViewportSize({width:1440,height:1000});await page.locator('#active-diet-card .patient-meal-block').screenshot({path:'.playwright-mcp/meal-options-desktop.png'});await page.setViewportSize({width:390,height:844});
+    await page.reload();await page.bringToFront();await page.locator('#training-form').waitFor();await waitFor(()=>document.querySelector('[data-item-id=prep2]')?.checked);
+    assert(await page.locator('[data-item-id=prep1]').isChecked()===false,'Saved replacement must survive reload');
     assert(await page.locator('[data-item-id=item1]').count()===1,'Shared prescribed food must appear exactly once');
     await page.evaluate(()=>{const b=document.createElement('div');b.textContent='DEMONSTRAÇÃO — dados fictícios interceptados localmente';b.style='background:#feeac3;padding:10px;text-align:center;font-size:12px';document.body.prepend(b);});
     await page.locator('#h2o-goal').filter({hasText:'1800'}).waitFor();
@@ -94,20 +130,20 @@ async (existingPage) => {
     assert(water===0,'Undo must compensate volume');
     await page.locator('[data-meal-report="meal1"] select').selectOption('done');
     await page.locator('[data-meal-report="meal1"] button').click();
-    await page.waitForFunction(()=>document.querySelector('[data-meal-id="meal1"]').checked);
+    await waitFor(()=>document.querySelector('.patient-meal-block').classList.contains('is-meal-checked'));
     assert(checks.length===1,'Meal check not saved');
-    for (const status of ['partial','skipped','']) { await page.locator('[data-meal-report="meal1"] select').selectOption(status); await page.locator('[data-meal-report="meal1"] button').click(); await page.waitForFunction(()=>!document.querySelector('[data-meal-id="meal1"]').checked); await page.waitForTimeout(80); assert(checks.at(-1).p_status===(status||null),'Meal status not submitted'); }
+    for (const status of ['partial','skipped','']) { await page.locator('[data-meal-report="meal1"] select').selectOption(status); await page.locator('[data-meal-report="meal1"] button').click(); await waitFor(()=>!document.querySelector('.patient-meal-block').classList.contains('is-meal-checked')); await page.waitForTimeout(80); assert(checks.at(-1).p_status===(status||null),'Meal status not submitted'); }
     await page.locator('[data-meal-report="meal1"] select').selectOption('partial');
     await page.locator('[data-meal-report="meal1"] button').click();
-    await page.waitForFunction(()=>document.querySelector('[data-meal-report="meal1"] button').disabled===false);
-    await page.locator('[data-meal-id="meal1"]').focus();
-    await page.locator('[data-meal-id="meal1"]').press('Space');
-    await page.waitForFunction(()=>document.querySelector('[data-meal-report="meal1"] select').value==='done');
-    assert(checks.at(-1).p_status==='done','Checkbox after partial must save done');
-    await page.locator('[data-meal-id="meal1"]').focus();
-    await page.locator('[data-meal-id="meal1"]').press('Space');
-    await page.waitForFunction(()=>document.querySelector('[data-meal-report="meal1"] select').value==='');
-    assert(checks.at(-1).p_status===null,'Unchecked box must clear report state');
+    await waitFor(()=>document.querySelector('[data-meal-report="meal1"] button').disabled===false);
+    await page.locator('[data-meal-report="meal1"] select').selectOption('done');
+    await page.locator('[data-meal-report="meal1"] button').click();
+    await waitFor(()=>document.querySelector('[data-meal-report="meal1"] button').disabled===false);
+    assert(checks.at(-1).p_status==='done','Explicit report must save done');
+    await page.locator('[data-meal-report="meal1"] select').selectOption('');
+    await page.locator('[data-meal-report="meal1"] button').click();
+    await waitFor(()=>document.querySelector('[data-meal-report="meal1"] select').value==='');
+    assert(checks.at(-1).p_status===null,'Clearing report must clear report state');
     await page.screenshot({path:'C:/Users/diogo/AppData/Local/Temp/patient-demo-mobile.png',fullPage:true,animations:'disabled'});
     await page.locator('#training-form [name=description]').fill('DEMONSTRAÇÃO: caminhada tranquila');
     await page.locator('#training-intensity').fill('1');
@@ -119,7 +155,8 @@ async (existingPage) => {
     await page.getByRole('button',{name:'Registrar treino de hoje'}).click();
     await page.locator('#training-form [role=status]').filter({hasText:'registrado'}).waitFor();
     assert(clinical[0].kind==='exercise' && clinical[0].payload.date===today && clinical[0].payload.intensity===10,'Training payload/date invalid');
-    await page.getByText('Chutei o balde',{exact:true}).click();
+    await page.bringToFront();
+    await page.getByText('Chutei o balde',{exact:true}).focus();await page.getByText('Chutei o balde',{exact:true}).press('Enter');
     await page.locator('[data-meal-difficulty] [name=foods]').fill('DEMONSTRAÇÃO: refeição fora da rotina');
     assert(await page.locator('[data-meal-difficulty] [name=feelings]').count()===0,'Feeling field must be removed');
     assert((await page.locator('[data-meal-difficulty] [name=trigger]').getAttribute('placeholder')).includes('ansiedade'),'New trigger example missing');
@@ -181,13 +218,13 @@ async (existingPage) => {
     await page.locator('#h2o-goal').filter({hasText:'ainda não definiu'}).waitFor();
     assert(await page.locator('#h2o-fill').evaluate(e=>e.style.width)==='50%','No-goal meter must display recorded 500ml');
     await page.getByRole('button',{name:'+250 ml',exact:true}).click();
-    await page.waitForFunction(()=>document.querySelector('#h2o-fill').style.width==='75%');
+    await waitFor(()=>document.querySelector('#h2o-fill').style.width==='75%');
     assert((await page.locator('#h2o-scale').textContent()).includes('sem meta definida'),'Visual scale must not claim a prescribed target');
     await page.getByRole('button',{name:'Desfazer último registro'}).click();
-    await page.waitForFunction(()=>document.querySelector('#h2o-fill').style.width==='50%');
+    await waitFor(()=>document.querySelector('#h2o-fill').style.width==='50%');
     await page.reload();
     await page.locator('#h2o-goal').filter({hasText:'ainda não definiu'}).waitFor();
     assert(await page.locator('#h2o-fill').evaluate(e=>e.style.width)==='50%','No-goal meter must restore the persisted volume');
-    return {passed:true,mobile:390,desktop:1440,waterRequests:operations.length,clinicalVersions:clinical.length,mealChecks:checks.length,checks:['layout mobile/desktop','water failed-response retry idempotency','water undo','meal status/checkbox consistency and keyboard','training intensity/date','meal difficulty idempotent retry','camera/gallery photo picker, preview and WebP upload','collapsed PDF appendices','checkable breakfast preparations','profile photo','live hydration refresh and isolated clinical failure','private chat retry, reply and PDF attachment','empty assessment','read-only plan','structured data export','no-goal meter update, undo and reload'],productionWrites:0};
-  } catch(error) { return {error:error.message, state:await page.evaluate(()=>({tab:document.querySelector('#panel-diet')?.hidden,rect:document.querySelector('[data-water]')?.getBoundingClientRect().toJSON(),html:document.querySelector('#panel-diet')?.outerHTML.slice(0,1000),css:getComputedStyle(document.querySelector('[data-water]')).display})),errors}; } finally { await page.close(); }
+    return {passed:true,mobile:390,desktop:1440,waterRequests:operations.length,clinicalVersions:clinical.length,mealChecks:checks.length,checks:['layout mobile/desktop','water failed-response retry idempotency','water undo','numbered open options, cancel, add, replace and persistence','training intensity/date','meal difficulty idempotent retry','camera/gallery photo picker, preview and WebP upload','collapsed PDF appendices','checkable breakfast preparations','profile photo','live hydration refresh and isolated clinical failure','private chat retry, reply and PDF attachment','empty assessment','read-only plan','structured data export','no-goal meter update, undo and reload'],productionWrites:0};
+  } catch(error) { return {error:error.message,stack:error.stack,optionRequests,itemChecks,state:await page.evaluate(()=>({tab:document.querySelector('#panel-diet')?.hidden,card:document.querySelector('#active-diet-card')?.innerHTML.slice(0,400),checked:[...document.querySelectorAll('[data-item-id]')].map(i=>({id:i.dataset.itemId,checked:i.checked})),rect:document.querySelector('[data-water]')?.getBoundingClientRect().toJSON(),html:document.querySelector('#panel-diet')?.outerHTML.slice(0,1000),css:getComputedStyle(document.querySelector('[data-water]')).display})),errors}; } finally { await page.close(); }
 }

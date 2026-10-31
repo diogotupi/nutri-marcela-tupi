@@ -16,12 +16,12 @@ import {
   fetchTodayTracking,
   requireAuth,
   signOut,
-  toggleItemCheck,
 } from '../js/auth.js?v=20261030-options';
 import { initGuidesPanel } from './guides-panel.js';
 import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js?v=20261030-chat';
 import { initPatientExtras, bindMealExtras, mealExtrasMarkup, notifyPatientSaved } from './patient-extras.js?v=20261030-profile-photo';
-import {splitDietNotes} from '../js/diet-content.mjs?v=20261030-patient2';
+import {splitDietNotes,mealOptionsFromRows,selectedMealOptions} from '../js/diet-content.mjs?v=20261031-options';
+import {confirmAdditionalOption} from './meal-options.js?v=20261031-options';
 import { hydrationMeter } from './patient-model.mjs?v=20261030-water';
 
 const greeting = document.getElementById('patient-greeting');
@@ -44,6 +44,7 @@ let lastWater = null;
 let pendingWater = null;
 let pendingUndo = null;
 let validatedWaterGoal = null;
+let savingOption = false;
 
 const panels = {
   diet: document.getElementById('panel-diet'),
@@ -72,14 +73,6 @@ function renderWater() {
   h2oAmount.setAttribute('aria-label', `${meter.volume} mililitros registrados hoje`);
 }
 
-function mealProgress(meal) {
-  const items = (meal.diet_items || []).filter((item) => item.food_name);
-  if (!items.length) return tracking.mealIds.has(meal.id);
-  const options = meal.options?.length ? meal.options : [{name:null}];
-  const progress = options.map(o => {const group=items.filter(i=>!i.option_name||i.option_name===o.name);const done=group.filter(i=>tracking.itemIds.has(i.id)).length;return {done,total:group.length,complete:group.length>0&&done===group.length};});
-  return progress.sort((a,b)=>b.done/Math.max(b.total,1)-a.done/Math.max(a.total,1))[0];
-}
-
 function renderDietCard(diet, container) {
   activeDiet = diet;
 
@@ -89,11 +82,9 @@ function renderDietCard(diet, container) {
   }
 
   const mealsHtml = diet.meals.map((meal) => {
-    const items = (meal.diet_items || []).filter((item) => item.food_name);
     const mealChecked = tracking.mealIds.has(meal.id);
     const report = mealReports.get(meal.id);
     const reportStatus = report?.status || (mealChecked ? 'done' : '');
-    const progress = mealProgress(meal);
 
     const renderItem = (item) => {
       const checked = tracking.itemIds.has(item.id);
@@ -117,27 +108,24 @@ function renderDietCard(diet, container) {
         </label>
       `;
     };
-    const shared=items.filter(i=>!i.option_name);
-    const itemsHtml = meal.options?.length>1 ? `${shared.map(renderItem).join('')}<p class="diet-card__hint">Escolha uma das opções desta refeição.</p>${meal.options.map((o,index)=>`<details class="meal-option" ${index===0?'open':''}><summary>${escapeHtml(o.name)}</summary>${o.notes?`<p style="white-space:pre-wrap">${escapeHtml(o.notes)}</p>`:''}${items.filter(i=>i.option_name===o.name).map(renderItem).join('')}</details>`).join('')}` : items.map(renderItem).join('')+(meal.options?.[0]?.notes?`<p style="white-space:pre-wrap">${escapeHtml(meal.options[0].notes)}</p>`:'');
+    const options=mealOptionsFromRows(meal);
+    const selected=selectedMealOptions(meal,tracking.itemIds);
+    const itemsHtml=options.map((o,index)=>{
+      const done=o.items.filter(i=>tracking.itemIds.has(i.id)).length;
+      return `<section class="meal-option ${done?'is-selected':''}"><label class="meal-option__heading"><span>${o.label}</span>${o.items.length?`<input type="checkbox" data-option-meal="${meal.id}" data-option-index="${index}" aria-label="Marcar ${o.label.toLowerCase()} de ${escapeHtml(meal.name)}" ${done===o.items.length?'checked':''} ${done&&done<o.items.length?'data-partial="true"':''}>`:''}</label>${meal.notes?`<p class="meal-option__notes">${escapeHtml(meal.notes)}</p>`:''}${o.items.map(renderItem).join('')}${o.notes?`<p class="meal-option__notes">${escapeHtml(o.notes)}</p>`:''}</section>`;
+    }).join('');
 
     return `
       <div class="patient-meal-block ${mealChecked ? 'is-meal-checked' : ''}">
-        <label class="meal-check">
-          <input
-            type="checkbox"
-            class="meal-check__input"
-            data-meal-id="${meal.id}"
-            ${mealChecked ? 'checked' : ''}
-          >
-          <span class="meal-check__box" aria-hidden="true"></span>
+        <div class="meal-check">
           <span class="meal-check__label">
             <span>${escapeHtml(meal.name)}${meal.scheduled_time ? ` · ${escapeHtml(meal.scheduled_time.slice(0,5))}` : ''}</span>
-            ${typeof progress === 'object'
-              ? `<small>${progress.done}/${progress.total} itens</small>`
-              : ''}
+            ${selected.length?`<small>${selected.length===1?`${selected[0].label} · ${selected[0].items.filter(i=>tracking.itemIds.has(i.id)).length}/${selected[0].items.length} alimentos marcados`:`${selected.length} opções marcadas`}</small>`:''}
           </span>
-        </label>
-        ${meal.notes?`<p style="white-space:pre-wrap">${escapeHtml(meal.notes)}</p>`:''}${itemsHtml ? `<div class="meal-items">${itemsHtml}</div>` : ''}
+        </div>
+        <p class="diet-card__hint">Escolha uma opção para esta refeição.</p>
+        ${selected.length>1?`<p class="meal-option-extra" role="status">${selected.length} opções registradas · você marcou que comeu mais de uma opção.</p>`:''}
+        ${itemsHtml ? `<div class="meal-items">${itemsHtml}</div>` : ''}
         <form data-meal-report="${meal.id}" class="patient-meal-report"><label>Como foi esta refeição?<select name="status">${[['','Sem registro'],['done','Realizada'],['partial','Parcial'],['skipped','Não realizada']].map(([value,label])=>`<option value="${value}" ${reportStatus===value?'selected':''}>${label}</option>`).join('')}</select></label><label>Comentário (opcional)<input name="comment" maxlength="2000" value="${escapeHtml(report?.comment || '')}"></label><button class="app-btn app-btn--ghost">Salvar relato</button><p role="status"></p></form>
         ${mealExtrasMarkup(meal.id)}
       </div>
@@ -156,7 +144,7 @@ function renderDietCard(diet, container) {
       </div>
       ${notes.general ? `<p class="diet-card__notes" style="white-space:pre-wrap">${escapeHtml(notes.general)}</p>` : ''}
       ${notes.appendix?`<details class="diet-appendices"><summary>Listas de substituição, compras e receitas</summary><div class="diet-appendices__content">${escapeHtml(notes.appendix)}</div></details>`:''}
-      <p class="diet-card__hint">Marque cada refeição ou alimento conforme for fazendo hoje.</p>
+      <p class="diet-card__hint">Marque a opção que você comeu ou registre os alimentos individualmente.</p>
       ${mealsHtml || '<div class="app-empty">Sem alimentos cadastrados.</div>'}
     </div>
   `;
@@ -166,6 +154,7 @@ function renderDietCard(diet, container) {
 }
 
 function bindCheckEvents(container) {
+  container.querySelectorAll('[data-partial]').forEach(input=>input.indeterminate=true);
   container.querySelectorAll('[data-meal-report]').forEach(form=>form.addEventListener('submit',async event=>{
     event.preventDefault(); const mealId=form.dataset.mealReport, status=form.elements.status.value || null, comment=form.elements.comment.value.trim() || null;
     const button=form.querySelector('button'),message=form.querySelector('[role=status]');button.disabled=true;message.textContent='Salvando…';
@@ -175,46 +164,50 @@ function bindCheckEvents(container) {
       renderDietCard(activeDiet,activeDietCard);updateNextMeal();showToast('Relato salvo.');notifyPatientSaved();
     }catch(error){message.textContent=error.message;button.disabled=false;}
   }));
-  container.querySelectorAll('[data-meal-id]').forEach((input) => {
-    input.addEventListener('change', async () => {
-      const mealId = input.dataset.mealId;
-      input.disabled = true;
-      try {
-        const reportStatus = input.checked ? 'done' : null;
-        const {error} = await getSupabase().rpc('report_meal',{p_meal:mealId,p_date:today,p_status:reportStatus,p_comment:mealReports.get(mealId)?.comment || null});
-        if(error) throw error;
-        if(reportStatus) mealReports.set(mealId,{status:reportStatus,comment:mealReports.get(mealId)?.comment}); else mealReports.delete(mealId);
-        if (input.checked) tracking.mealIds.add(mealId);
-        else tracking.mealIds.delete(mealId);
-        input.closest('.patient-meal-block')?.classList.toggle('is-meal-checked', input.checked);
-        showToast(input.checked ? 'Refeição marcada!' : 'Refeição desmarcada.');
-        updateNextMeal();
-        renderDietCard(activeDiet,activeDietCard);
-        notifyPatientSaved();
-      } catch (error) {
-        input.checked = !input.checked;
-        showToast(error.message, 'error');
-      } finally { input.disabled = false; }
-    });
-  });
-
-  container.querySelectorAll('[data-item-id]').forEach((input) => {
-    input.addEventListener('change', async () => {
-      const itemId = input.dataset.itemId;
-      input.disabled = true;
-      try {
-        await toggleItemCheck(itemId, today, input.checked);
-        if (input.checked) tracking.itemIds.add(itemId);
-        else tracking.itemIds.delete(itemId);
-        input.closest('.check-row')?.classList.toggle('is-checked', input.checked);
-        if (activeDiet) renderDietCard(activeDiet, activeDietCard);
-        notifyPatientSaved();
-      } catch (error) {
-        input.checked = !input.checked;
-        showToast(error.message, 'error');
-      } finally { input.disabled = false; }
-    });
-  });
+  async function saveSelection(input,meal,itemId,wholeOption) {
+    if(savingOption){input.checked=!input.checked;return;}
+    savingOption=true;
+    const checked=input.checked;
+    const focusSelector=wholeOption?`[data-option-meal="${meal.id}"][data-option-index="${input.dataset.optionIndex}"]`:`[data-item-id="${itemId}"]`;
+    const applyResult=result=>{
+      if(!Array.isArray(result?.item_ids))throw new Error('Não foi possível confirmar a opção. Atualize a página.');
+      for(const item of meal.diet_items||[])tracking.itemIds.delete(item.id);
+      result.item_ids.forEach(id=>tracking.itemIds.add(id));
+    };
+    const controls=container.querySelectorAll('button,input,select,textarea');
+    controls.forEach(control=>control.disabled=true);
+    try {
+      const payload={p_meal:meal.id,p_date:today,p_item:itemId,p_checked:checked,p_whole_option:wholeOption,p_resolution:null};
+      const save=async()=>{const {data,error}=await getSupabase().rpc('set_meal_option_check',payload);if(error)throw error;return data;};
+      let result=await save();
+      if(result.conflict){
+        applyResult(result);
+        payload.p_resolution=await confirmAdditionalOption(selectedMealOptions(meal,tracking.itemIds).length);
+        if(!payload.p_resolution)return;
+        result=await save();
+      }
+      applyResult(result);
+      showToast(checked ? payload.p_resolution==='replace'?'Opção substituída.':payload.p_resolution==='add'?'Mais de uma opção registrada.':'Registro salvo.' : 'Marcação removida.');
+      notifyPatientSaved();
+    } catch(error) {
+      // Reconcile an uncertain network result before allowing another choice.
+      try{const fresh=await fetchTodayTracking(today);tracking.itemIds=fresh.itemIds;}catch{}
+      showToast(`${error.message} Confira suas marcações antes de tentar novamente.`,'error');
+    } finally {
+      savingOption=false;
+      renderDietCard(activeDiet,activeDietCard);
+      if(!panels.diet.hidden)container.querySelector(focusSelector)?.focus({preventScroll:true});
+    }
+  }
+  container.querySelectorAll('[data-item-id]').forEach(input=>input.addEventListener('change',()=>{
+    const meal=activeDiet.meals.find(m=>m.diet_items.some(i=>i.id===input.dataset.itemId));
+    if(meal)saveSelection(input,meal,input.dataset.itemId,false);
+  }));
+  container.querySelectorAll('[data-option-meal]').forEach(input=>input.addEventListener('change',()=>{
+    const meal=activeDiet.meals.find(m=>m.id===input.dataset.optionMeal);
+    const option=mealOptionsFromRows(meal)[Number(input.dataset.optionIndex)];
+    if(option?.items.length)saveSelection(input,meal,option.items[0].id,true);
+  }));
 }
 
 function switchTab(tabId) {
@@ -278,7 +271,7 @@ async function loadDashboard(profile) {
     renderDietCard(fullDiet, activeDietCard);
     const preview = activeDietCard.cloneNode(true);
     preview.querySelectorAll('input').forEach(input => input.remove());
-    preview.querySelectorAll('.diet-card__hint, .patient-meal-report, .meal-extra-actions, .meal-check__box, .check-row__box, .meal-check__label small').forEach(el => el.remove());
+    preview.querySelectorAll('.diet-card__hint, .patient-meal-report, .meal-extra-actions, .meal-check__box, .check-row__box, .meal-check__label small, .meal-option-extra').forEach(el => el.remove());
     preview.querySelectorAll('.is-checked, .is-meal-checked').forEach(el=>el.classList.remove('is-checked','is-meal-checked'));
     document.getElementById('plan-preview').innerHTML = preview.innerHTML;
   } else {

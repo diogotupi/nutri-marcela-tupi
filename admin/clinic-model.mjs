@@ -27,6 +27,7 @@ export function mealEntries({reports=[],checks=[],items=[],records=[]},start,end
  for(const r of items)ensure(r.check_date,r.diet_items?.meal_id,r.diet_items?.diet_meals?.name).items.push(r);
  for(const r of records){const p=r.payload||{},date=p.date||dateKey(new Date(r.occurred_at));if(!p.meal_id)continue;const x=ensure(date,p.meal_id);
  if(p.category==='meal')x.photos.push(r);if(p.category==='meal_difficulty')x.difficulties.push(r);}
+ for(const entry of map.values())entry.extraOptions=new Set(entry.items.filter(i=>i.diet_items).map(i=>i.diet_items.option_name??null)).size>1;
  return [...map.values()].filter(r=>r.id&&r.date>=start&&r.date<=end).sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name));
 }
 export function auditSentence(r){

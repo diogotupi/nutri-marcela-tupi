@@ -17,3 +17,9 @@ test('reference lists and recipes remain in plan notes and never inflate the las
 test('a standalone recipe annex is also separate from the prescribed meal',()=>{
  const d=parseWebdietPages([['Jantar','19:00','Frango 100g'],['Salada de folhas','Receita culinária','Ingredientes:','Folhas - 30g','Forma de preparo:','Misturar.']]);assert.equal(d.meals[0].options[0].items.length,1);assert.match(d.notes,/Salada de folhas/);assert.equal(d.warnings.length,0);
 });
+
+test('multiple consumed options are visible to the team, counting legacy ungrouped foods as one option',()=>{
+ const item=(id,option_name)=>({item_id:id,check_date:'2026-10-31',diet_items:{meal_id:'m',food_name:id,option_name,diet_meals:{name:'Café'}}});
+ assert.equal(mealEntries({items:[item('egg',null),item('veg',null)]},'2026-10-31','2026-10-31')[0].extraOptions,false);
+ assert.equal(mealEntries({items:[item('egg',null),item('bread','Preparo 1')]},'2026-10-31','2026-10-31')[0].extraOptions,true);
+});
