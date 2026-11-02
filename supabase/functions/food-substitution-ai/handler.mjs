@@ -1,4 +1,4 @@
-import {DEFAULT_MODEL,instructions,outputSchema,modelInput,parseModelResponse,flattenPlan} from './policy.mjs';
+import {DEFAULT_MODEL,instructions,outputSchema,modelInput,parseModelResponse,flattenPlan,conversationSelection,conversationHistory,sourceFoodLookup} from './policy.mjs';
 const cors={'Access-Control-Allow-Origin':'https://nutrimarcelatupi.com','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'GET, POST, OPTIONS'};
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{...cors,'Content-Type':'application/json','Cache-Control':'no-store'}});
 const fallback=reply=>({mode:'guided',reply,intent:'clarify',source_item_ids:[],target_food_ids:[],target_query:''});
@@ -46,11 +46,15 @@ export function createHandler({createClient,getEnv,fetchImpl=fetch}){
     const plan=flattenPlan(meals||[]);
     const [{data:catalog,error:catalogError},{data:history,error:historyError}]=await Promise.all([
      caller.from('taco_foods').select('id,name,kcal_per_100g').order('id'),
-     caller.from('substitution_ai_turns').select('message,response').eq('patient_id',profile.id).eq('status','completed').order('created_at',{ascending:false}).limit(6)
+     caller.from('substitution_ai_turns').select('message,response,item_id').eq('patient_id',profile.id).eq('status','completed').order('created_at',{ascending:false}).limit(6)
     ]);if(catalogError||historyError)throw catalogError||historyError;
-    const response=await fetchImpl('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(22000),body:JSON.stringify({model,store:false,...(model.startsWith('gpt-6')?{reasoning:{effort:'none'}}:{}),instructions,input:modelInput(plan,body.item_id,(history||[]).reverse(),body.message.trim()),max_output_tokens:1200,text:{format:{type:'json_schema',name:'food_substitution',strict:true,schema:outputSchema}}})});
+    const selected=conversationSelection(plan,catalog||[],body.item_id,body.message);
+    const direct=!selected&&sourceFoodLookup(plan,body.message);
+    if(direct)return await finish(direct);
+    const context=conversationHistory(history||[],selected,body.message);
+    const response=await fetchImpl('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(22000),body:JSON.stringify({model,store:false,...(model.startsWith('gpt-6')?{reasoning:{effort:'none'}}:{}),instructions,input:modelInput(plan,selected,context,body.message.trim()),max_output_tokens:1200,text:{format:{type:'json_schema',name:'food_substitution',strict:true,schema:outputSchema}}})});
     if(!response.ok)throw Error('Provider unavailable');
-    const result=parseModelResponse(await response.json(),plan,catalog||[],body.item_id||null);
+    const result=parseModelResponse(await response.json(),plan,catalog||[],selected);
     return await finish(result);
    }catch{
     return await finish(fallback('Não consegui consultar a IA agora. Você pode continuar pelas opções de alimentos e trocas salvas.'),'failed');

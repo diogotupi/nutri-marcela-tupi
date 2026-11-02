@@ -1,21 +1,21 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createHandler} from '../supabase/functions/food-substitution-ai/handler.mjs';
-import {flattenPlan,modelInput,parseModelResponse} from '../supabase/functions/food-substitution-ai/policy.mjs';
+import {flattenPlan,modelInput,parseModelResponse,conversationSelection,conversationHistory} from '../supabase/functions/food-substitution-ai/policy.mjs';
 
 const patient='21111111-1111-4111-8111-111111111111',item='31111111-1111-4111-8111-111111111111',operation='41111111-1111-4111-8111-111111111111';
 const plan=[{id:item,food_name:'Batata, inglesa, cozida',meal_name:'Almoço',option_name:'Opção 1',taco_food_id:91,portion_g:200}];
 const catalog=[{id:91,name:'Batata, inglesa, cozida',kcal_per_100g:52},{id:3,name:'Arroz, tipo 1, cozido',kcal_per_100g:128}];
 const modelResult=answer=>({output:[{content:[{type:'output_text',text:JSON.stringify(answer)}]}]});
 const answer={intent:'find_source',reply:'Vamos encontrar uma troca no seu almoço.',source_item_ids:[item,'foreign'],source_query:'batata',target_query:'arroz'};
-function fixture({configured=true,authorized=true,role='patient',reservation={created:true},reserveError=null,providerStatus=200,providerAnswer=answer}={}){
+function fixture({configured=true,authorized=true,role='patient',reservation={created:true},reserveError=null,providerStatus=200,providerAnswer=answer,items=plan,history=[]}={}){
  const calls=[],updates=[],reservations=[];
  const createClient=(url,key)=>({auth:{getUser:async()=>({data:{user:authorized?{id:'auth-patient'}:null},error:authorized?null:Error('Invalid session')})},rpc:async(name,args)=>{reservations.push({name,args});return{data:reservation,error:reserveError};},from(table){
   const filters=[];let update=null,single=false;
   const q=new Proxy({}, {get(_,method){if(method==='then')return resolve=>{
    calls.push({table,filters,update,service:key==='service'});
    if(update)updates.push(update);
-   let data=table==='profiles'?{id:patient,role,full_name:'PRIVATE NAME',phone:'PRIVATE PHONE'}:table==='diets'?{id:'active-diet'}:table==='diet_meals'?[{id:'meal',name:'Almoço',options:[{name:'Opção 1'}],diet_items:[plan[0]]}]:table==='taco_foods'?catalog:[];
+   let data=table==='profiles'?{id:patient,role,full_name:'PRIVATE NAME',phone:'PRIVATE PHONE'}:table==='diets'?{id:'active-diet'}:table==='diet_meals'?[{id:'meal',name:'Almoço',options:[{name:'Opção 1'}],diet_items:items}]:table==='taco_foods'?catalog:table==='substitution_ai_turns'?history:[];
    return Promise.resolve(resolve({data,error:null}));
   };return(...args)=>{if(method==='eq')filters.push(args);if(method==='update')update=args[0];if(['single','maybeSingle'].includes(method))single=true;return q;};}});return q;
  }});
@@ -68,4 +68,33 @@ test('an identified food without calorie data never promises a calculated replac
  assert.equal(JSON.parse(modelInput([missing],null,[],'trocar soja').at(-1).content).plan[0].available,false);
  const unknownEnergy=parseModelResponse(modelResult(answer),plan,[{id:91,kcal_per_100g:null}],null);
  assert.match(unknownEnergy.reply,/revisados pela Marcela/);assert.deepEqual(unknownEnergy.target_food_ids,[]);
+});
+
+test('soy then rice returns every rice occurrence despite old soy history or a stale selected ID',async()=>{
+ const soy={...plan[0],food_name:'Proteína de soja texturizada hidratada',taco_food_id:null,portion_g:null};
+ const rice={...soy,id:'32222222-2222-4222-8222-222222222222',food_name:'Arroz branco cozido'};
+ const dinnerRice={...rice,id:'33333333-3333-4333-8333-333333333333'};
+ const history=[{item_id:null,message:'Esse aí mesmo',response:{intent:'find_source',reply:'Encontrei a soja.',source_item_ids:[item]}}];
+ for(const selected of [null,item]){
+  const f=fixture({items:[soy,rice,dinnerRice],history});
+  const result=await(await f.request({operation_id:operation,message:'Arroz',item_id:selected})).json();
+  assert.equal(result.intent,'find_source');assert.deepEqual(result.source_item_ids,[rice.id,dinnerRice.id]);assert.equal(result.selected_item_id,null);assert.equal(f.providerCalls,0);
+  assert(!JSON.stringify(result).includes('soja'));assert.deepEqual(result.target_food_ids,[]);
+ }
+});
+
+test('new source queries discard old history while selected-food follow-ups preserve their context',async()=>{
+ const history=[{item_id:item,message:'HISTÓRICO ANTERIOR DE SOJA',response:{intent:'find_source',reply:'Soja'}}];
+ const f=fixture({history});
+ await f.request({operation_id:operation,message:'Quero trocar o arroz',item_id:item});
+ assert.equal(f.providerCalls,1);assert.equal(f.providerBody.input.length,1);
+ assert.equal(JSON.parse(f.providerBody.input[0].content).selected_item_id,null);
+ assert(!JSON.stringify(f.providerBody.input).includes('HISTÓRICO ANTERIOR'));
+ assert.equal(conversationSelection(plan,catalog,item,'Pode ser arroz?'),item);
+ assert.equal(conversationSelection(plan,catalog,item,'Quero trocar isso por arroz'),item);
+ assert.equal(conversationSelection(plan,catalog,item,'Quero trocar o arroz'),null);
+ const turns=[history[0],{...history[0],item_id:'other'},history[0]];
+ assert.deepEqual(conversationHistory(turns,item,'Pode ser arroz?'),[history[0]]);
+ assert.deepEqual(conversationHistory(history,null,'Arroz'),[]);
+ assert.deepEqual(conversationHistory(history,null,'Esse aí mesmo'),history);
 });
