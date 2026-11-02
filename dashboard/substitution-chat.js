@@ -98,6 +98,10 @@ function createAssistant(initialOptions){
   origin=rowById(answer.state?.source_item_id)||null;
   if(answer.intent==='proposal'&&answer.proposal){
    const p=answer.proposal,row=rowById(p.item_id);if(!row)return;
+   if(!p.source_snapshot||['food_name','quantity','unit'].some(key=>String(row.item[key]??'')!==String(p.source_snapshot[key]??''))){
+    const entry=activeCard(message('Seu plano mudou desde essa conversa. Vamos recalcular para a porção atual?',false,'<button type="button" class="ai-primary-action" data-recalculate>Recalcular esta troca</button>'));
+    entry.querySelector('[data-recalculate]').onclick=()=>{newConversation();sendText(`Quero trocar ${row.item.food_name} por ${p.target.name}.`,row.item.id);};return;
+   }
    mergeFoods([p.source,p.target]);row.item.taco_food_id=p.source.id;row.item.portion_g=p.source_grams;row.reference=p.source;
    confirm(row,p.target);return;
   }

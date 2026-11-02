@@ -80,6 +80,6 @@ export async function runConversation({plan,catalog,history,body,admin,patient,k
  if(!positive(grams)||grams>5000||!positive(kcal))return set('refer_nutri','Essa conta resultou em uma porção pouco usual. Vamos conferir essa troca com a Marcela?');
  if(origin.food.id===replacement.food.id)return set('ask','Esse é o mesmo alimento do seu plano. Qual outro alimento você gostaria de comer no lugar?');
  result.choices=[];
- result.proposal={item_id:source.id,source:patientFood(origin.food),source_grams:origin.portion_g,target:patientFood(replacement.food),target_grams:grams,energy_kcal:kcal,unit_g:label?.unit_g||null};
+ result.proposal={item_id:source.id,source_snapshot:{food_name:source.food_name,quantity:source.quantity??null,unit:source.unit??null},source:patientFood(origin.food),source_grams:origin.portion_g,target:patientFood(replacement.food),target_grams:grams,energy_kcal:kcal,unit_g:label?.unit_g||null};
  return set('proposal',`Para substituir ${number(origin.portion_g)} g de ${source.food_name.toLowerCase()}, a porção é de aproximadamente ${number(grams)} g de ${replacement.food.name.toLowerCase()}${label?.unit_g?` (cerca de ${number(grams/label.unit_g)} unidade${grams/label.unit_g===1?'':'s'})`:''}. As duas porções têm cerca de ${number(kcal)} kcal. Quer usar essa troca?`);
 }

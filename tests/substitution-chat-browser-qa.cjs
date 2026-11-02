@@ -21,7 +21,7 @@ async(existingPage)=>{
     const base={mode:'conversation',conversation_id:b.conversation_id,user_message:b.message,had_image:!!b.image,state:{source_item_id:item,target_query:''},intent:'ask',reply:'Pelo que você quer trocar?',choices:[]};
     if(/Batata|batata/.test(b.message)){Object.assign(base,{reply:'Como você vai preparar a batata?',choices:['Cozida','Assada','Frita']});base.state.target_query='Batata';}
     if(b.message==='Frita'||b.message==='Sim, está certo'){
-     Object.assign(base,{intent:'proposal',reply:'Você pode usar aproximadamente 47,9 g de batata frita no lugar de 100 g de arroz.',proposal:{item_id:item,source:rice,source_grams:100,target:potato,target_grams:12800/267,energy_kcal:128}});base.state.target_query='Batata frita';
+     Object.assign(base,{intent:'proposal',reply:'Você pode usar aproximadamente 47,9 g de batata frita no lugar de 100 g de arroz.',proposal:{item_id:item,source_snapshot:{food_name:'Arroz branco cozido',quantity:'100',unit:'g'},source:rice,source_grams:100,target:potato,target_grams:12800/267,energy_kcal:128}});base.state.target_query='Batata frita';
     }
     if(/barrinha/.test(b.message)){Object.assign(base,{intent:'request_label',reply:'Pode enviar uma foto da tabela nutricional da barrinha?'});base.state.target_query='Barrinha';}
     if(b.image){Object.assign(base,{intent:'confirm_label',reply:'Li 90 kcal em 25 g. Está certo?',choices:['Sim, está certo','Quero corrigir']});base.state.target_query='Barrinha';}
@@ -36,7 +36,7 @@ async(existingPage)=>{
   for(const href of ['/app/fresh.css','/dashboard/substitution-chat.css?v=20261102-conversation']){const l=document.createElement('link');l.rel='stylesheet';l.href=href;document.head.append(l);}
   window.APP_CONFIG={supabaseUrl:'https://conversation-qa.invalid',supabaseAnonKey:'SYNTHETIC'};
   const s=window.__AI_QA={saved:[],current:new Map(),writes:[],failSave:true,askNutri:null,diet:{meals:[{id:'lunch',name:'Almoço',scheduled_time:'12:00',diet_items:[{id:item,food_name:'Arroz branco cozido',quantity:'100',unit:'g',taco_food_id:3,portion_g:100}]}]}};
-  const m=await import('/dashboard/substitution-chat.js?v=20261102-conversation');s.api=m.mountSubstitutionAssistant({getDiet:()=>s.diet,current:()=>s.current,saved:()=>s.saved,onChanged:async()=>{},onAskNutritionist:text=>{s.askNutri=text;}});
+  const m=await import('/dashboard/substitution-chat.js?v=20261102-conversation2');s.api=m.mountSubstitutionAssistant({getDiet:()=>s.diet,current:()=>s.current,saved:()=>s.saved,onChanged:async()=>{},onAskNutritionist:text=>{s.askNutri=text;}});
  };
  const send=async text=>{await page.locator('#swap-food-search').fill(text);await page.locator('#swap-food-search').press('Enter');await page.waitForFunction(()=>!document.querySelector('.food-ai-widget').classList.contains('is-busy'));};
  try{
@@ -46,6 +46,7 @@ async(existingPage)=>{
   await page.locator('[data-swap-confirm]').click();await page.locator('[data-swap-status]').filter({hasText:'Não foi possível'}).waitFor();await page.locator('[data-swap-confirm]').click();await page.locator('[data-swap-done]').waitFor();
   const writes=await page.evaluate(()=>window.__AI_QA.writes);assert(writes.length===2&&writes[0].p_operation===writes[1].p_operation,'Save retries must be idempotent');
   const prior=requests.length;await page.locator('[data-quick="saved"]').click();await page.locator('[data-open-saved]').click();await page.locator('[data-saved-target]').click();await page.locator('[data-ai-current] [data-swap-confirm]').waitFor();assert(requests.length===prior,'Saved choices should reopen without another conversation or label photo');
+  await page.evaluate(()=>window.__AI_QA.diet.meals[0].diet_items[0].quantity='150');await send('Frita');await page.locator('[data-recalculate]').waitFor();assert(await page.locator('[data-ai-current] [data-swap-confirm]').count()===0,'An old proposal must not overwrite a changed prescription');await page.evaluate(()=>window.__AI_QA.diet.meals[0].diet_items[0].quantity='100');
   await page.locator('[data-quick="search"]').click();loseNext=true;await send('Arroz');await page.locator('[data-ai-retry]').click();await page.waitForFunction(()=>!document.querySelector('.food-ai-widget').classList.contains('is-busy'));
   assert(requests.at(-1).operation_id===requests.at(-2).operation_id,'Lost conversation response must replay same operation');assert(requests.at(-1).conversation_id!==conv,'New swap must use a fresh conversation');
   await send('Quero uma barrinha');await page.locator('[data-label-photo]').click();await page.locator('[data-photo-gallery]').waitFor();
