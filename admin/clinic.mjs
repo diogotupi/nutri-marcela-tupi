@@ -3,7 +3,7 @@ import {getSupabase,escapeHtml as esc} from '../js/app-core.js';
 import {requireAuth,signOut,fetchDietWithMeals,createDiet,saveDietBuilder} from '../js/auth.js?v=20261102-taco';
 import {listClinical,addClinical,getSignedAttachment} from '../js/clinical.js';
 import {mountPatientChat} from '../js/patient-chat.js';
-import {mountDietEditor,blankDiet,dietFromRows,validateDietDraft} from './diet-editor.mjs?v=20261102-ai';
+import {mountDietEditor,blankDiet,dietFromRows,validateDietDraft} from './diet-editor.mjs?v=20261102-fallback';
 import {dateKey,subtractDays,datesInRange,patientState,stateNames,categoryNames,calendarRange,contactState,mealEntries,auditSentence} from './clinic-model.mjs?v=20261102-taco';
 
 const db=getSupabase(),$=s=>document.querySelector(s),view=$('#clinic-view'),dialog=$('#clinic-dialog'),form=$('#clinic-form');

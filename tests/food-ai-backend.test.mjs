@@ -10,14 +10,14 @@ const modelResult=answer=>({output:[{content:[{type:'output_text',text:JSON.stri
 const answer={intent:'find_source',reply:'Vamos encontrar uma troca no seu almoço.',source_item_ids:[item,'foreign'],source_query:'batata',target_query:'arroz'};
 function fixture({configured=true,authorized=true,role='patient',reservation={created:true},reserveError=null,providerStatus=200,providerAnswer=answer,items=plan,history=[]}={}){
  const calls=[],updates=[],reservations=[];
- const createClient=(url,key)=>({auth:{getUser:async()=>({data:{user:authorized?{id:'auth-patient'}:null},error:authorized?null:Error('Invalid session')})},rpc:async(name,args)=>{reservations.push({name,args});return{data:reservation,error:reserveError};},from(table){
+ const createClient=(url,key)=>({auth:{getUser:async()=>({data:{user:authorized?{id:'auth-patient'}:null},error:authorized?null:Error('Invalid session')})},rpc:async(name,args)=>{if(name==='cache_food_reference')return {data:{...args.p_reference,id:args.p_reference.id||100001},error:null};if(name==='bind_food_reference')return {data:{id:args.p_item},error:null};reservations.push({name,args});return{data:reservation,error:reserveError};},from(table){
   const filters=[];let update=null,single=false;
   const q=new Proxy({}, {get(_,method){if(method==='then')return resolve=>{
    calls.push({table,filters,update,service:key==='service'});
    if(update)updates.push(update);
    let data=table==='profiles'?{id:patient,role,full_name:'PRIVATE NAME',phone:'PRIVATE PHONE'}:table==='diets'?{id:'active-diet'}:table==='diet_meals'?[{id:'meal',name:'Almoço',options:[{name:'Opção 1'}],diet_items:items}]:table==='taco_foods'?catalog:table==='substitution_ai_turns'?history:[];
    return Promise.resolve(resolve({data,error:null}));
-  };return(...args)=>{if(method==='eq')filters.push(args);if(method==='update')update=args[0];if(['single','maybeSingle'].includes(method))single=true;return q;};}});return q;
+  };return(...args)=>{if(method==='eq'||method==='is')filters.push(args);if(method==='update')update=args[0];if(['single','maybeSingle'].includes(method))single=true;return q;};}});return q;
  }});
  let providerCalls=0,providerBody;
  const handler=createHandler({createClient,getEnv:name=>({SUPABASE_URL:'https://project.invalid',SUPABASE_ANON_KEY:'anon',SUPABASE_SERVICE_ROLE_KEY:'service',OPENAI_API_KEY:configured?'sk-TEST-NEVER-REAL':undefined}[name]),fetchImpl:async(url,options)=>{providerCalls++;providerBody=JSON.parse(options.body);assert.equal(url,'https://api.openai.com/v1/responses');return new Response(JSON.stringify(providerStatus===200?modelResult(providerAnswer):{error:'Sensitive provider error sk-TEST-NEVER-REAL'}),{status:providerStatus,headers:{'Content-Type':'application/json'}});}});
@@ -64,10 +64,10 @@ test('model context preserves the visible legacy option numbering and excludes c
 test('an identified food without calorie data never promises a calculated replacement',()=>{
  const missing={...plan[0],food_name:'Proteína de soja texturizada hidratada',taco_food_id:null,portion_g:null};
  const result=parseModelResponse(modelResult({...answer,intent:'find_target',reply:'Vou buscar opções para essa troca.'}),[missing],catalog,item);
- assert.equal(result.intent,'find_source');assert.deepEqual(result.source_item_ids,[item]);assert.deepEqual(result.target_food_ids,[]);assert.equal(result.target_query,'');assert.match(result.reply,/revisados pela Marcela/);
+ assert.equal(result.intent,'find_source');assert.deepEqual(result.source_item_ids,[item]);assert.deepEqual(result.target_food_ids,[]);assert.equal(result.target_query,'');assert.match(result.reply,/Selecione para buscar/);
  assert.equal(JSON.parse(modelInput([missing],null,[],'trocar soja').at(-1).content).plan[0].available,false);
  const unknownEnergy=parseModelResponse(modelResult(answer),plan,[{id:91,kcal_per_100g:null}],null);
- assert.match(unknownEnergy.reply,/revisados pela Marcela/);assert.deepEqual(unknownEnergy.target_food_ids,[]);
+ assert.match(unknownEnergy.reply,/Selecione para buscar/);assert.deepEqual(unknownEnergy.target_food_ids,[]);
 });
 
 test('soy then rice returns every rice occurrence despite old soy history or a stale selected ID',async()=>{
@@ -97,4 +97,14 @@ test('new source queries discard old history while selected-food follow-ups pres
  assert.deepEqual(conversationHistory(turns,item,'Pode ser arroz?'),[history[0]]);
  assert.deepEqual(conversationHistory(history,null,'Arroz'),[]);
  assert.deepEqual(conversationHistory(history,null,'Esse aí mesmo'),history);
+});
+
+test('reference actions authenticate, isolate background records and replay confirmed results',async()=>{
+ const body={operation_id:operation,action:'resolve_source',item_id:item,message:'Calcular opções deste alimento.'};
+ const f=fixture({items:[{...plan[0],quantity:'200',unit:'g'}]});const result=await(await f.request(body)).json();
+ assert.equal(result.kind,'reference');assert.equal(result.food.id,91);assert.equal(result.portion_g,200);assert.equal(f.providerCalls,0);assert.equal(f.updates[0].response.kind,'reference');
+ assert.match(f.reservations[0].args.p_message,/^\[reference\] resolve_source:/);
+ const replay=fixture({reservation:{created:false,response:result}});assert.deepEqual(await(await replay.request(body)).json(),result);assert.equal(replay.providerCalls,0);
+ const status=fixture();await status.request(undefined,'GET');assert(status.calls.some(c=>c.table==='substitution_ai_turns'&&c.filters.some(([k,v])=>k==='response->kind'&&v===null)));
+ const invalid=fixture();assert.equal((await invalid.request({...body,action:'resolve_target',query:''})).status,400);assert.equal(invalid.reservations.length,0);
 });

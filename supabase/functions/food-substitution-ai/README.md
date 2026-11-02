@@ -2,7 +2,7 @@
 
 ## Ativar a OpenAI
 
-No projeto Supabase `pvkkxzatvuubkddzvbiq`, abra **Edge Functions → Secrets** e cadastre a chave da conta do cliente em `OPENAI_API_KEY`. A cobrança das chamadas ocorre nessa conta OpenAI. Não coloque a chave no repositório, no navegador ou em `js/config.js`.
+No projeto Supabase `pvkkxzatvuubkddzvbiq`, abra **Edge Functions → Secrets** e cadastre a chave da conta do cliente em `OPENAI_API_KEY`. A cobrança das chamadas ocorre na conta da chave cadastrada. Não coloque a chave no repositório, no navegador ou em `js/config.js`.
 
 `OPENAI_MODEL` é opcional; o padrão é `gpt-6-luna`. O projeto OpenAI da chave precisa ter acesso ao modelo e saldo disponível. Sem chave, o endpoint informa `configured:false` e o paciente continua usando as trocas guiadas, sem consumir créditos.
 
@@ -19,3 +19,13 @@ No projeto Supabase `pvkkxzatvuubkddzvbiq`, abra **Edge Functions → Secrets** 
 `npm test` inclui `tests/food-ai-backend.test.mjs`, com provedor simulado. `supabase/substitution-ai-regression.sql` valida permissões, isolamento, limites e idempotência numa transação com rollback. `tests/substitution-chat-browser-qa.cjs` usa APIs interceptadas no Playwright e não grava dados reais.
 
 Publicar os três arquivos de runtime (`index.ts`, `handler.mjs`, `policy.mjs`) como `food-substitution-ai`, mantendo `verify_jwt=true`. Depois de cadastrar a chave, conferir uma conversa autenticada com o cliente para validar acesso ao modelo e a resposta real. Nenhuma chamada paga foi feita durante a implementação sem essa chave.
+
+## Referências em segundo plano
+
+`resolve_source` e `resolve_target` usam a mesma autenticação, reserva UUID e limites da conversa. A ordem é TACO → TBCA → estimativa de IA. `references.mjs` valida IDs e preparo, preserva o peso explícito na dieta, consulta o cache e solicita uma estimativa de peso apenas quando necessário. `tbca.mjs` lê a busca pública oficial e valida código e coluna de kcal por 100 g.
+
+A fonte original da TBCA fica registrada em `reference_url` e no snapshot da troca; exemplo verificado: https://tbca.net.br/base-dados-en/int_statistical_composition.php?cod_produto=BRC0170T . Não se espelha a base inteira nem se apresenta uma estimativa como valor oficial. A UI do paciente não exibe fonte, tabela, edição ou provedor.
+
+O catálogo mantém os 597 registros TACO originais; referências adicionais têm IDs separados e procedência. Cache e vínculo ao alimento são RPCs exclusivos de `service_role`, após validação do paciente e do plano ativo. Os trabalhos de resolução são excluídos do histórico visível do chat. Reenvios confirmados não chamam o modelo novamente.
+
+Incluir `references.mjs` e `tbca.mjs` no deploy, além dos três arquivos anteriores. Testes adicionais: `tests/food-reference.test.mjs` e `supabase/food-reference-regression.sql` com rollback.

@@ -6,7 +6,7 @@ do $$ declare
  d uuid:=gen_random_uuid();version uuid;mid uuid;item uuid;unmapped uuid;
  first_op uuid:=gen_random_uuid();second_op uuid:=gen_random_uuid();restore_op uuid:=gen_random_uuid();r jsonb;day date:=(now() at time zone 'America/Sao_Paulo')::date;
 begin
- if (select count(*) from public.taco_foods)<>597 or (select kcal_per_100g from public.taco_foods where id=91)<>52 then raise exception 'FAIL official reference';end if;
+ if (select count(*) from public.taco_foods where reference_source='taco')<>597 or (select kcal_per_100g from public.taco_foods where id=91)<>52 then raise exception 'FAIL official reference';end if;
  insert into auth.users(id,email) values(au,'qa-'||au||'@example.invalid'),(su,'qa-'||su||'@example.invalid'),(pu,'qa-'||pu||'@example.invalid'),(ou,'qa-'||ou||'@example.invalid');
  insert into public.profiles(id,user_id,username,full_name,role) values(ap,au,'qa-'||au,'QA nutri','admin'),(sp,su,'qa-'||su,'QA secretária','secretary'),(pp,pu,'qa-'||pu,'QA paciente','patient'),(op,ou,'qa-'||ou,'QA outro','patient');
  insert into public.staff_permissions(user_id,enabled) values(su,true);
