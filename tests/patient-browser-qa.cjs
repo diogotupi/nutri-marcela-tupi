@@ -12,8 +12,8 @@ async (existingPage) => {
   const today = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const profile={id:pid,user_id:uid,username:'demonstracao',full_name:'Paciente Demonstração',role:'patient'};
   let water=0, failNextWater=true, failNextLapse=true, failClinical=false, noWaterGoal=false, failNextMessage=true;
-  const applied = new Map(); const itemChecks=[];const optionRequests=[];
-  const meal={id:'meal1',name:'Café da manhã — demonstração',scheduled_time:'08:00',sort_order:0,options:[1,2,3,4].map(n=>({name:'Preparo '+n,notes:'Instruções de preparo DEMONSTRAÇÃO'})),diet_items:[{id:'item1',food_name:'Alimento demonstrativo',quantity:'1',unit:'unidade',sort_order:0,option_name:null},{id:'item2',food_name:'Legumes demonstrativos',quantity:'150g',option_name:null,sort_order:1},...[1,2,3,4].map(n=>({id:'prep'+n,food_name:'Receita demonstrativa '+n,quantity:'',unit:'',option_name:'Preparo '+n,sort_order:n+1}))]};
+  const applied = new Map(); const itemChecks=[];const optionRequests=[];const swaps=[];const savedSwaps=[];const swapOps=[];let failNextSwap=true;
+  const meal={id:'meal1',name:'Café da manhã — demonstração',scheduled_time:'08:00',sort_order:0,options:[1,2,3,4].map(n=>({name:'Preparo '+n,notes:'Instruções de preparo DEMONSTRAÇÃO'})),diet_items:[{id:'item1',food_name:'Batata, inglesa, cozida',quantity:'200',unit:'g',taco_food_id:91,portion_g:200,sort_order:0,option_name:null},{id:'item2',food_name:'Legumes demonstrativos',quantity:'150g',option_name:null,sort_order:1},...[1,2,3,4].map(n=>({id:'prep'+n,food_name:n===3?'Batata, doce, cozida':'Receita demonstrativa '+n,taco_food_id:n===3?88:null,portion_g:n===3?150:null,quantity:'',unit:'',option_name:'Preparo '+n,sort_order:n+1}))]};
   const waitFor=fn=>page.waitForFunction(fn,null,{polling:100});
   const assert = (condition,message) => {if(!condition) throw Error(message);};
   const apiData = async route => {
@@ -32,6 +32,15 @@ async (existingPage) => {
     if(table==='patient_water_logs') data=water?[{id:'water1',patient_id:pid,log_date:today,amount_ml:water,goal_ml:1800}]:[];
     if(table==='diets') data=[{id:'diet1',patient_id:pid,title:'Plano DEMONSTRAÇÃO',notes:'Orientações de DEMONSTRAÇÃO\n\nAnexos do PDF\nLista de substituição\nReceita DEMONSTRAÇÃO <texto literal>',status:'active',start_date:today,created_at:new Date().toISOString()}];
     if(table==='diet_meals') data=[meal];
+    if(table==='patient_food_substitutions')data=swaps;
+    if(table==='patient_saved_substitutions')data=savedSwaps;
+    if(table==='forget_saved_substitution'){const index=savedSwaps.findIndex(s=>s.source_food_id===body.p_source&&s.target_food_id===body.p_target);if(index>=0)savedSwaps.splice(index,1);data=null;}
+    if(table==='save_food_substitution'){
+      swapOps.push(body);let row=swaps.find(s=>s.id===body.p_operation);
+      if(!row){const sourceGrams=Number(meal.diet_items.find(i=>i.id===body.p_item).portion_g);row={id:body.p_operation,patient_id:pid,item_id:body.p_item,meal_id:'meal1',check_date:today,target_food_id:3,source_food_id:91,source_name:'Batata, inglesa, cozida',original_name:'Batata, inglesa, cozida',original_quantity:sourceGrams+' g',target_name:'Arroz, tipo 1, cozido',source_grams:sourceGrams,target_grams:sourceGrams*52/128,source_kcal_per_100g:52,target_kcal_per_100g:128,energy_kcal:sourceGrams*52/100};swaps.splice(0,swaps.length,row);if(!savedSwaps.some(s=>s.source_food_id===91&&s.target_food_id===3))savedSwaps.push({patient_id:pid,source_food_id:91,target_food_id:3});for(let i=itemChecks.length-1;i>=0;i--)if(itemChecks[i].item_id===body.p_item)itemChecks.splice(i,1);}
+      if(failNextSwap){failNextSwap=false;return route.abort('failed');}data={substitution:row};
+    }
+    if(table==='remove_food_substitution'){const index=swaps.findIndex(s=>s.id===body.p_id);if(index>=0)swaps.splice(index,1);data=true;}
     if(table==='checkin_templates') data=[{id:'template-demo',name:'DEMONSTRAÇÃO',fields:[{key:'energy',label:'Energia',type:'scale',min:1,max:5,required:true}]}];
     if(table==='meal_reports' && url.searchParams.get('order')?.split(',').some(part=>part.startsWith('id.'))) throw Error('meal_reports has no id column');
     if(table==='report_meal'){checks.push(body);data=null;}
@@ -116,6 +125,44 @@ async (existingPage) => {
     await page.reload();await page.bringToFront();await page.locator('#training-form').waitFor();await waitFor(()=>document.querySelector('[data-item-id=prep2]')?.checked);
     assert(await page.locator('[data-item-id=prep1]').isChecked()===false,'Saved replacement must survive reload');
     assert(await page.locator('[data-item-id=item1]').count()===1,'Shared prescribed food must appear exactly once');
+    await page.getByRole('button',{name:'Trocar um alimento',exact:true}).click();
+    await page.locator('#swap-food-search').fill('batata');
+    assert(await page.locator('[data-swap-origin]').count()===2,'Food search must find distinct diet occurrences');
+    assert((await page.locator('[data-swap-origin=item1]').textContent()).includes('Opção 1'),'Search result must show the meal option');
+    await page.locator('#swap-food-search').fill('sem-correspondencia');
+    await page.getByText('Não encontrei esse alimento no seu plano atual.',{exact:false}).waitFor();
+    await page.locator('#swap-food-search').fill('legumes');
+    assert(await page.locator('[data-swap-origin=item2]').isDisabled(),'Food without a verified reference must not be calculated');
+    await page.locator('#swap-food-search').fill('BATATA');await page.locator('[data-swap-origin=item1]').click();
+    await page.locator('[data-swap-group]').selectOption('Cereais e derivados');
+    assert(await page.locator('[data-swap-target="3"]').textContent().then(t=>t.includes('81,3 g')&&t.includes('104 kcal')),'Calorie equivalence preview wrong');
+    await page.locator('.substitution-chat').screenshot({path:'.playwright-mcp/taco-chat-mobile.png'});
+    await page.setViewportSize({width:1440,height:1000});await page.locator('.substitution-chat').screenshot({path:'.playwright-mcp/taco-chat-desktop.png'});await page.setViewportSize({width:390,height:844});
+    await page.locator('[data-swap-target="3"]').click();await page.locator('[data-swap-confirm]').click();
+    await page.locator('[data-swap-status]').filter({hasText:'Não foi possível confirmar'}).waitFor();await waitFor(()=>!document.querySelector('[data-swap-confirm]').disabled);
+    await page.locator('[data-swap-confirm]').click();await page.locator('[data-swap-done]').waitFor();
+    assert(swapOps.length===2&&swapOps[0].p_operation===swapOps[1].p_operation&&swaps.length===1,'Failed-response retry must preserve one operation');
+    await page.locator('[data-swap-done]').click();
+    assert(await page.locator('[data-item-id=item1]').evaluate(i=>i.closest('.check-row').textContent.includes('Arroz, tipo 1, cozido')),'Daily meal must show chosen substitute');
+    assert(!await page.locator('[data-item-id=item1]').isChecked(),'Choosing a replacement must not claim it was eaten');
+    assert((await page.locator('#plan-preview').textContent()).includes('Batata, inglesa, cozida'),'Original prescription must remain visible');
+    assert(!(await page.locator('#plan-preview').textContent()).includes('Troca de hoje'),'Read-only plan must preserve the original prescription');
+    await page.reload();await page.bringToFront();await waitFor(()=>document.querySelector('[data-item-id=item1]')?.closest('.check-row').textContent.includes('Arroz, tipo 1, cozido'));
+    await page.locator('[data-swap-undo]').click();await waitFor(()=>document.querySelectorAll('[data-swap-undo]').length===0);
+    assert(swaps.length===0&&await page.locator('[data-item-id=item1]').evaluate(i=>i.closest('.check-row').textContent.includes('Batata, inglesa, cozida')),'Restore original food failed');
+    meal.diet_items[0].portion_g=100;meal.diet_items[0].quantity='100';
+    await page.reload();await page.bringToFront();await page.locator('[data-food-saved=item1]').waitFor();
+    await page.locator('[data-food-saved=item1]').click();await page.locator('[data-saved-target="3"]').waitFor();
+    assert(await page.locator('#swap-food-search').count()===0,'Saved food click must skip chat search');
+    assert((await page.locator('[data-saved-target="3"]').textContent()).includes('40,6 g'),'Saved choice must recalculate the current portion');
+    await page.locator('.substitution-chat').screenshot({path:'.playwright-mcp/taco-saved-mobile.png'});
+    await page.locator('[data-saved-target="3"]').click();await page.locator('[data-swap-confirm]').click();await page.locator('[data-swap-done]').click();
+    assert(savedSwaps.length===1&&swaps.length===1,'Reusing a saved replacement must not duplicate it');
+    await page.locator('[data-swap-undo]').click();await waitFor(()=>document.querySelectorAll('[data-swap-undo]').length===0);
+    await page.locator('[data-food-saved=item1]').click();await page.locator('[data-forget-target="3"]').click();await page.locator('[data-swap-discover]').waitFor();
+    await waitFor(()=>document.querySelectorAll('[data-saved-target]').length===0);assert(savedSwaps.length===0,'Forget saved choice failed');
+    await page.locator('[data-swap-close]').click();
+
     await page.evaluate(()=>{const b=document.createElement('div');b.textContent='DEMONSTRAÇÃO — dados fictícios interceptados localmente';b.style='background:#feeac3;padding:10px;text-align:center;font-size:12px';document.body.prepend(b);});
     await page.locator('#h2o-goal').filter({hasText:'1800'}).waitFor();
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Mobile horizontal overflow');
@@ -225,6 +272,6 @@ async (existingPage) => {
     await page.reload();
     await page.locator('#h2o-goal').filter({hasText:'ainda não definiu'}).waitFor();
     assert(await page.locator('#h2o-fill').evaluate(e=>e.style.width)==='50%','No-goal meter must restore the persisted volume');
-    return {passed:true,mobile:390,desktop:1440,waterRequests:operations.length,clinicalVersions:clinical.length,mealChecks:checks.length,checks:['layout mobile/desktop','water failed-response retry idempotency','water undo','numbered open options, cancel, add, replace and persistence','training intensity/date','meal difficulty idempotent retry','camera/gallery photo picker, preview and WebP upload','collapsed PDF appendices','checkable breakfast preparations','profile photo','live hydration refresh and isolated clinical failure','private chat retry, reply and PDF attachment','empty assessment','read-only plan','structured data export','no-goal meter update, undo and reload'],productionWrites:0};
+    return {passed:true,mobile:390,desktop:1440,waterRequests:operations.length,clinicalVersions:clinical.length,mealChecks:checks.length,checks:['layout mobile/desktop','water failed-response retry idempotency','water undo','numbered open options, cancel, add, replace and persistence','training intensity/date','meal difficulty idempotent retry','camera/gallery photo picker, preview and WebP upload','collapsed PDF appendices','checkable breakfast preparations','TACO calorie substitutions, search, blocked unmapped foods, retry, reload and restore','saved replacements persist, reopen directly from food, recalculate and can be removed','profile photo','live hydration refresh and isolated clinical failure','private chat retry, reply and PDF attachment','empty assessment','read-only plan','structured data export','no-goal meter update, undo and reload'],productionWrites:0};
   } catch(error) { return {error:error.message,stack:error.stack,optionRequests,itemChecks,state:await page.evaluate(()=>({tab:document.querySelector('#panel-diet')?.hidden,card:document.querySelector('#active-diet-card')?.innerHTML.slice(0,400),checked:[...document.querySelectorAll('[data-item-id]')].map(i=>({id:i.dataset.itemId,checked:i.checked})),rect:document.querySelector('[data-water]')?.getBoundingClientRect().toJSON(),html:document.querySelector('#panel-diet')?.outerHTML.slice(0,1000),css:getComputedStyle(document.querySelector('[data-water]')).display})),errors}; } finally { await page.close(); }
 }

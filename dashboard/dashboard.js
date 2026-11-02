@@ -1,3 +1,5 @@
+import {openSubstitutionChat} from './substitution-chat.js?v=20261102-taco';
+import {formatGrams,formatKcal} from '../js/taco.mjs?v=20261102';
 import {mountPatientChat} from '../js/patient-chat.js?v=20261030-team';
 import {
   escapeHtml,
@@ -16,7 +18,7 @@ import {
   fetchTodayTracking,
   requireAuth,
   signOut,
-} from '../js/auth.js?v=20261030-options';
+} from '../js/auth.js?v=20261102-taco';
 import { initGuidesPanel } from './guides-panel.js';
 import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js?v=20261030-chat';
 import { initPatientExtras, bindMealExtras, mealExtrasMarkup, notifyPatientSaved } from './patient-extras.js?v=20261030-profile-photo';
@@ -45,6 +47,8 @@ let pendingWater = null;
 let pendingUndo = null;
 let validatedWaterGoal = null;
 let savingOption = false;
+let foodSubstitutions=new Map();
+let savedSubstitutions=[];
 
 const panels = {
   diet: document.getElementById('panel-diet'),
@@ -73,7 +77,7 @@ function renderWater() {
   h2oAmount.setAttribute('aria-label', `${meter.volume} mililitros registrados hoje`);
 }
 
-function renderDietCard(diet, container) {
+function renderDietCard(diet, container,readOnly=false) {
   activeDiet = diet;
 
   if (!diet || !diet.meals?.length) {
@@ -87,25 +91,28 @@ function renderDietCard(diet, container) {
     const reportStatus = report?.status || (mealChecked ? 'done' : '');
 
     const renderItem = (item) => {
-      const checked = tracking.itemIds.has(item.id);
+      const checked = !readOnly&&tracking.itemIds.has(item.id);
+      const swap=!readOnly&&foodSubstitutions.get(item.id);
       return `
-        <label class="check-row ${checked ? 'is-checked' : ''}">
+        <div class="check-row ${checked ? 'is-checked' : ''}"><label class="check-row__toggle">
           <input
             type="checkbox"
             class="check-row__input"
+            aria-label="Marcar ${escapeHtml(swap?.target_name||item.food_name)} como consumido"
             data-item-id="${item.id}"
             ${checked ? 'checked' : ''}
           >
-          <span class="check-row__box" aria-hidden="true"></span>
+          <span class="check-row__box" aria-hidden="true"></span></label>
           <span class="check-row__content">
-            <span class="check-row__name">${escapeHtml(item.food_name)}</span>
+            ${!readOnly&&item.taco_food_id&&Number(item.portion_g)>0?`<button type="button" class="check-row__name food-saved-open" data-food-saved="${item.id}">${escapeHtml(swap?.target_name||item.food_name)}<small>Trocas salvas${savedSubstitutions.some(s=>s.source_food_id===item.taco_food_id)?' · '+savedSubstitutions.filter(s=>s.source_food_id===item.taco_food_id).length:''} ↗</small></button>`:`<span class="check-row__name">${escapeHtml(swap?.target_name||item.food_name)}</span>`}
             <span class="check-row__meta">
-              ${escapeHtml([item.quantity, item.unit].filter(Boolean).join(' '))}
-              ${item.notes ? ` · ${escapeHtml(item.notes)}` : ''}
-              ${item.substitutions ? `<br>Substituições orientadas: ${escapeHtml(item.substitutions)}` : ''}
+              ${swap?'≈ '+formatGrams(swap.target_grams):escapeHtml([item.quantity, item.unit].filter(Boolean).join(' '))}
+              ${swap?`<br>Troca de hoje no lugar de ${escapeHtml(swap.original_name)} · ${formatKcal(swap.energy_kcal)}`:''}${!swap&&item.notes ? ` · ${escapeHtml(item.notes)}` : ''}
+              ${!swap&&item.substitutions ? `<br>Substituições orientadas: ${escapeHtml(item.substitutions)}` : ''}
             </span>
           </span>
-        </label>
+        </div>
+        ${swap?`<button type="button" class="food-swap-undo" data-swap-undo="${swap.id}">Voltar ao alimento do plano</button>`:''}
       `;
     };
     const options=mealOptionsFromRows(meal);
@@ -149,8 +156,17 @@ function renderDietCard(diet, container) {
     </div>
   `;
 
-  bindCheckEvents(container);
-  bindMealExtras(container,profile);
+  if(!readOnly){
+    container.querySelectorAll('[data-food-saved]').forEach(button=>button.onclick=()=>openFoodSubstitutions(button.dataset.foodSaved));
+    bindCheckEvents(container);
+    bindMealExtras(container,profile);
+    container.querySelectorAll('[data-swap-undo]').forEach(button=>button.onclick=async()=>{
+      button.disabled=true;
+      const operation=button.dataset.operation||=crypto.randomUUID();
+      try{const {error}=await getSupabase().rpc('remove_food_substitution',{p_id:button.dataset.swapUndo,p_operation:operation});if(error)throw error;await refreshSubstitutions();showToast('Alimento do plano restaurado.');}
+      catch(error){showToast(error.message,'error');button.disabled=false;}
+    });
+  }
 }
 
 function bindCheckEvents(container) {
@@ -255,6 +271,8 @@ async function loadDashboard(profile) {
   sidebarUser.textContent = profile.username;
 
   tracking = await fetchTodayTracking(today);
+  foodSubstitutions=await fetchSubstitutions();
+  savedSubstitutions=await fetchSavedSubstitutions();
   const reportResult=await getSupabase().from('meal_reports').select('meal_id,status,comment').eq('patient_id',profile.id).eq('report_date',today);
   if(reportResult.error)throw reportResult.error;
   mealReports=new Map(reportResult.data.map(row=>[row.meal_id,row]));
@@ -269,11 +287,11 @@ async function loadDashboard(profile) {
   if (active) {
     const fullDiet = await fetchDietWithMeals(active.id);
     renderDietCard(fullDiet, activeDietCard);
-    const preview = activeDietCard.cloneNode(true);
-    preview.querySelectorAll('input').forEach(input => input.remove());
-    preview.querySelectorAll('.diet-card__hint, .patient-meal-report, .meal-extra-actions, .meal-check__box, .check-row__box, .meal-check__label small, .meal-option-extra').forEach(el => el.remove());
-    preview.querySelectorAll('.is-checked, .is-meal-checked').forEach(el=>el.classList.remove('is-checked','is-meal-checked'));
-    document.getElementById('plan-preview').innerHTML = preview.innerHTML;
+    const planPreview=document.getElementById('plan-preview');
+    renderDietCard(fullDiet,planPreview,true);
+    planPreview.querySelectorAll('input').forEach(input=>input.remove());
+    planPreview.querySelectorAll('.diet-card__hint,.patient-meal-report,.meal-extra-actions,.check-row__box,.meal-check__label small,.meal-option-extra,.check-row__toggle').forEach(el=>el.remove());
+    planPreview.querySelectorAll('.is-checked,.is-meal-checked,.is-selected').forEach(el=>el.classList.remove('is-checked','is-meal-checked','is-selected'));
   } else {
     activeDietCard.innerHTML = '<div class="patient-diet-card app-empty">Você ainda não tem uma dieta ativa. A nutricionista vai liberar em breve.</div>';
     document.getElementById('plan-preview').innerHTML = activeDietCard.innerHTML;
@@ -363,3 +381,26 @@ document.getElementById('refresh-evolution').addEventListener('click',refreshVis
 addEventListener('patient:record-saved',refreshVisibleEvolution);
 addEventListener('focus',refreshVisibleEvolution);
 addEventListener('visibilitychange',()=>{if(!document.hidden)refreshVisibleEvolution();});
+
+async function fetchSubstitutions(){
+ const {data,error}=await getSupabase().from('patient_food_substitutions').select('*').eq('patient_id',profile.id).eq('check_date',today);
+ if(error)throw error;return new Map((data||[]).map(row=>[row.item_id,row]));
+}
+async function refreshSubstitutions(){
+ const [substitutions,fresh,saved]=await Promise.all([fetchSubstitutions(),fetchTodayTracking(today),fetchSavedSubstitutions()]);
+ foodSubstitutions=substitutions;savedSubstitutions=saved;tracking.itemIds=fresh.itemIds;
+ if(activeDiet)renderDietCard(activeDiet,activeDietCard);notifyPatientSaved();
+}
+async function fetchSavedSubstitutions(){
+ const rows=[];
+ for(let offset=0;;offset+=500){
+  const {data,error}=await getSupabase().from('patient_saved_substitutions').select('*').eq('patient_id',profile.id).order('last_used_at',{ascending:false}).order('source_food_id').order('target_food_id').range(offset,offset+499);
+  if(error)throw error;rows.push(...(data||[]));if((data||[]).length<500)return rows;
+ }
+}
+function openFoodSubstitutions(initialItemId=null){
+ if(getLocalDateString()!==today){location.reload();return;}
+ if(savingOption){showToast('Aguarde o registro da sua refeição.');return;}
+ openSubstitutionChat({diet:activeDiet,current:()=>foodSubstitutions,saved:()=>savedSubstitutions,onChanged:refreshSubstitutions,initialItemId});
+}
+document.getElementById('open-food-substitutions').addEventListener('click',()=>openFoodSubstitutions());

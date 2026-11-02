@@ -49,3 +49,17 @@ Limpeza solicitada: os dois pacientes anteriores foram removidos com os registro
 - `set_meal_option_check` usa as permissões existentes do paciente e altera seus checks em uma transação. Ao entrar em outra alternativa, retorna conflito sem escrever; a confirmação explícita escolhe adicionar ou substituir. Substituir remove todos os checks das outras opções somente naquela refeição/data.
 - Mais de uma alternativa marcada aparece no painel do paciente e na visão/detalhe da refeição da equipe. O histórico depende dos checks persistidos, sem criar um segundo registro duplicado de consumo.
 - Verificação: `npm test`, `supabase/meal-options-regression.sql` (rollback), `tests/patient-browser-qa.cjs` e `tests/clinic-browser-qa.cjs` (APIs interceptadas, sem gravações reais).
+
+
+## Dieta manual e trocas por calorias (02/11/2026)
+
+- A importação de dietas por PDF saiu da interface. O editor mantém refeições e opções numeradas, alimentos livres e observações.
+- Para liberar trocas em um alimento, escolha a referência exata em **Buscar alimento na TACO** e informe **Peso da porção para as trocas (g)**. Medidas em unidades/colheres podem continuar na apresentação do plano, com o peso explicitamente informado pela equipe.
+- Fonte exclusiva: TACO 4ª edição, NEPA/UNICAMP, a mesma publicação hospedada no CFN. `data/taco-4.json` contém 597 alimentos. `scripts/import-taco.py` confere os 591 valores numéricos de energia com o PDF oficial; as seis energias não numéricas ficam nulas. URLs e hashes estão em `data/taco-provenance.json`.
+- A fórmula é `gramas originais × kcal originais por 100 g ÷ kcal do substituto por 100 g`. Não se igualam proteínas, carboidratos ou gorduras. O cálculo é feito novamente no servidor; o cliente não envia gramas calculados.
+- No paciente: **Trocar um alimento** abre a busca no plano atual. Cada resultado identifica refeição, horário e opção. Alimentos sem referência/peso aparecem com a troca indisponível, sem estimativa inventada.
+- As trocas escolhidas são salvas para o dia em `patient_food_substitutions`, sem modificar a prescrição. Escolher/restaurar uma troca limpa a marcação de consumo daquele alimento; o paciente marca novamente quando comer.
+- Cada troca também é guardada em `patient_saved_substitutions`, por paciente e par de alimentos TACO. Clicar no nome do alimento abre diretamente as trocas salvas. Elas sobrevivem à restauração do alimento original e a novas versões da dieta; o peso é recalculado para a porção vigente. O paciente pode remover uma opção da lista salva.
+- `save_food_substitution` usa operação UUID, bloqueio por paciente/refeição/dia e versão esperada da troca. Repetir um envio confirmado retorna o estado atual, sem duplicar nem reverter uma troca posterior. RLS separa pacientes; apenas funções autorizadas gravam quantidades e referências.
+- O histórico compartilhado fica em `clinical_records` (`meal_substitution`, replace/restore), com snapshots de alimentos, pesos, kcal e autor. A equipe vê as trocas no resumo/detalhe da refeição e pode desfazê-las. A atuação da secretária continua nos logs da Marcela.
+- Testes: `npm test`, `supabase/calorie-substitutions-regression.sql` (rollback), roteiros de paciente e clínica com APIs simuladas. Nenhum paciente real é usado como fixture.

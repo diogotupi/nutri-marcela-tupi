@@ -23,3 +23,7 @@ test('multiple consumed options are visible to the team, counting legacy ungroup
  assert.equal(mealEntries({items:[item('egg',null),item('veg',null)]},'2026-10-31','2026-10-31')[0].extraOptions,false);
  assert.equal(mealEntries({items:[item('egg',null),item('bread','Preparo 1')]},'2026-10-31','2026-10-31')[0].extraOptions,true);
 });
+test('current food replacements appear on the correct meal and restored history does not create empty meal cards',()=>{
+ const data={substitutions:[{id:'swap',item_id:'i',meal_id:'m',check_date:'2026-11-02',target_name:'Arroz',diet_meals:{name:'Almoço'}}],records:[{kind:'checkin',occurred_at:'2026-11-02T12:00Z',payload:{category:'meal_substitution',action:'restore',meal_id:'old',date:'2026-11-02'}}]};
+ const entries=mealEntries(data,'2026-11-02','2026-11-02');assert.equal(entries.length,1);assert.equal(entries[0].name,'Almoço');assert.equal(entries[0].swaps[0].target_name,'Arroz');assert.equal(entries[0].status,undefined);
+});
