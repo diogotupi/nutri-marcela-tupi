@@ -32,12 +32,12 @@ async(existingPage)=>{
  try{
   await page.setViewportSize({width:390,height:844});await page.goto('http://127.0.0.1:8877/');
   const setup=async({item,other})=>{
-   for(const href of ['/app/fresh.css','/dashboard/substitution-chat.css?v=20261102-ai']){const link=document.createElement('link');link.rel='stylesheet';link.href=href;document.head.append(link);}
+   for(const href of ['/app/fresh.css','/dashboard/substitution-chat.css?v=20261102-clean']){const link=document.createElement('link');link.rel='stylesheet';link.href=href;document.head.append(link);}
    window.APP_CONFIG={supabaseUrl:'https://widget-qa.invalid',supabaseAnonKey:'DEMONSTRATION-NOT-A-KEY'};
    const state=window.__AI_QA={saved:[],current:new Map(),saveRequests:[],failNextSave:true,refreshes:0,diet:{meals:[{id:'lunch',name:'Almoço',scheduled_time:'12:00',options:[{name:'Opção 1'}],diet_items:[{id:item,food_name:'Batata, inglesa, cozida',quantity:'200',unit:'g',taco_food_id:91,portion_g:200,option_name:'Opção 1'}]},{id:'dinner',name:'Jantar',scheduled_time:'20:00',diet_items:[{id:other,food_name:'Batata, inglesa, cozida',quantity:'150',unit:'g',taco_food_id:91,portion_g:150}]}]}};
-   state.catalog=await(await fetch('/data/taco-4.json')).json();const module=await import('/dashboard/substitution-chat.js?v=20261102-ai');state.api=module.mountSubstitutionAssistant({getDiet:()=>state.diet,current:()=>state.current,saved:()=>state.saved,onChanged:async()=>{state.refreshes++;}});
+   state.catalog=await(await fetch('/data/taco-4.json')).json();const module=await import('/dashboard/substitution-chat.js?v=20261102-clean');state.api=module.mountSubstitutionAssistant({getDiet:()=>state.diet,current:()=>state.current,saved:()=>state.saved,onChanged:async()=>{state.refreshes++;}});
   };await page.evaluate(setup,{item,other});
-  await page.locator('#food-ai-launcher').click();await page.getByText('OpenAI · pronta para conversar',{exact:true}).waitFor();
+  await page.locator('#food-ai-launcher').click();await page.getByText('Oi! Vamos encontrar uma troca para a sua dieta? Você pode me dizer o alimento ou escolher uma das suas trocas salvas.',{exact:true}).waitFor();
   await page.locator('#swap-food-search').fill('Quero trocar a batata do almoço por arroz.');await page.locator('#swap-food-search').press('Enter');
   await page.locator('[data-ai-current] [data-swap-origin]').first().waitFor();assert(await page.locator('[data-ai-current] [data-swap-origin]').count()===2,'Diet occurrences must be selectable');
   await page.locator('.substitution-chat').screenshot({path:'.playwright-mcp/ai-conversation-mobile.png'});
@@ -67,7 +67,7 @@ async(existingPage)=>{
   assert(await page.evaluate(()=>!document.getAnimations().some(a=>a.effect?.target?.closest?.('.food-ai-widget'))),'Reduced motion must disable widget animations');
   await page.locator('#swap-food-search').focus();await page.locator('#swap-food-search').press('Escape');assert(!await page.locator('.substitution-chat').isVisible(),'Escape must minimize');
   const priorRequests=aiRequests.length;aiEnabled=false;historyForReload=[{message:'Consulta anterior de demonstração',response:{reply:'Sua troca anterior ficou salva.'}}];
-  await page.reload();await page.bringToFront();await page.evaluate(setup,{item,other});await page.locator('#food-ai-launcher').click();await page.getByText('Trocas guiadas · IA em preparação',{exact:true}).waitFor();
+  await page.reload();await page.bringToFront();await page.evaluate(setup,{item,other});await page.locator('#food-ai-launcher').click();await page.getByText('Oi! Vamos encontrar uma troca para a sua dieta? Você pode me dizer o alimento ou escolher uma das suas trocas salvas.',{exact:true}).waitFor();
   await page.getByText('Consulta anterior de demonstração',{exact:true}).waitFor();await page.locator('#swap-food-search').fill('Quero trocar batata');await page.locator('#swap-food-search').press('Enter');
   await page.locator('[data-ai-current] [data-swap-origin]').first().waitFor();assert(await page.locator('[data-ai-current] [data-swap-origin]').count()===2,'Guided mode must keep diet search working');assert(aiRequests.length===priorRequests,'Missing key must not trigger provider messages');
   assert(errors.length===0,errors.join('; '));return {passed:true,floating:true,continuousChat:true,aiContext:true,tacoMath:true,savedChoices:true,idempotentRetries:true,mobile:true,desktop:true,reducedMotion:true,historyRestore:true,guidedFallback:true,productionWrites:0,providerCalls:0};

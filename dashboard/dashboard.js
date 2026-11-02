@@ -1,4 +1,4 @@
-import {openSubstitutionChat,mountSubstitutionAssistant} from './substitution-chat.js?v=20261102-ai';
+import {openSubstitutionChat,mountSubstitutionAssistant} from './substitution-chat.js?v=20261102-clean';
 import {formatGrams,formatKcal} from '../js/taco.mjs?v=20261102-categories';
 import {mountPatientChat} from '../js/patient-chat.js?v=20261030-team';
 import {

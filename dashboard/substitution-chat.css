@@ -18,9 +18,6 @@
 .ai-identity>p{font-size:8px;letter-spacing:.12em;font-weight:700;margin:0 0 5px;color:#718068}
 .ai-identity h2{font:inherit;font-size:17px;line-height:1.3;letter-spacing:-.04em;margin:0;color:#254b3b;font-weight:750;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .ai-identity h2>span{font-size:9px;letter-spacing:0;border:1px solid #aab99a;background:#f8f9ec;border-radius:5px;padding:2px 5px}
-.ai-connection{display:flex;align-items:center;gap:5px;font-size:9px;color:#6b7863;margin-top:5px;line-height:1.5}
-.ai-connection i{width:5px;height:5px;background:#bd9773;border-radius:50%;flex:none}
-.ai-connection.is-connected i{background:#568c64;box-shadow:0 0 0 3px #568c6414}
 .ai-minimize{width:32px;height:32px;flex:none;display:grid;place-items:center;background:#fffdf5;border:1px solid #c1ceb5;border-radius:50%;font-size:21px!important;color:#496a50;padding:0;box-shadow:none}
 .ai-source-strip{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 17px;font-size:9px;color:#6d7b65;border-bottom:1px solid #e2e6d9;background:#fffdf8;flex:none}
 .ai-feed{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:20px 15px 12px;scroll-behavior:smooth;background:radial-gradient(#b2c1a51c .7px,transparent .7px),#fbfaf5;background-size:16px 16px;scrollbar-width:thin;scrollbar-color:#cbd7bf transparent}
