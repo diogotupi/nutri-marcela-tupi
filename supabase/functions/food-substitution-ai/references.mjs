@@ -6,14 +6,15 @@ const choiceSchema={type:'object',additionalProperties:false,properties:{referen
 const estimateSchema={type:'object',additionalProperties:false,properties:{recognized_food:{type:'boolean'},name:{type:'string'},kcal_per_100g:nullableNumber,portion_g:nullableNumber},required:['recognized_food','name','kcal_per_100g','portion_g']};
 const positive=n=>Number.isFinite(Number(n))&&Number(n)>0;
 const foodWords=query=>normalize(query).split(' ').filter(w=>w.length>2&&!new Set(['proteina','texturizada','hidratada','hidratado','cozida','cozido','crua','cru','frito','frita','refogada','refogado','branco','branca','com','sem','sal','oleo','porcao','brasil','tiras','grelhado','grelhada']).has(w));
-const numeric=value=>Number(String(value).replace(/(?<=\d)\.(?=\d{3}(?:\D|$))/g,'').replace(',','.'));
+const numeric=value=>/^0\.\d+$/.test(String(value))?Number(value):Number(String(value).replace(/(?<=\d)\.(?=\d{3}(?:\D|$))/g,'').replace(',','.'));
 
 export function explicitGrams(quantity,unit=''){
  const q=String(quantity||'').trim(),u=normalize(unit);
+ if(/\d\s*(?:x|×|a|até|–|-)\s*\d|\bcada\b|\bpor (?:unidade|fatia)\b/i.test(q))return null;
  if(['g','grama','gramas','kg','quilo','quilos'].includes(u)&&/^\d+(?:[.,]\d+)*$/.test(q)){
   const value=numeric(q)*(u==='kg'||u.startsWith('quilo')?1000:1);return positive(value)&&value<=100000?value:null;
  }
- const matches=[...`${q} ${unit||''}`.matchAll(/(?<![\d-])(\d+(?:[.,]\d+)*)\s*(kg|gramas?|g)\b/gi)];
+ const matches=[...`${q} ${unit||''}`.matchAll(/(?<![\d\-+./,])(\d+(?:[.,]\d+)*)\s*(kg|gramas?|g)\b/gi)];
  if(matches.length!==1)return null;
  const value=numeric(matches[0][1])*(matches[0][2].toLowerCase()==='kg'?1000:1);
  return positive(value)&&value<=100000?value:null;

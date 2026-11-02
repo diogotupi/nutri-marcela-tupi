@@ -26,6 +26,7 @@ test('explicit grams preserve original diet quantities without guessing from spo
  assert.equal(explicitGrams('4 Colher(es) de sopa cheia(s) (100g)'),100);
  assert.equal(explicitGrams('120g'),120);assert.equal(explicitGrams('125','g'),125);assert.equal(explicitGrams('0,5','kg'),500);
  assert.equal(explicitGrams('1.000 g'),1000);assert.equal(explicitGrams('2,5 g'),2.5);
+ assert.equal(explicitGrams('0.001','g'),0.001);assert.equal(explicitGrams('1/2 g'),null);assert.equal(explicitGrams('3 x 120g'),null);assert.equal(explicitGrams('3 unidades (50g cada)'),null);
  assert.equal(explicitGrams('3 colheres'),null);assert.equal(explicitGrams('1 unidade'),null);assert.equal(explicitGrams('-1g'),null);assert.equal(explicitGrams('20 g + 30 g'),null);
 });
 test('TBCA parsing validates official links, reference code and the kcal column per 100 g',()=>{
