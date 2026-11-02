@@ -6,7 +6,7 @@ O paciente escolhe o destino. O modelo avalia a plausibilidade da troca na refei
 
 ## Credenciais e contexto
 
-`OPENAI_API_KEY` fica exclusivamente nos Secrets do projeto Supabase `pvkkxzatvuubkddzvbiq`. `OPENAI_MODEL` é opcional; o padrão é `gpt-6-luna`. A cobrança pertence à conta da chave. Nunca colocar credenciais no frontend ou Git.
+`OPENAI_API_KEY` fica exclusivamente nos Secrets do projeto Supabase `pvkkxzatvuubkddzvbiq`. `OPENAI_MODEL` é opcional; o padrão é `gpt-6.1-sol`, com raciocínio `low` (o Sol 6.1 não aceita `none`). A cobrança pertence à conta da chave. Nunca colocar credenciais no frontend ou Git.
 
 Responses API, saída estruturada, `store:false`. Enviam-se nomes/medidas do plano e a conversa SUB; cadastro, anamnese e chat da nutri ficam fora do contexto. As respostas ao paciente não citam tabelas, fontes ou provedor.
 

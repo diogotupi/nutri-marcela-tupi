@@ -36,7 +36,7 @@ test('missing key leaves guided mode available without reserving or calling a pr
 test('real integration contract uses strict structured output and sends only food context',async()=>{
  const f=fixture();const response=await f.request();assert.equal(response.status,200);const result=await response.json();
  assert.equal(result.mode,'ai');assert.deepEqual(result.source_item_ids,[item]);assert.deepEqual(result.target_food_ids,[3]);
- assert.equal(f.providerBody.store,false);assert.equal(f.providerBody.model,'gpt-6-luna');assert.equal(f.providerBody.text.format.strict,true);assert.equal(f.providerBody.reasoning.effort,'none');
+ assert.equal(f.providerBody.store,false);assert.equal(f.providerBody.model,'gpt-6.1-sol');assert.equal(f.providerBody.text.format.strict,true);assert.equal(f.providerBody.reasoning.effort,'low');
  assert(!JSON.stringify(f.providerBody).includes('PRIVATE NAME'));assert(!JSON.stringify(f.providerBody).includes('PRIVATE PHONE'));
  assert.equal(f.updates[0].status,'completed');assert(f.calls.filter(c=>c.table==='substitution_ai_turns').every(c=>c.filters.some(([k,v])=>k==='patient_id'&&v===patient)));
 });

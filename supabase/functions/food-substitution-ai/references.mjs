@@ -1,4 +1,4 @@
-import {normalize} from './policy.mjs';
+import {normalize,modelOptions} from './policy.mjs';
 import {searchTBCA,readTBCA} from './tbca.mjs';
 
 const nullableNumber={type:['number','null']};
@@ -41,7 +41,7 @@ export async function resolveFoodReference({item,query,source,catalog,admin,pati
  const name=source?item.food_name:query,lookup=normalize(name).slice(0,250);
  if(!lookup)throw Error('Informe o nome do alimento.');
  const readModel=async(instructions,input,schema)=>{
-  const response=await fetchImpl('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(20000),body:JSON.stringify({model,store:false,...(model.startsWith('gpt-6')?{reasoning:{effort:'none'}}:{}),instructions,input:JSON.stringify(input),max_output_tokens:700,text:{format:{type:'json_schema',name:'food_reference',strict:true,schema}}})});
+  const response=await fetchImpl('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(20000),body:JSON.stringify({model,store:false,...modelOptions(model,700),instructions,input:JSON.stringify(input),text:{format:{type:'json_schema',name:'food_reference',strict:true,schema}}})});
   if(!response.ok)throw Error('Não consegui calcular essa porção agora. Tente novamente.');
   const payload=await response.json(),text=(payload.output||[]).flatMap(o=>o.content||[]).filter(c=>c.type==='output_text').map(c=>c.text).join('');
   try{return JSON.parse(text);}catch{throw Error('Não consegui confirmar os dados desse alimento.');}

@@ -1,4 +1,9 @@
-export const DEFAULT_MODEL='gpt-6-luna';
+export const DEFAULT_MODEL='gpt-6.1-sol';
+// Sol 6.1 requires reasoning; Luna still supports none for explicit overrides.
+export function modelOptions(model,maxOutputTokens){
+ const sol=model.startsWith('gpt-6.1-sol');
+ return {...(model.startsWith('gpt-6')?{reasoning:{effort:sol?'low':'none'}}:{}),max_output_tokens:sol?Math.max(4096,maxOutputTokens):maxOutputTokens};
+}
 export const normalize=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
 export const outputSchema={type:'object',additionalProperties:false,properties:{intent:{type:'string',enum:['find_source','find_target','show_saved','clarify','off_topic']},reply:{type:'string'},source_item_ids:{type:'array',items:{type:'string'}},source_query:{type:'string'},target_query:{type:'string'}},required:['intent','reply','source_item_ids','source_query','target_query']};
 export const instructions=`Você é o assistente de substituições alimentares da clínica Marcela Tupinambá. Converse em português brasileiro, com naturalidade, acolhimento e frases curtas.

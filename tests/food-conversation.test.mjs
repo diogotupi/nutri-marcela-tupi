@@ -1,3 +1,4 @@
+import {DEFAULT_MODEL,modelOptions} from '../supabase/functions/food-substitution-ai/policy.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {runConversation,validLabel,conversationInput} from '../supabase/functions/food-substitution-ai/conversation.mjs';
@@ -9,7 +10,7 @@ const label={name:'Barrinha de cereal',basis_g:25,energy_kcal:90,unit_g:25};
 const answer=extra=>({intent:'ask',reply:'Pelo que você quer trocar?',source_item_id:item,source_item_ids:[],target_query:'',choices:[],compatible:true,label_confirmed:false,label:null,...extra});
 async function run(parsed,{history=[],message='Arroz',image=null,selected=null}={}){
  let providerBody;const resolutions=[],writes=[];
- const result=await runConversation({plan,catalog:[rice,potato],history,body:{message,image,item_id:selected,operation_id:crypto.randomUUID(),conversation_id:conversation},patient:'patient',key:'TEST',model:'gpt-6-luna',admin:{rpc:async(name,args)=>{writes.push({name,args});return {data:{id:100009,name:label.name,kcal_per_100g:360}};}},resolve:async args=>{resolutions.push(args);return {food:args.source?rice:potato,portion_g:args.source?100:null};},fetchImpl:async(url,init)=>{providerBody=JSON.parse(init.body);return new Response(JSON.stringify({output:[{content:[{type:'output_text',text:JSON.stringify(parsed)}]}]}));}});
+ const result=await runConversation({plan,catalog:[rice,potato],history,body:{message,image,item_id:selected,operation_id:crypto.randomUUID(),conversation_id:conversation},patient:'patient',key:'TEST',model:DEFAULT_MODEL,admin:{rpc:async(name,args)=>{writes.push({name,args});return {data:{id:100009,name:label.name,kcal_per_100g:360}};}},resolve:async args=>{resolutions.push(args);return {food:args.source?rice:potato,portion_g:args.source?100:null};},fetchImpl:async(url,init)=>{providerBody=JSON.parse(init.body);return new Response(JSON.stringify({output:[{content:[{type:'output_text',text:JSON.stringify(parsed)}]}]}));}});
  return {result,providerBody,resolutions,writes};
 }
 const turn=(state,user_message='Batata')=>({message:user_message,response:{mode:'conversation',conversation_id:conversation,reply:'Como você vai preparar?',user_message,state}});
@@ -65,4 +66,8 @@ test('images must be bounded inline rasters, never URLs, SVG or disguised files'
  assert.equal(validImage('data:image/jpeg;base64,'+btoa('not an image')),false);
  assert.equal(validImage('data:image/jpeg;base64,'+btoa('\xff\xd8\xff'+'0'.repeat(30))),true);
  assert.equal(validImage('data:image/jpeg;base64,'+'a'.repeat(1600000)),false);
+});
+
+test('Sol requests use supported reasoning with headroom; explicit Luna preserves its budget',()=>{
+ assert.equal(DEFAULT_MODEL,'gpt-6.1-sol');assert.deepEqual(modelOptions(DEFAULT_MODEL,700),{reasoning:{effort:'low'},max_output_tokens:4096});assert.deepEqual(modelOptions('gpt-6-luna',700),{reasoning:{effort:'none'},max_output_tokens:700});
 });

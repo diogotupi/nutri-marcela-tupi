@@ -1,4 +1,4 @@
-import {normalize} from './policy.mjs';
+import {normalize,modelOptions} from './policy.mjs';
 import {resolveFoodReference} from './references.mjs';
 
 const nullableString={type:['string','null']};
@@ -40,7 +40,7 @@ export function conversationInput({plan,history,body}){
 
 export async function runConversation({plan,catalog,history,body,admin,patient,key,model,fetchImpl=fetch,resolve=resolveFoodReference}){
  const {input,state:previous}=conversationInput({plan,history,body});
- const response=await fetchImpl('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(35000),body:JSON.stringify({model,store:false,...(model.startsWith('gpt-6')?{reasoning:{effort:'none'}}:{}),instructions:conversationInstructions,input,max_output_tokens:1600,text:{format:{type:'json_schema',name:'sub_conversation',strict:true,schema:conversationSchema}}})});
+ const response=await fetchImpl('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(35000),body:JSON.stringify({model,store:false,...modelOptions(model,1600),instructions:conversationInstructions,input,text:{format:{type:'json_schema',name:'sub_conversation',strict:true,schema:conversationSchema}}})});
  if(!response.ok)throw Error('Não consegui responder agora. Tente enviar novamente.');
  const payload=await response.json();
  const parsed=JSON.parse((payload.output||[]).flatMap(o=>o.content||[]).filter(c=>c.type==='output_text').map(c=>c.text).join(''));

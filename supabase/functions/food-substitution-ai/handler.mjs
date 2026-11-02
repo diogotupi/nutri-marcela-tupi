@@ -1,4 +1,4 @@
-import {DEFAULT_MODEL,instructions,outputSchema,modelInput,parseModelResponse,flattenPlan,conversationSelection,conversationHistory,sourceFoodLookup} from './policy.mjs';
+import {DEFAULT_MODEL,modelOptions,instructions,outputSchema,modelInput,parseModelResponse,flattenPlan,conversationSelection,conversationHistory,sourceFoodLookup} from './policy.mjs';
 import {resolveFoodReference} from './references.mjs';
 import {runConversation} from './conversation.mjs';
 const cors={'Access-Control-Allow-Origin':'https://nutrimarcelatupi.com','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'GET, POST, OPTIONS'};
@@ -92,7 +92,7 @@ export function createHandler({createClient,getEnv,fetchImpl=fetch}){
     const direct=!selected&&sourceFoodLookup(plan,body.message);
     if(direct)return await finish(direct);
     const context=conversationHistory(history||[],selected,body.message);
-    const response=await fetchImpl('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(22000),body:JSON.stringify({model,store:false,...(model.startsWith('gpt-6')?{reasoning:{effort:'none'}}:{}),instructions,input:modelInput(plan,selected,context,body.message.trim()),max_output_tokens:1200,text:{format:{type:'json_schema',name:'food_substitution',strict:true,schema:outputSchema}}})});
+    const response=await fetchImpl('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(22000),body:JSON.stringify({model,store:false,...modelOptions(model,1200),instructions,input:modelInput(plan,selected,context,body.message.trim()),text:{format:{type:'json_schema',name:'food_substitution',strict:true,schema:outputSchema}}})});
     if(!response.ok)throw Error('Provider unavailable');
     const result=parseModelResponse(await response.json(),plan,catalog||[],selected);
     return await finish(result);
