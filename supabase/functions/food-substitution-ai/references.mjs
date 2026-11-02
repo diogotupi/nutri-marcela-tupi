@@ -30,6 +30,7 @@ function compatiblePreparation(request,name){
  if(/\bhidratad[ao]\b/.test(a)&&!/\bhidratad[ao]\b/.test(b))return false;
  if(/\bcozid[ao]\b/.test(a)&&/\bcru[ao]?\b/.test(b)&&!/\bcozid[ao]\b/.test(b))return false;
  if(/\bcru[ao]?\b/.test(a)&&/\bcozid[ao]\b/.test(b))return false;
+ for(const preparation of [/\bfrit[ao]\b/,/\bassad[ao]\b/,/\bgrelhad[ao]\b/])if(preparation.test(a)&&!preparation.test(b))return false;
  for(const word of ['farinha','oleo','extrato','queijo'])if(b.split(' ').includes(word)&&!a.split(' ').includes(word)&&!(word==='queijo'&&a.includes('tofu')))return false;
  return true;
 }

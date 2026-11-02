@@ -6,7 +6,7 @@ export async function requestFoodAI(payload=null){
  let response;try{response=await fetch(`${window.APP_CONFIG.supabaseUrl}/functions/v1/food-substitution-ai`,{
   method:payload?'POST':'GET',
   headers:{Authorization:`Bearer ${data.session.access_token}`,apikey:window.APP_CONFIG.supabaseAnonKey,...(payload?{'Content-Type':'application/json'}:{})},
-  ...(payload?{body:JSON.stringify(payload)}:{}),signal:AbortSignal.timeout(payload?.action?90000:28000)
+  ...(payload?{body:JSON.stringify(payload)}:{}),signal:AbortSignal.timeout(payload?.action?150000:28000)
  });}catch{throw Error('Não consegui conectar agora. Sua mensagem foi mantida; tente novamente.');}
  let result;try{result=await response.json();}catch{throw Error('Não consegui ler a resposta do assistente. Tente novamente.');}
  if(!response.ok){const error=Error(result.error||'Não consegui conectar o assistente. Tente novamente.');error.confirmedFailure=result.confirmed_failure===true;throw error;}

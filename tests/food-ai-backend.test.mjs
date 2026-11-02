@@ -108,3 +108,22 @@ test('reference actions authenticate, isolate background records and replay conf
  const status=fixture();await status.request(undefined,'GET');assert(status.calls.some(c=>c.table==='substitution_ai_turns'&&c.filters.some(([k,v])=>k==='response->kind'&&v===null)));
  const invalid=fixture();assert.equal((await invalid.request({...body,action:'resolve_target',query:''})).status,400);assert.equal(invalid.reservations.length,0);
 });
+
+test('natural chat isolates conversation history and stores only an image digest and extracted response',async()=>{
+ const conversation='51111111-1111-4111-8111-111111111111';
+ const response={intent:'ask',reply:'Pelo que você quer trocar?',source_item_id:item,source_item_ids:[],target_query:'',choices:[],compatible:true,label_confirmed:false,label:null};
+ const f=fixture({providerAnswer:response});
+ const image='data:image/jpeg;base64,'+btoa('\xff\xd8\xff'+'0'.repeat(30));
+ const body={operation_id:operation,conversation_id:conversation,action:'chat',message:'Arroz',image};
+ const result=await(await f.request(body)).json();assert.equal(result.mode,'conversation');assert.equal(result.user_message,'Arroz');assert.equal(result.had_image,true);
+ assert(f.calls.some(c=>c.table==='substitution_ai_turns'&&c.filters.some(([k,v])=>k==='response->>conversation_id'&&v===conversation)));
+ assert.match(f.reservations[0].args.p_message,/^\[chat:/);assert(!JSON.stringify(f.reservations).includes('base64'));assert(!JSON.stringify(f.updates).includes('base64'));
+ const invalid=fixture();assert.equal((await invalid.request({...body,image:'https://private.invalid/secret'})).status,400);assert.equal(invalid.providerCalls,0);
+ const missing=fixture({role:'secretary'});assert.equal((await missing.request(body)).status,403);
+ const replay=fixture({reservation:{created:false,response:result}});assert.deepEqual(await(await replay.request(body)).json(),result);assert.equal(replay.providerCalls,0);
+});
+
+test('natural chat failures are retryable and never expose provider or key details',async()=>{
+ const f=fixture({providerStatus:429});const result=await f.request({operation_id:operation,conversation_id:'51111111-1111-4111-8111-111111111111',action:'chat',message:'Arroz'});
+ assert.equal(result.status,503);const body=await result.json();assert.equal(body.confirmed_failure,true);assert(!JSON.stringify(body).includes('sk-'));assert.equal(f.updates[0].status,'failed');
+});

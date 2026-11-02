@@ -1,104 +1,64 @@
-// All provider responses and patient writes are simulated. No production access or credits.
+// Browser integration with synthetic patient data. All API calls and writes are intercepted.
 async(existingPage)=>{
- const page=await existingPage.context().newPage();await page.bringToFront();page.setDefaultTimeout(12000);
- const errors=[],aiRequests=[],answers=new Map(),references=new Map(),resolvedSources=new Set();let failNextAI=false,aiEnabled=true,historyForReload=[],failNextReference=false,loseNextReference=false;
- page.on('pageerror',e=>errors.push(e.message));
- const item='31111111-1111-4111-8111-111111111111',other='32222222-2222-4222-8222-222222222222';
- const assert=(value,message)=>{if(!value)throw Error(message);};
- const wait=fn=>page.waitForFunction(fn,null,{polling:100});
+ const page=await existingPage.context().newPage();page.setDefaultTimeout(15000);
+ const requests=[],answers=new Map(),history=[],errors=[];let loseNext=false;
+ const item='31111111-1111-4111-8111-111111111111',rice={id:3,name:'Arroz, tipo 1, cozido',category:'Cereais',kcal_per_100g:128},potato={id:92,name:'Batata, inglesa, frita',category:'Hortaliças',kcal_per_100g:267};
+ const assert=(ok,msg)=>{if(!ok)throw Error(msg);};page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/*.supabase.co/**',r=>r.abort());
  await page.route('**/js/app-core.js',r=>r.fulfill({contentType:'text/javascript',body:`
  export const escapeHtml=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  export const getLocalDateString=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo'}).format(new Date());
- export const getSupabase=()=>({auth:{getSession:async()=>({data:{session:{access_token:'DEMONSTRATION-NOT-A-KEY'}}})},rpc:async(name,args)=>{
-  const state=window.__AI_QA;if(name==='forget_saved_substitution'){state.saved=state.saved.filter(s=>!(s.source_food_id===args.p_source&&s.target_food_id===args.p_target));return {data:null,error:null};}
-  if(name==='save_food_substitution'){state.saveRequests.push({...args});const extra=[{id:100001,name:'Soja, proteína texturizada, hidratada',kcal_per_100g:187},{id:100002,name:'Quinoa cozida',kcal_per_100g:120}];let row=state.current.get(args.p_item);if(row?.id!==args.p_operation){const source=state.diet.meals.flatMap(m=>m.diet_items).find(i=>i.id===args.p_item),target=[...state.catalog.foods,...extra].find(f=>f.id===args.p_target),reference=[...state.catalog.foods,...extra].find(f=>f.id===source.taco_food_id);row={id:args.p_operation,item_id:args.p_item,target_food_id:target.id,target_name:target.name,target_grams:source.portion_g*reference.kcal_per_100g/target.kcal_per_100g};state.current.set(args.p_item,row);if(!state.saved.some(s=>s.source_food_id===source.taco_food_id&&s.target_food_id===target.id))state.saved.push({source_food_id:source.taco_food_id,target_food_id:target.id});}
-   if(state.failNextSave){state.failNextSave=false;return {error:{message:'DEMONSTRAÇÃO: resposta de salvamento interrompida'}};}return {data:{substitution:row},error:null};
-  }throw Error('Unexpected fixture operation: '+name);
- }});` }));
- await page.route('https://widget-qa.invalid/**',async route=>{
-  const req=route.request();if(req.method()==='OPTIONS')return route.fulfill({status:204,headers:{'access-control-allow-origin':'*','access-control-allow-headers':'*'}});
-  let result={configured:aiEnabled,history:historyForReload};
-  if(req.method()==='POST'){
-   const body=JSON.parse(req.postData());aiRequests.push(body);
-   if(body.action){
-    if(failNextReference){failNextReference=false;return route.fulfill({status:503,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({kind:'reference',error:'DEMONSTRAÇÃO: busca interrompida',confirmed_failure:true})});}
-    if(!references.has(body.operation_id)){
-     const soy=body.item_id==='35555555-5555-4555-8555-555555555555';
-     references.set(body.operation_id,{kind:'reference',food:body.action==='resolve_target'?{id:100002,name:'Quinoa cozida',category:'Outros alimentos',kcal_per_100g:120,priority:2}:soy?{id:100001,name:'Soja, proteína texturizada, hidratada',category:'Leguminosas e derivados',kcal_per_100g:187,priority:1}:{id:3,name:'Arroz, tipo 1, cozido',category:'Cereais e derivados',kcal_per_100g:128,priority:0},portion_g:body.action==='resolve_target'?null:soy?120:body.item_id==='36666666-6666-4666-8666-666666666666'?100:125});
-     if(body.action==='resolve_source')resolvedSources.add(body.item_id);
+ export const getSupabase=()=>({auth:{getSession:async()=>({data:{session:{access_token:'SYNTHETIC'}}})},rpc:async(name,args)=>{
+  const s=window.__AI_QA;if(name==='forget_saved_substitution'){s.saved=[];return {data:null};}
+  if(name==='save_food_substitution'){s.writes.push(args);const row={id:args.p_operation,target_name:'Batata, inglesa, frita'};s.current.set(args.p_item,row);s.saved=[{source_food_id:3,target_food_id:92}];if(s.failSave){s.failSave=false;return {error:{message:'Falha simulada após confirmação'}};}return {data:{substitution:row}};}throw Error(name);
+ }});`}));
+ await page.route('https://conversation-qa.invalid/**',async r=>{
+  if(r.request().method()==='OPTIONS')return r.fulfill({status:204,headers:{'access-control-allow-origin':'*','access-control-allow-headers':'*'}});
+  let result={configured:true,history};
+  if(r.request().method()==='POST'){
+   const b=r.request().postDataJSON();requests.push(b);assert(b.action==='chat','Legacy catalog flow returned');
+   if(!answers.has(b.operation_id)){
+    const base={mode:'conversation',conversation_id:b.conversation_id,user_message:b.message,had_image:!!b.image,state:{source_item_id:item,target_query:''},intent:'ask',reply:'Pelo que você quer trocar?',choices:[]};
+    if(/Batata|batata/.test(b.message)){Object.assign(base,{reply:'Como você vai preparar a batata?',choices:['Cozida','Assada','Frita']});base.state.target_query='Batata';}
+    if(b.message==='Frita'||b.message==='Sim, está certo'){
+     Object.assign(base,{intent:'proposal',reply:'Você pode usar aproximadamente 47,9 g de batata frita no lugar de 100 g de arroz.',proposal:{item_id:item,source:rice,source_grams:100,target:potato,target_grams:12800/267,energy_kcal:128}});base.state.target_query='Batata frita';
     }
-    if(loseNextReference){loseNextReference=false;return route.abort('failed');}
-    return route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify(references.get(body.operation_id))});
+    if(/barrinha/.test(b.message)){Object.assign(base,{intent:'request_label',reply:'Pode enviar uma foto da tabela nutricional da barrinha?'});base.state.target_query='Barrinha';}
+    if(b.image){Object.assign(base,{intent:'confirm_label',reply:'Li 90 kcal em 25 g. Está certo?',choices:['Sim, está certo','Quero corrigir']});base.state.target_query='Barrinha';}
+    if(/Trakinas/.test(b.message)){Object.assign(base,{intent:'refer_nutri',reply:'Essa troca muda bastante a proposta da refeição. Vamos conversar com a Marcela?'});base.state.target_query='Trakinas';}
+    answers.set(b.operation_id,base);history.push({response:base,message:b.message});
    }
-   if(!answers.has(body.operation_id)){
-    const off=body.message.includes('filmes'),target=body.item_id,soy=body.message.includes('soja')||target==='35555555-5555-4555-8555-555555555555'&&!resolvedSources.has(target),rice=body.message.toLowerCase()==='arroz'&&!target,quinoa=body.message.includes('quinoa');
-    answers.set(body.operation_id,{mode:rice?'guided':'ai',intent:off?'off_topic':rice||soy?'find_source':target?'find_target':'find_source',reply:off?'Posso ajudar com as substituições dos alimentos do seu plano. Qual alimento você quer trocar?':'Encontrei possibilidades na sua dieta. Vamos escolher a troca que você prefere?',source_item_ids:off?[]:rice?['36666666-6666-4666-8666-666666666666','37777777-7777-4777-8777-777777777777']:soy?['35555555-5555-4555-8555-555555555555']:[item,other],target_query:off||rice||soy?'':quinoa?'quinoa':body.message.includes('doce')?'batata doce':'arroz',target_food_ids:off||rice||soy||quinoa?[]:body.message.includes('doce')?[88]:[1,2,3,4,5,6]});
-   }
-   if(failNextAI){failNextAI=false;return route.abort('failed');}result=answers.get(body.operation_id);
+   if(loseNext){loseNext=false;return r.abort('failed');}result=answers.get(b.operation_id);
   }
-  return route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*','access-control-allow-headers':'*'},body:JSON.stringify(result)});
+  return r.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify(result)});
  });
+ const setup=async({item})=>{
+  for(const href of ['/app/fresh.css','/dashboard/substitution-chat.css?v=20261102-conversation']){const l=document.createElement('link');l.rel='stylesheet';l.href=href;document.head.append(l);}
+  window.APP_CONFIG={supabaseUrl:'https://conversation-qa.invalid',supabaseAnonKey:'SYNTHETIC'};
+  const s=window.__AI_QA={saved:[],current:new Map(),writes:[],failSave:true,askNutri:null,diet:{meals:[{id:'lunch',name:'Almoço',scheduled_time:'12:00',diet_items:[{id:item,food_name:'Arroz branco cozido',quantity:'100',unit:'g',taco_food_id:3,portion_g:100}]}]}};
+  const m=await import('/dashboard/substitution-chat.js?v=20261102-conversation');s.api=m.mountSubstitutionAssistant({getDiet:()=>s.diet,current:()=>s.current,saved:()=>s.saved,onChanged:async()=>{},onAskNutritionist:text=>{s.askNutri=text;}});
+ };
+ const send=async text=>{await page.locator('#swap-food-search').fill(text);await page.locator('#swap-food-search').press('Enter');await page.waitForFunction(()=>!document.querySelector('.food-ai-widget').classList.contains('is-busy'));};
  try{
-  await page.setViewportSize({width:390,height:844});await page.goto('http://127.0.0.1:8877/');
-  const setup=async({item,other})=>{
-   for(const href of ['/app/fresh.css','/dashboard/substitution-chat.css?v=20261102-review']){const link=document.createElement('link');link.rel='stylesheet';link.href=href;document.head.append(link);}
-   window.APP_CONFIG={supabaseUrl:'https://widget-qa.invalid',supabaseAnonKey:'DEMONSTRATION-NOT-A-KEY'};
-   const state=window.__AI_QA={saved:[],current:new Map(),saveRequests:[],failNextSave:true,refreshes:0,diet:{meals:[{id:'lunch',name:'Almoço',scheduled_time:'12:00',options:[{name:'Opção 1'}],diet_items:[{id:item,food_name:'Batata, inglesa, cozida',quantity:'200',unit:'g',taco_food_id:91,portion_g:200,option_name:'Opção 1'}]},{id:'dinner',name:'Jantar',scheduled_time:'20:00',diet_items:[{id:other,food_name:'Batata, inglesa, cozida',quantity:'150',unit:'g',taco_food_id:91,portion_g:150}]}]}};
-   state.diet.meals.push({id:'soy-dinner',name:'Jantar com soja',scheduled_time:'20:00',diet_items:[{id:'35555555-5555-4555-8555-555555555555',food_name:'Proteína de soja texturizada hidratada',quantity:'120g',unit:'',taco_food_id:null,portion_g:null},{id:'37777777-7777-4777-8777-777777777777',food_name:'Arroz branco cozido',quantity:'125g',taco_food_id:null,portion_g:null}]},{id:'rice-lunch',name:'Almoço',scheduled_time:'12:00',diet_items:[{id:'36666666-6666-4666-8666-666666666666',food_name:'Arroz branco cozido',quantity:'100g',taco_food_id:null,portion_g:null}]});
-   state.catalog=await(await fetch('/data/taco-4.json')).json();const module=await import('/dashboard/substitution-chat.js?v=20261102-fallback');state.api=module.mountSubstitutionAssistant({getDiet:()=>state.diet,current:()=>state.current,saved:()=>state.saved,onChanged:async()=>{state.refreshes++;},onAskNutritionist:food=>{state.askNutri=food;}});
-  };await page.evaluate(setup,{item,other});
-  await page.locator('#food-ai-launcher').click();await page.getByText('Oi! Vamos encontrar uma troca para a sua dieta? Você pode me dizer o alimento ou escolher uma das suas trocas salvas.',{exact:true}).waitFor();
-  await page.locator('#swap-food-search').fill('Quero trocar a batata do almoço por arroz.');await page.locator('#swap-food-search').press('Enter');
-  await page.locator('[data-ai-current] [data-swap-origin]').first().waitFor();assert(await page.locator('[data-ai-current] [data-swap-origin]').count()===2,'Diet occurrences must be selectable');
-  await page.locator('.substitution-chat').screenshot({path:'.playwright-mcp/ai-conversation-mobile.png'});
-  await page.locator(`[data-ai-current] [data-swap-origin="${item}"]`).click();
-  const target=page.locator('[data-ai-current] [data-swap-target="3"]');await target.waitFor();assert((await target.textContent()).includes('81,3 g'),'TACO math must stay deterministic');
-  await page.locator('.substitution-chat').screenshot({path:'.playwright-mcp/ai-widget-mobile.png'});
-  await target.click();let current=page.locator('[data-ai-current]');await current.locator('[data-swap-confirm]').click();
-  await current.locator('[data-swap-status]').filter({hasText:'Não foi possível confirmar'}).waitFor();await current.locator('[data-swap-confirm]').click();await page.locator('[data-swap-done]').last().waitFor();
-  const savedState=await page.evaluate(()=>({requests:window.__AI_QA.saveRequests,saved:window.__AI_QA.saved,current:window.__AI_QA.current.size}));
-  assert(savedState.requests.length===2&&savedState.requests[0].p_operation===savedState.requests[1].p_operation&&savedState.saved.length===1&&savedState.current===1,'Save retry must be idempotent');
-  await page.locator('#swap-food-search').fill('Um rascunho que vou continuar');await page.locator('[data-swap-close]').click();assert(!await page.locator('.substitution-chat').isVisible(),'Minimize failed');
-  await page.locator('#food-ai-launcher').click();assert(await page.locator('#swap-food-search').inputValue()==='Um rascunho que vou continuar','Minimize lost draft');
-  await page.evaluate(async({item})=>{const state=window.__AI_QA;state.diet.meals[0].diet_items[0].portion_g=100;state.diet.meals[0].diet_items[0].quantity='100';state.diet.meals[0].diet_items[0].id='34444444-4444-4444-8444-444444444444';await state.api.open({initialItemId:'34444444-4444-4444-8444-444444444444'});},{item});
-  assert((await page.locator('[data-ai-current] [data-saved-target="3"]').textContent()).includes('40,6 g'),'Saved choice must be reused at current portion');
-  await page.locator('#swap-food-search').fill('Pode ser batata doce?');await page.locator('#swap-food-search').press('Enter');await page.locator('[data-ai-current] [data-swap-target="88"]').waitFor();
-  assert((await page.locator('[data-ai-current] [data-swap-target="88"]').textContent()).includes('67,5 g'),'Follow-up must use selected food context');
-  const contextRequest=aiRequests.at(-1);assert(contextRequest.item_id==='34444444-4444-4444-8444-444444444444','Selected food was not sent as conversation context');
-  await page.locator('#swap-food-search').fill('Me recomenda filmes');await page.locator('#swap-food-search').press('Enter');await page.getByText('Posso ajudar com as substituições dos alimentos do seu plano. Qual alimento você quer trocar?',{exact:true}).waitFor();
-  failNextAI=true;await page.locator('#swap-food-search').fill('Pode ser arroz?');await page.locator('#swap-food-search').press('Enter');await page.locator('[data-ai-retry]').last().waitFor();
-  assert(await page.locator('#swap-food-search').inputValue()==='Pode ser arroz?','Failed AI request lost draft');
-  await page.locator('[data-ai-retry]').last().click();await wait(()=>!document.querySelector('.food-ai-widget').classList.contains('is-busy'));
-  assert(aiRequests.at(-1).operation_id===aiRequests.at(-2).operation_id,'AI retry must reuse operation ID');
-  assert(await page.locator('.ai-message.is-user').filter({hasText:'Pode ser arroz?'}).count()===1,'AI retry duplicated user message');
-  await page.setViewportSize({width:1440,height:1000});await page.locator('.substitution-chat').screenshot({path:'.playwright-mcp/ai-widget-desktop.png'});
-  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Horizontal overflow');
-  await page.emulateMedia({reducedMotion:'reduce'});await page.locator('[data-swap-close]').click();await page.locator('#food-ai-launcher').click();
-  assert(await page.evaluate(()=>!document.getAnimations().some(a=>a.effect?.target?.closest?.('.food-ai-widget'))),'Reduced motion must disable widget animations');
-  await page.locator('#swap-food-search').focus();await page.locator('#swap-food-search').press('Escape');assert(!await page.locator('.substitution-chat').isVisible(),'Escape must minimize');
-  failNextReference=true;await page.evaluate(()=>window.__AI_QA.api.open({initialItemId:'35555555-5555-4555-8555-555555555555'}));
-  await page.locator('#swap-food-search').fill('Arroz');await page.locator('#swap-food-search').press('Enter');await wait(()=>!document.querySelector('.food-ai-widget').classList.contains('is-busy'));
-  assert(aiRequests.at(-1).item_id===null,'Unavailable soy must not remain selected for a rice query');assert(await page.locator('[data-ai-current] [data-swap-origin]').count()===2,'Rice search must show both rice meals');assert(!(await page.locator('[data-ai-current]').textContent()).includes('Proteína de soja texturizada hidratada'),'Rice results must not repeat soy');
-  failNextReference=true;await page.locator('[data-ai-current] [data-swap-origin="36666666-6666-4666-8666-666666666666"]').click();await page.locator('[data-ai-current] [data-swap-choose-another]').click();
-  await page.locator('#swap-food-search').fill('Arroz');await page.locator('#swap-food-search').press('Enter');await wait(()=>!document.querySelector('.food-ai-widget').classList.contains('is-busy'));assert(aiRequests.at(-1).item_id===null,'Choosing another food must reset the previous item');
-  await page.evaluate(()=>window.__AI_QA.api.open({initialItemId:'34444444-4444-4444-8444-444444444444'}));await page.locator('[data-quick="search"]').click();await page.locator('#swap-food-search').fill('Arroz');await page.locator('#swap-food-search').press('Enter');await wait(()=>!document.querySelector('.food-ai-widget').classList.contains('is-busy'));assert(aiRequests.at(-1).item_id===null,'New food shortcut must reset even a usable old selection');
-  loseNextReference=true;await page.evaluate(()=>window.__AI_QA.api.open({initialItemId:'35555555-5555-4555-8555-555555555555'}));await page.locator('[data-ai-current] [data-swap-retry-reference]').click();await wait(()=>!document.querySelector('.food-ai-widget').classList.contains('is-busy'));
-  const refCalls=aiRequests.filter(r=>r.action==='resolve_source'&&r.item_id==='35555555-5555-4555-8555-555555555555');assert(refCalls.at(-1).operation_id===refCalls.at(-2).operation_id,'Lost reference response must reuse operation ID');
-  await page.locator('#swap-food-search').fill('Pode ser arroz?');await page.locator('#swap-food-search').press('Enter');await page.locator('[data-ai-current] [data-swap-target="3"]').waitFor();assert((await page.locator('[data-ai-current] [data-swap-target="3"]').textContent()).includes('175,3 g'),'Hydrated soy must use its resolved energy and the original 120 g');
-  await page.locator('[data-ai-current] [data-swap-target="3"]').click();await page.locator('[data-ai-current] [data-swap-confirm]').click();await page.locator('[data-swap-done]').last().waitFor();assert(await page.evaluate(()=>window.__AI_QA.saved.some(s=>s.source_food_id===100001&&s.target_food_id===3)),'Fallback reference must keep saved substitutions');
-  await page.locator('#swap-food-search').fill('Pode ser quinoa?');await page.locator('#swap-food-search').press('Enter');await page.locator('[data-ai-current] [data-swap-target="100002"]').waitFor();assert((await page.locator('[data-ai-current] [data-swap-target="100002"]').textContent()).includes('187 g'),'A requested uncatalogued target must resolve and use calorie equivalence');
-  assert(!/TACO|TBCA|OpenAI/.test(await page.locator('.substitution-chat').textContent()),'Patient UI must not expose reference sources');
-  await page.setViewportSize({width:390,height:844});await page.locator('[data-ai-current] [data-swap-target="100002"]').scrollIntoViewIfNeeded();await page.locator('.substitution-chat').screenshot({path:'.playwright-mcp/sub-background-references-mobile.png'});
-  const priorRequests=aiRequests.length;aiEnabled=false;historyForReload=[{message:'Consulta anterior de demonstração',response:{reply:'Sua troca anterior ficou salva.'}}];
-  await page.reload();await page.bringToFront();await page.evaluate(setup,{item,other});await page.locator('#food-ai-launcher').click();await page.getByText('Oi! Vamos encontrar uma troca para a sua dieta? Você pode me dizer o alimento ou escolher uma das suas trocas salvas.',{exact:true}).waitFor();
-  await page.getByText('Consulta anterior de demonstração',{exact:true}).waitFor();await page.locator('#swap-food-search').fill('Quero trocar batata');await page.locator('#swap-food-search').press('Enter');
-  await page.locator('[data-ai-current] [data-swap-origin]').first().waitFor();assert(await page.locator('[data-ai-current] [data-swap-origin]').count()===2,'Guided mode must keep diet search working');assert(aiRequests.length===priorRequests,'Missing key must not trigger provider messages');
-  await page.locator('#swap-food-search').fill('Quero trocar soja');await page.locator('#swap-food-search').press('Enter');
-  const soy=page.locator('[data-ai-current] [data-swap-origin="35555555-5555-4555-8555-555555555555"]');await soy.waitFor();assert(await soy.isEnabled(),'Unmapped diet food must stay clickable');
-  await soy.click();await page.locator('[data-ai-current] [data-swap-ask-nutri]').waitFor();assert(await page.locator('[data-ai-current] [data-swap-target]').count()===0,'Unknown calories must not produce invented portions');
-  await page.locator('[data-ai-current] [data-swap-ask-nutri]').click();assert(await page.evaluate(()=>window.__AI_QA.askNutri==='Proteína de soja texturizada hidratada'),'Missing-data action must open the nutri conversation');assert(!await page.locator('.substitution-chat').isVisible(),'Contacting the nutri must minimize the assistant');
-  await page.evaluate(()=>window.__AI_QA.api.open({initialItemId:'35555555-5555-4555-8555-555555555555'}));await page.locator('[data-ai-current] [data-swap-choose-another]').click();await page.locator('[data-ai-current] [data-swap-origin]').first().waitFor();assert(await page.locator('[data-ai-current] [data-swap-origin="35555555-5555-4555-8555-555555555555"]').count()===0,'Another food must list usable portions');
-  assert(errors.length===0,errors.join('; '));return {passed:true,floating:true,continuousChat:true,aiContext:true,tacoMath:true,savedChoices:true,idempotentRetries:true,mobile:true,desktop:true,reducedMotion:true,historyRestore:true,guidedFallback:true,unmappedFoodClickable:true,soyToRiceContextReset:true,automaticSourceResolution:true,uncataloguedTarget:true,referencesHidden:true,productionWrites:0,providerCalls:0};
- }catch(error){return{error:error.message,stack:error.stack,errors,aiRequests,body:await page.locator('.substitution-chat').textContent()};}finally{await page.close();}
+  await page.setViewportSize({width:390,height:844});await page.goto('http://127.0.0.1:8877/');await page.evaluate(setup,{item});await page.locator('#food-ai-launcher').click();await page.getByText('Oi! O que você quer substituir na sua dieta?',{exact:true}).waitFor();
+  await send('Arroz');const conv=requests.at(-1).conversation_id;await send('Batata');await page.getByRole('button',{name:'Frita',exact:true}).click();await page.locator('[data-swap-confirm]').waitFor();
+  assert(requests.slice(-3).every(r=>r.conversation_id===conv),'Conversation must retain its context across short replies');assert(await page.locator('.substitution-targets').count()===0,'No catalog grid should interrupt conversation');
+  await page.locator('[data-swap-confirm]').click();await page.locator('[data-swap-status]').filter({hasText:'Não foi possível'}).waitFor();await page.locator('[data-swap-confirm]').click();await page.locator('[data-swap-done]').waitFor();
+  const writes=await page.evaluate(()=>window.__AI_QA.writes);assert(writes.length===2&&writes[0].p_operation===writes[1].p_operation,'Save retries must be idempotent');
+  const prior=requests.length;await page.locator('[data-quick="saved"]').click();await page.locator('[data-open-saved]').click();await page.locator('[data-saved-target]').click();await page.locator('[data-ai-current] [data-swap-confirm]').waitFor();assert(requests.length===prior,'Saved choices should reopen without another conversation or label photo');
+  await page.locator('[data-quick="search"]').click();loseNext=true;await send('Arroz');await page.locator('[data-ai-retry]').click();await page.waitForFunction(()=>!document.querySelector('.food-ai-widget').classList.contains('is-busy'));
+  assert(requests.at(-1).operation_id===requests.at(-2).operation_id,'Lost conversation response must replay same operation');assert(requests.at(-1).conversation_id!==conv,'New swap must use a fresh conversation');
+  await send('Quero uma barrinha');await page.locator('[data-label-photo]').click();await page.locator('[data-photo-gallery]').waitFor();
+  const png=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=600;c.height=500;const x=c.getContext('2d');x.fillStyle='white';x.fillRect(0,0,600,500);x.fillStyle='black';x.font='30px sans-serif';x.fillText('INFORMAÇÃO NUTRICIONAL',30,60);x.fillText('Porção: 25 g (1 unidade)',30,140);x.fillText('Valor energético: 90 kcal',30,220);return c.toDataURL('image/png').split(',')[1];});
+  await page.locator('[data-label-file]').setInputFiles({name:'rotulo.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')});await page.locator('.ai-attachment').waitFor();await page.waitForFunction(()=>!document.querySelector('.food-ai-widget').classList.contains('is-busy'));
+  await page.locator('[data-photo-cancel]').click();await page.locator('.ai-send').click();await page.getByText('Li 90 kcal em 25 g. Está certo?',{exact:true}).waitFor();assert(requests.at(-1).image.startsWith('data:image/jpeg;base64,'),'Photo must be compressed before upload');assert(requests.at(-1).image.length<1500000,'Photo payload limit');
+  await page.locator('.substitution-chat').screenshot({path:'.playwright-mcp/sub-natural-label-mobile.png'});
+  await page.getByRole('button',{name:'Quero corrigir',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('.food-ai-widget').classList.contains('is-busy'));
+  await send('Quero trocar o ovo por Trakinas');await page.locator('[data-swap-ask-nutri]').click();assert((await page.evaluate(()=>window.__AI_QA.askNutri)).includes('por Trakinas'),'Nutri draft must include desired food');assert(!await page.locator('.substitution-chat').isVisible(),'Nutri handoff must minimize SUB');
+  await page.locator('#food-ai-launcher').click();await page.locator('#swap-food-search').fill('Meu rascunho');await page.locator('[data-swap-close]').click();await page.locator('#food-ai-launcher').click();assert(await page.locator('#swap-food-search').inputValue()==='Meu rascunho','Minimize must preserve draft');
+  assert(!/TACO|TBCA|OpenAI/.test(await page.locator('.substitution-chat').textContent()),'Sources must remain hidden');
+  await page.reload();await page.evaluate(setup,{item});await page.locator('#food-ai-launcher').click();await page.locator('[data-swap-ask-nutri]').waitFor();await send('Outra alternativa');assert(requests.at(-1).conversation_id!==conv,'History must restore current conversation');
+  await page.setViewportSize({width:1440,height:960});await page.emulateMedia({reducedMotion:'reduce'});await page.locator('.substitution-chat').screenshot({path:'.playwright-mcp/sub-natural-desktop.png'});
+  assert(errors.length===0,errors.join('; '));return {passed:true,naturalConversation:true,preparationChoices:true,labelPhoto:true,labelConfirmation:true,nutriHandoff:true,retries:true,savedChoices:true,history:true,mobile:true,desktop:true,sourcesHidden:true,productionWrites:0,providerCalls:0};
+ }catch(e){return {error:e.message,stack:e.stack,errors,body:await page.locator('.substitution-chat').textContent()};}finally{await page.close();}
 }
