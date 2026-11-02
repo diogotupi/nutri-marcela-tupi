@@ -63,3 +63,12 @@ Limpeza solicitada: os dois pacientes anteriores foram removidos com os registro
 - `save_food_substitution` usa operação UUID, bloqueio por paciente/refeição/dia e versão esperada da troca. Repetir um envio confirmado retorna o estado atual, sem duplicar nem reverter uma troca posterior. RLS separa pacientes; apenas funções autorizadas gravam quantidades e referências.
 - O histórico compartilhado fica em `clinical_records` (`meal_substitution`, replace/restore), com snapshots de alimentos, pesos, kcal e autor. A equipe vê as trocas no resumo/detalhe da refeição e pode desfazê-las. A atuação da secretária continua nos logs da Marcela.
 - Testes: `npm test`, `supabase/calorie-substitutions-regression.sql` (rollback), roteiros de paciente e clínica com APIs simuladas. Nenhum paciente real é usado como fixture.
+
+## Assistente flutuante de trocas (02/11/2026)
+
+- O botão IA acompanha o paciente nas abas do painel. Abre uma conversa com mensagens, cartões de escolha, busca por alimento do plano e acesso às trocas salvas. Minimizar preserva conversa e rascunho; animações respeitam a preferência por movimento reduzido.
+- A integração OpenAI fica na Edge Function `food-substitution-ai`. A chave do cliente deve ser cadastrada como `OPENAI_API_KEY` nos Secrets do Supabase, nunca no HTML, JavaScript público ou Git. Sem chave, a interface oferece o modo guiado pela TACO, sem chamadas pagas.
+- O modelo interpreta a conversa e identifica alimentos; os valores continuam sendo calculados pela TACO e confirmados pelo servidor. A IA não altera a dieta nem confirma uma troca sem a escolha explícita do paciente.
+- O servidor guarda o histórico privado por paciente e recupera as seis últimas interações concluídas. Envia à OpenAI apenas o contexto de alimentos, opção/refeição e mensagens de substituição; não envia cadastro, anamnese nem chat com a nutricionista. A requisição usa `store:false`.
+- Cada envio tem UUID para evitar chamadas duplicadas em reenvios. Há limite de 12 mensagens/minuto e 80/dia por paciente. Falhas na IA mantêm disponíveis busca, cálculos e trocas salvas.
+- Verificação: `npm test`, `tests/substitution-chat-browser-qa.cjs` (celular/desktop, contexto, histórico, modo sem chave, reenvios e acessibilidade), regressão completa do paciente e `supabase/substitution-ai-regression.sql` com rollback. As respostas da OpenAI são simuladas nos testes; a chamada real depende da chave do cliente.

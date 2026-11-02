@@ -5,3 +5,6 @@ enabled = true
 
 [functions.create-patient]
 verify_jwt = true
+
+[functions.food-substitution-ai]
+verify_jwt = true

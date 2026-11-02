@@ -125,44 +125,7 @@ async (existingPage) => {
     await page.reload();await page.bringToFront();await page.locator('#training-form').waitFor();await waitFor(()=>document.querySelector('[data-item-id=prep2]')?.checked);
     assert(await page.locator('[data-item-id=prep1]').isChecked()===false,'Saved replacement must survive reload');
     assert(await page.locator('[data-item-id=item1]').count()===1,'Shared prescribed food must appear exactly once');
-    await page.getByRole('button',{name:'Trocar um alimento',exact:true}).click();
-    await page.locator('#swap-food-search').fill('batata');
-    assert(await page.locator('[data-swap-origin]').count()===2,'Food search must find distinct diet occurrences');
-    assert((await page.locator('[data-swap-origin=item1]').textContent()).includes('Opção 1'),'Search result must show the meal option');
-    await page.locator('#swap-food-search').fill('sem-correspondencia');
-    await page.getByText('Não encontrei esse alimento no seu plano atual.',{exact:false}).waitFor();
-    await page.locator('#swap-food-search').fill('legumes');
-    assert(await page.locator('[data-swap-origin=item2]').isDisabled(),'Food without a verified reference must not be calculated');
-    await page.locator('#swap-food-search').fill('BATATA');await page.locator('[data-swap-origin=item1]').click();
-    await page.locator('[data-swap-group]').selectOption('Cereais e derivados');
-    assert(await page.locator('[data-swap-target="3"]').textContent().then(t=>t.includes('81,3 g')&&t.includes('104 kcal')),'Calorie equivalence preview wrong');
-    await page.locator('.substitution-chat').screenshot({path:'.playwright-mcp/taco-chat-mobile.png'});
-    await page.setViewportSize({width:1440,height:1000});await page.locator('.substitution-chat').screenshot({path:'.playwright-mcp/taco-chat-desktop.png'});await page.setViewportSize({width:390,height:844});
-    await page.locator('[data-swap-target="3"]').click();await page.locator('[data-swap-confirm]').click();
-    await page.locator('[data-swap-status]').filter({hasText:'Não foi possível confirmar'}).waitFor();await waitFor(()=>!document.querySelector('[data-swap-confirm]').disabled);
-    await page.locator('[data-swap-confirm]').click();await page.locator('[data-swap-done]').waitFor();
-    assert(swapOps.length===2&&swapOps[0].p_operation===swapOps[1].p_operation&&swaps.length===1,'Failed-response retry must preserve one operation');
-    await page.locator('[data-swap-done]').click();
-    assert(await page.locator('[data-item-id=item1]').evaluate(i=>i.closest('.check-row').textContent.includes('Arroz, tipo 1, cozido')),'Daily meal must show chosen substitute');
-    assert(!await page.locator('[data-item-id=item1]').isChecked(),'Choosing a replacement must not claim it was eaten');
-    assert((await page.locator('#plan-preview').textContent()).includes('Batata, inglesa, cozida'),'Original prescription must remain visible');
-    assert(!(await page.locator('#plan-preview').textContent()).includes('Troca de hoje'),'Read-only plan must preserve the original prescription');
-    await page.reload();await page.bringToFront();await waitFor(()=>document.querySelector('[data-item-id=item1]')?.closest('.check-row').textContent.includes('Arroz, tipo 1, cozido'));
-    await page.locator('[data-swap-undo]').click();await waitFor(()=>document.querySelectorAll('[data-swap-undo]').length===0);
-    assert(swaps.length===0&&await page.locator('[data-item-id=item1]').evaluate(i=>i.closest('.check-row').textContent.includes('Batata, inglesa, cozida')),'Restore original food failed');
-    meal.diet_items[0].portion_g=100;meal.diet_items[0].quantity='100';
-    await page.reload();await page.bringToFront();await page.locator('[data-food-saved=item1]').waitFor();
-    await page.locator('[data-food-saved=item1]').click();await page.locator('[data-saved-target="3"]').waitFor();
-    assert(await page.locator('#swap-food-search').count()===0,'Saved food click must skip chat search');
-    assert((await page.locator('[data-saved-target="3"]').textContent()).includes('40,6 g'),'Saved choice must recalculate the current portion');
-    await page.locator('.substitution-chat').screenshot({path:'.playwright-mcp/taco-saved-mobile.png'});
-    await page.locator('[data-saved-target="3"]').click();await page.locator('[data-swap-confirm]').click();await page.locator('[data-swap-done]').click();
-    assert(savedSwaps.length===1&&swaps.length===1,'Reusing a saved replacement must not duplicate it');
-    await page.locator('[data-swap-undo]').click();await waitFor(()=>document.querySelectorAll('[data-swap-undo]').length===0);
-    await page.locator('[data-food-saved=item1]').click();await page.locator('[data-forget-target="3"]').click();await page.locator('[data-swap-discover]').waitFor();
-    await waitFor(()=>document.querySelectorAll('[data-saved-target]').length===0);assert(savedSwaps.length===0,'Forget saved choice failed');
-    await page.locator('[data-swap-close]').click();
-
+    assert(await page.locator('#food-ai-launcher').isVisible(),'Floating assistant must remain visible in the patient panel');
     await page.evaluate(()=>{const b=document.createElement('div');b.textContent='DEMONSTRAÇÃO — dados fictícios interceptados localmente';b.style='background:#feeac3;padding:10px;text-align:center;font-size:12px';document.body.prepend(b);});
     await page.locator('#h2o-goal').filter({hasText:'1800'}).waitFor();
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Mobile horizontal overflow');
@@ -272,6 +235,6 @@ async (existingPage) => {
     await page.reload();
     await page.locator('#h2o-goal').filter({hasText:'ainda não definiu'}).waitFor();
     assert(await page.locator('#h2o-fill').evaluate(e=>e.style.width)==='50%','No-goal meter must restore the persisted volume');
-    return {passed:true,mobile:390,desktop:1440,waterRequests:operations.length,clinicalVersions:clinical.length,mealChecks:checks.length,checks:['layout mobile/desktop','water failed-response retry idempotency','water undo','numbered open options, cancel, add, replace and persistence','training intensity/date','meal difficulty idempotent retry','camera/gallery photo picker, preview and WebP upload','collapsed PDF appendices','checkable breakfast preparations','TACO calorie substitutions, search, blocked unmapped foods, retry, reload and restore','saved replacements persist, reopen directly from food, recalculate and can be removed','profile photo','live hydration refresh and isolated clinical failure','private chat retry, reply and PDF attachment','empty assessment','read-only plan','structured data export','no-goal meter update, undo and reload'],productionWrites:0};
+    return {passed:true,mobile:390,desktop:1440,waterRequests:operations.length,clinicalVersions:clinical.length,mealChecks:checks.length,checks:['layout mobile/desktop','water failed-response retry idempotency','water undo','numbered open options, cancel, add, replace and persistence','training intensity/date','meal difficulty idempotent retry','camera/gallery photo picker, preview and WebP upload','collapsed PDF appendices','checkable breakfast preparations','floating assistant entry on the patient dashboard','profile photo','live hydration refresh and isolated clinical failure','private chat retry, reply and PDF attachment','empty assessment','read-only plan','structured data export','no-goal meter update, undo and reload'],productionWrites:0};
   } catch(error) { return {error:error.message,stack:error.stack,optionRequests,itemChecks,state:await page.evaluate(()=>({tab:document.querySelector('#panel-diet')?.hidden,card:document.querySelector('#active-diet-card')?.innerHTML.slice(0,400),checked:[...document.querySelectorAll('[data-item-id]')].map(i=>({id:i.dataset.itemId,checked:i.checked})),rect:document.querySelector('[data-water]')?.getBoundingClientRect().toJSON(),html:document.querySelector('#panel-diet')?.outerHTML.slice(0,1000),css:getComputedStyle(document.querySelector('[data-water]')).display})),errors}; } finally { await page.close(); }
 }

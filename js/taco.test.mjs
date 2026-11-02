@@ -6,6 +6,7 @@ import {mealOptionsFromRows} from './diet-content.mjs';
 const {foods}=JSON.parse(await readFile(new URL('../data/taco-4.json',import.meta.url),'utf8'));
 test('official catalog is complete, traceable and unknown energies stay unknown',()=>{
  assert.equal(foods.length,597);assert.equal(new Set(foods.map(f=>f.id)).size,597);
+ assert.equal(new Set(foods.map(f=>f.category)).size,15);assert.equal(foods.filter(f=>f.category==='Cereais e derivados').length,63);assert.equal(foods.filter(f=>f.category==='Verduras, hortaliças e derivados').length,99);
  assert.equal(foods.find(f=>f.id===91).kcal_per_100g,52);assert.equal(foods.find(f=>f.id===3).kcal_per_100g,128);
  assert.deepEqual(foods.filter(f=>f.kcal_per_100g===null).map(f=>f.id),[450,457,458,516,517,591]);
 });

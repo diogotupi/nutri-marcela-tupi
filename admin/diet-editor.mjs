@@ -1,6 +1,6 @@
 import {escapeHtml as esc} from '../js/app-core.js';
 import {mealOptionsFromRows,normalizeMealOptions} from '../js/diet-content.mjs?v=20261031-options';
-import {loadTaco,searchTaco,formatKcal} from '../js/taco.mjs?v=20261102';
+import {loadTaco,searchTaco,formatKcal} from '../js/taco.mjs?v=20261102-categories';
 
 export const blankDiet=()=>({title:'Plano alimentar',notes:'',meals:[]});
 export function validateDietDraft(draft){

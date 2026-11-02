@@ -38,9 +38,10 @@ def build():
                 # Tr/NA/blank are unknown, never an invented zero.
                 kcal = int(Decimal(energy).quantize(Decimal('1'), rounding=ROUND_HALF_UP)) if re.fullmatch(r'[\d.Ee+-]+', energy) else None
                 foods.append({'id': int(cells['A']), 'name': cells['B'].strip(), 'category': group, 'kcal_per_100g': kcal})
-            elif cells.get('A') and not cells.get('B') and len(cells['A']) > 8:
+            elif cells.get('A') and not cells.get('B') and len(cells['A']) > 8 and cells['A'].strip() not in ('Número do', 'Alimento'):
                 group = cells['A'].strip()
     assert [f['id'] for f in foods] == list(range(1, 598)), 'Incomplete or reordered official dataset'
+    assert len({f['category'] for f in foods}) == 15, 'Unexpected category labels or repeated table headers'
 
     published = {}
     with pymupdf.open(stream=pdf_bytes, filetype='pdf') as pdf:

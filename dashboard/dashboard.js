@@ -1,5 +1,5 @@
-import {openSubstitutionChat} from './substitution-chat.js?v=20261102-taco';
-import {formatGrams,formatKcal} from '../js/taco.mjs?v=20261102';
+import {openSubstitutionChat,mountSubstitutionAssistant} from './substitution-chat.js?v=20261102-ai';
+import {formatGrams,formatKcal} from '../js/taco.mjs?v=20261102-categories';
 import {mountPatientChat} from '../js/patient-chat.js?v=20261030-team';
 import {
   escapeHtml,
@@ -341,6 +341,7 @@ async function init() {
   const auth = await requireAuth({ role: 'patient' });
   if (!auth) return;
   profile = auth.profile;
+  mountSubstitutionAssistant({getDiet:()=>activeDiet,current:()=>foodSubstitutions,saved:()=>savedSubstitutions,onChanged:refreshSubstitutions});
   document.getElementById('profile-label').textContent = `${profile.full_name} · ${profile.username}`;
 
   initGuidesPanel();
