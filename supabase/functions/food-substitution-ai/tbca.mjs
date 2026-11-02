@@ -23,6 +23,17 @@ export function parseTBCAEnergy(html,code){
  }
  throw Error('Energia da porção não encontrada.');
 }
+export function parseTBCANutrients(html,code){
+ const result={kcal_per_100g:parseTBCAEnergy(html,code),protein_per_100g:null,carbs_per_100g:null,fat_per_100g:null};
+ for(const row of html.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)){
+  const c=cells(row[1]).map(plain),label=(c[0]||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const key=/^proteina/.test(label)?'protein_per_100g':/^lipid|^gorduras totais/.test(label)?'fat_per_100g':/^carboidrato.*disponiv/.test(label)?'carbs_per_100g':null;
+  if(!key||c[1]!=='g')continue;
+  const raw=c[2]||'',value=/^tr(?:aco)?$/i.test(raw)?0:/^\d+(?:[,.]\d+)?$/.test(raw)?Number(raw.replace(',','.')):null;
+  if(value!==null&&value>=0&&value<=100)result[key]=value;
+ }
+ return result;
+}
 async function page(fetchImpl,url,options={}){
  const r=await fetchImpl(url,{...options,signal:AbortSignal.timeout(10000)});
  if(!r.ok)throw Error('Consulta de alimentos indisponível.');
@@ -34,5 +45,5 @@ export async function searchTBCA(query,fetchImpl=fetch){
 }
 export async function readTBCA(candidate,fetchImpl=fetch){
  const html=await page(fetchImpl,candidate.url);
- return {...candidate,kcal_per_100g:parseTBCAEnergy(html,candidate.id),reference_source:'tbca',reference_code:candidate.id,reference_url:candidate.url};
+ return {...candidate,...parseTBCANutrients(html,candidate.id),reference_source:'tbca',reference_code:candidate.id,reference_url:candidate.url};
 }

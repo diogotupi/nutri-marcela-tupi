@@ -1,5 +1,5 @@
-import {openSubstitutionChat,mountSubstitutionAssistant} from './substitution-chat.js?v=20261102-conversation2';
-import {formatGrams,formatKcal} from '../js/taco.mjs?v=20261102-categories';
+import {openSubstitutionChat,mountSubstitutionAssistant} from './substitution-chat.js?v=20261102-macros';
+import {formatGrams,formatKcal} from '../js/taco.mjs?v=20261102-macros';
 import {mountPatientChat} from '../js/patient-chat.js?v=20261030-team';
 import {
   escapeHtml,

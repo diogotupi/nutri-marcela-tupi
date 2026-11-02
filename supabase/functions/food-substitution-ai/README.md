@@ -13,7 +13,7 @@ Responses API, saída estruturada, `store:false`. Enviam-se nomes/medidas do pla
 ## Contrato
 
 - `GET`: disponibilidade, últimas 12 interações próprias e referências adicionais autorizadas.
-- `POST action:chat`: `operation_id`, `conversation_id`, `message` (até 500 caracteres), `item_id` opcional explicitamente selecionado e `image` opcional como data URL JPG/PNG/WebP.
+- `POST action:chat`: `operation_id`, `conversation_id`, `message` (até 500 caracteres), `item_id` opcional explicitamente selecionado, `saved_target_id` opcional para reavaliar uma troca salva e `image` opcional como data URL JPG/PNG/WebP.
 - JWT e perfil de paciente são obrigatórios. A reserva SQL verifica o item no plano ativo, limita 12 mensagens/minuto e 80/dia e garante repetição idempotente. A identidade da operação inclui digest da imagem e conversa, sem armazenar a imagem.
 - O browser comprime fotos em JPEG; o endpoint limita o corpo em streaming e aceita apenas imagens inline com assinatura compatível. Imagens não são armazenadas na tabela de conversa nem em buckets; somente os valores extraídos e o registro de que houve foto.
 - Respostas perdidas reutilizam o UUID. Falhas confirmadas permitem nova operação. Erros não expõem chave nem detalhes internos do provedor.
@@ -23,9 +23,11 @@ Responses API, saída estruturada, `store:false`. Enviam-se nomes/medidas do pla
 
 A consulta em segundo plano segue TACO → TBCA → estimativa de IA para alimentos comuns. `references.mjs` preserva peso e preparo; `tbca.mjs` lê a referência pública oficial. A fonte e a data ficam registradas internamente. Os 597 IDs TACO originais são preservados. Exemplo de referência TBCA: https://tbca.net.br/base-dados-en/int_statistical_composition.php?cod_produto=BRC0170T .
 
-Para produtos embalados específicos, a conversa pede foto da tabela ou calorias e peso da mesma porção. A leitura é mostrada para confirmação; o servidor verifica se os valores confirmados pertencem ao mesmo alimento e à mesma leitura. Não se confunde kcal/kJ, g/ml, porção/100 g ou %VD. Foto ilegível volta a pedir esclarecimento. A confirmação já avança para a conta, mesmo que o modelo apenas agradeça a confirmação.
+Para produtos embalados específicos, a conversa pede foto da tabela ou calorias, proteínas, carboidratos, gorduras totais e peso da mesma porção. A leitura é mostrada para confirmação; o servidor verifica se os valores confirmados pertencem ao mesmo alimento e à mesma leitura. Não se confunde kcal/kJ, g/ml, porção/100 g ou %VD. Foto ilegível volta a pedir esclarecimento. A confirmação já avança para a conta, mesmo que o modelo apenas agradeça a confirmação.
 
-O modelo não faz a conta final. O servidor usa `gramas_origem × kcal_origem_por_100g ÷ kcal_destino_por_100g`. A porção aparece como aproximada; não se afirma equivalência de macronutrientes. O paciente confirma antes de salvar. As trocas salvas podem ser revisitadas sem reenviar o rótulo.
+O modelo avalia a função do alimento e o preparo. `nutrition.mjs` procura a porção mais próxima em calorias e macros, limitada também pelo tamanho da porção. Dados incompletos, macros incompatíveis ou porções muito pequenas encaminham ao suporte da nutri. A resposta explica a diferença sem julgamentos. Os limites e suas limitações estão em [substitution-compatibility.md](../../../docs/substitution-compatibility.md).
+
+O paciente só confirma uma proposta revisada. `save_reviewed_substitution` valida a análise armazenada no servidor, a propriedade, a validade, os dados atuais e as tolerâncias novamente. O RPC antigo de calorias não é acessível a pacientes. Trocas salvas são reavaliadas antes do uso; rótulos completos podem ser reutilizados sem nova foto.
 
 Referências de rótulos têm `reference_source=label` e proprietário. RLS permite acesso somente ao paciente e à equipe; triggers protegem também os RPCs de gravação. A gravação do rótulo é exclusiva de `service_role` e idempotente. As tabelas públicas não expõem esses registros a outros pacientes ou anônimos.
 
@@ -33,6 +35,6 @@ Referências de rótulos têm `reference_source=label` e proprietário. RLS perm
 
 `npm test` inclui os testes de backend, referências e conversa. Os scripts `supabase/*-regression.sql` correspondentes verificam permissões e contas com dados sintéticos e rollback. `tests/substitution-chat-browser-qa.cjs` cobre conversa, foto, confirmação, retomada, trocas salvas e encaminhamento com APIs interceptadas.
 
-Publicar os seis arquivos `index.ts`, `handler.mjs`, `policy.mjs`, `references.mjs`, `tbca.mjs` e `conversation.mjs` como `food-substitution-ai`, com `verify_jwt=true`. Aplicar a migração de rótulos antes do frontend. O site está no GitHub Pages; as URLs dos módulos usam versão para invalidar cache.
+Publicar os sete arquivos `index.ts`, `handler.mjs`, `policy.mjs`, `references.mjs`, `tbca.mjs`, `conversation.mjs` e `nutrition.mjs` como `food-substitution-ai`, com `verify_jwt=true`. Aplicar as migrações de nutrientes/revisões antes do backend e frontend. O site está no GitHub Pages; as URLs dos módulos usam versão para invalidar cache.
 
-Verificação real em 02/11/2026: arroz → batata → frita; troca de soja para arroz; ovo → Trakinas com encaminhamento; foto sintética da barrinha → confirmação → porção. Sem escrita em pacientes reais. O runtime temporário de diagnóstico foi removido após os testes.
+Verificação real em 02/11/2026 com GPT-6.1 Sol: arroz → batata → cozida produz porção revisada; arroz → batata frita encaminha ao suporte; banana → barrinha → rótulo com macros confirmado bloqueia a troca e explica a redução de porção; mudar para arroz abandona o contexto anterior; foto sintética completa → confirmação de todos os macros → proposta revisada. Sem escrita em pacientes reais. O runtime temporário de diagnóstico foi removido após os testes.

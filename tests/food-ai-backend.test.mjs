@@ -29,6 +29,13 @@ test('AI endpoint authenticates and only accepts the patient role',async()=>{
  f=fixture({authorized:false});assert.equal((await f.request()).status,401);
  f=fixture({role:'secretary'});assert.equal((await f.request()).status,403);assert.equal(f.providerCalls,0);
 });
+test('saved targets must belong to the patient and source before any provider call',async()=>{
+ const f=fixture();
+ const payload={action:'chat',conversation_id:operation,operation_id:operation,item_id:item,message:'Reavaliar troca',saved_target_id:91};
+ const result=await f.request(payload);assert.equal(result.status,503);assert.equal(f.providerCalls,0);
+ assert(f.calls.some(c=>c.table==='patient_saved_substitutions'&&c.filters.some(([k,v])=>k==='patient_id'&&v===patient)));
+ assert.equal((await f.request({...payload,saved_target_id:'91'})).status,400);
+});
 test('missing key leaves guided mode available without reserving or calling a provider',async()=>{
  const f=fixture({configured:false});const status=await(await f.request(undefined,'GET')).json();assert.equal(status.configured,false);
  const result=await(await f.request()).json();assert.equal(result.mode,'guided');assert.equal(result.configured,false);assert.equal(f.providerCalls,0);assert.equal(f.reservations.length,0);

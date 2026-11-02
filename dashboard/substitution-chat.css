@@ -99,3 +99,6 @@
 @media(max-width:760px){.ai-launcher{bottom:88px;right:15px;padding:7px;border-radius:50%;box-shadow:3px 4px 0 #e8b8a4,0 8px 24px #24483e20}.ai-launcher__label{display:none}.ai-launcher__symbol{width:44px;height:44px}.substitution-chat{right:12px;width:calc(100vw - 24px);border-radius:22px}.ai-header{padding:16px 14px 13px}.ai-identity h2{font-size:16px}.ai-feed{padding:16px 12px 8px}.ai-composer textarea{font-size:16px;line-height:1.4;padding:9px 11px}.ai-footer{font-size:8px}.ai-primary-action{min-height:43px}.ai-choice{min-height:53px}.ai-quick-actions button{padding:8px 10px}}
 @media(prefers-reduced-motion:reduce){.food-ai-widget *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 @media print{.food-ai-widget{display:none!important}}
+.ai-review-warning{border:1px solid #c58b68;border-radius:18px;background:#fff1e6;padding:16px;color:#654834;margin-bottom:14px;}
+.ai-review-warning strong{display:block;font-size:1rem;}
+.ai-review-warning p{margin:6px 0 0;line-height:1.5;font-size:.9rem;}

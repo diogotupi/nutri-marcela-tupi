@@ -20,7 +20,7 @@ export function validImage(image){
 async function readCatalog(client,extraOnly=false){
  const foods=[];
  for(let offset=0;;offset+=500){
-  let query=client.from('taco_foods').select('id,name,category,kcal_per_100g,reference_source,source_version').order('id');
+  let query=client.from('taco_foods').select('id,name,category,kcal_per_100g,protein_per_100g,carbs_per_100g,fat_per_100g,reference_source,source_version').order('id');
   if(extraOnly)query=query.gt('id',597);
   const {data,error}=await query.range(offset,offset+499);if(error)return {data:null,error};
   foods.push(...data||[]);if((data||[]).length<500)return {data:foods,error:null};
@@ -53,10 +53,11 @@ export function createHandler({createClient,getEnv,fetchImpl=fetch}){
    if(!uuid.test(body?.operation_id||'')||typeof body.message!=='string'||body.message.trim().length<1||body.message.length>600||(body.item_id!==null&&body.item_id!==undefined&&!uuid.test(body.item_id)))return json({error:'Escreva uma mensagem de até 600 caracteres.'},400);
    const referenceAction=['resolve_source','resolve_target'].includes(body.action);
    const conversation=body.action==='chat';
+   if(body.saved_target_id!==undefined&&(!conversation||!body.item_id||!Number.isSafeInteger(body.saved_target_id)||body.saved_target_id<1))return json({error:'Escolha uma troca salva do seu plano.'},400);
    if(body.action&&!referenceAction&&!conversation||referenceAction&&(!body.item_id||body.action==='resolve_target'&&(typeof body.query!=='string'||body.query.trim().length<1||body.query.length>100)))return json({error:'Escolha um alimento do seu plano.'},400);
    if(conversation&&(!uuid.test(body.conversation_id||'')||body.message.length>500||!validImage(body.image))||!conversation&&(raw.length>6000||body.image))return json({error:'Mensagem ou foto inválida. Envie uma imagem JPG, PNG ou WebP.'},400);
    if(!key)return json({...fallback('A conversa com IA ainda está sendo conectada. Você já pode buscar alimentos e usar suas trocas salvas.'),configured:false});
-   const fingerprint=conversation?Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify({conversation_id:body.conversation_id,message:body.message,image:body.image||null,item_id:body.item_id||null}))))).map(b=>b.toString(16).padStart(2,'0')).join(''):'';
+   const fingerprint=conversation?Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify({conversation_id:body.conversation_id,message:body.message,image:body.image||null,item_id:body.item_id||null,saved_target_id:body.saved_target_id||null}))))).map(b=>b.toString(16).padStart(2,'0')).join(''):'';
    const turnMessage=conversation?`[chat:${body.conversation_id}:${fingerprint}] ${body.message.trim().slice(0,450)}`:referenceAction?`[reference] ${body.action}:${body.item_id}:${body.query?.trim()||''}`:body.message.trim();
    const {data:reservation,error:reserveError}=await caller.rpc('reserve_substitution_ai_turn',{p_id:body.operation_id,p_message:turnMessage,p_item:body.item_id||null});
    if(reserveError)return json({error:reserveError.message},reserveError.code==='42501'?403:reserveError.message?.includes('limite')?429:400);
@@ -82,7 +83,17 @@ export function createHandler({createClient,getEnv,fetchImpl=fetch}){
      readCatalog(caller),
      (()=>{let q=caller.from('substitution_ai_turns').select('message,response,item_id').eq('patient_id',profile.id).eq('status','completed').is('response->kind',null);if(conversation)q=q.eq('response->>conversation_id',body.conversation_id);return q.order('created_at',{ascending:false}).limit(conversation?12:6);})()
     ]);if(catalogError||historyError)throw catalogError||historyError;
-    if(conversation)return await finish(await runConversation({plan,catalog:catalog||[],history:history||[],body,admin,patient:profile.id,key,model,fetchImpl}));
+    if(conversation){
+     let savedTarget=null;
+     if(body.saved_target_id){
+      const item=plan.find(i=>i.id===body.item_id);
+      if(!item)throw Error('Alimento fora do plano.');
+      const {data:bookmark,error}=await caller.from('patient_saved_substitutions').select('target_food_id').eq('patient_id',profile.id).eq('source_food_id',item.taco_food_id).eq('target_food_id',body.saved_target_id).maybeSingle();
+      savedTarget=bookmark&&(catalog||[]).find(f=>f.id===bookmark.target_food_id);
+      if(error||!savedTarget)throw Error('Troca salva não encontrada.');
+     }
+     return await finish(await runConversation({plan,catalog:catalog||[],history:history||[],body,admin,patient:profile.id,key,model,savedTarget,fetchImpl}));
+    }
     if(referenceAction){
      const item=plan.find(i=>i.id===body.item_id);if(!item)throw Error('Esse alimento não está mais no plano atual.');
      const resolved=await resolveFoodReference({item,query:body.query?.trim(),source:body.action==='resolve_source',catalog:catalog||[],admin,patient:profile.id,key,model,fetchImpl});

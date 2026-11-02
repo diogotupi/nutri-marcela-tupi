@@ -15,5 +15,12 @@
     516,
     517,
     591
-  ]
+  ],
+  "macros": {
+    "basis": "100 g edible portion; published PDF values independently checked against official XLSX",
+    "carbohydrates": "Available carbohydrate = max(total carbohydrate minus dietary fiber, 0); total and fiber retained",
+    "trace": "Tr treated as approximately 0 g, never confused with NA/ND/missing",
+    "unknown": "NA/ND/missing remain null; missing fiber does not imply zero",
+    "complete_profiles": 511
+  }
 }

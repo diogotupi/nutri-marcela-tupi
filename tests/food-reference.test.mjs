@@ -50,7 +50,7 @@ test('hydrated soy falls through TACO to verified TBCA data, rather than using a
  assert.equal(f.calls.filter(c=>c.url.includes('api.openai.com')).length,2);
 });
 test('AI estimates are used only after no usable TACO/TBCA reference, with bounded values and server provenance',async()=>{
- const f=fixture({tableList:'<table></table>',choices:[{recognized_food:true,name:'Crepioca simples',kcal_per_100g:210,portion_g:90}]});
+ const f=fixture({tableList:'<table></table>',choices:[{recognized_food:true,name:'Crepioca simples',kcal_per_100g:210,protein_per_100g:10,carbs_per_100g:20,fat_per_100g:10,portion_g:90}]});
  const result=await f.resolve({...soy,food_name:'Crepioca',quantity:'1 unidade'},[]);
  assert.equal(result.food.kcal_per_100g,210);assert.equal(f.stored[0].reference_source,'ai');assert.equal(result.portion_g,90);assert.equal(f.binds[0].p_estimated,true);
  assert(!JSON.stringify(result).includes('reference_source'));assert(!JSON.stringify(result).includes('reference_url'));

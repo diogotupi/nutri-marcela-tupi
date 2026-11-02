@@ -20,10 +20,7 @@ begin
  begin perform public.bind_food_reference(i,pp,(f->>'id')::integer,120,false,'Proteína de soja texturizada hidratada','999g','');raise exception 'FAIL stale quantity';exception when serialization_failure then null;end;
  begin perform public.cache_food_reference(key||'-bad',jsonb_build_object('reference_source','ai','name','Invalid','kcal_per_100g',9000));raise exception 'FAIL invented energy accepted';exception when raise_exception then if sqlerrm like 'FAIL%' then raise;end if;end;
  perform set_config('request.jwt.claims',jsonb_build_object('sub',pu,'role','authenticated')::text,true);execute 'set local role authenticated';
- r:=public.save_food_substitution(operation,i,3,today,null);
- if (r->'substitution'->>'energy_kcal')::numeric<>224.4 or (r->'substitution'->>'target_grams')::numeric<>175.3125 then raise exception 'FAIL fallback calorie math';end if;
- if r->'substitution'->'reference_details'->'source'->>'source'<>'tbca' then raise exception 'FAIL provenance missing';end if;
- if not exists(select 1 from public.patient_saved_substitutions where patient_id=pp and source_food_id=(f->>'id')::integer and target_food_id=3) then raise exception 'FAIL saved choice lost';end if;
+ begin perform public.save_food_substitution(operation,i,3,today,null);raise exception 'FAIL fallback bypasses nutrient review';exception when insufficient_privilege then null;end;
  begin perform public.cache_food_reference('forged',jsonb_build_object('reference_source','ai','name','Forgery','kcal_per_100g',10));raise exception 'FAIL patient cache write';exception when insufficient_privilege then null;end;
  begin perform public.bind_food_reference(i,pp,3,999,false,'Proteína de soja texturizada hidratada','120g','');raise exception 'FAIL patient metadata write';exception when insufficient_privilege then null;end;
 end $$;

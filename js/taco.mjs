@@ -2,7 +2,7 @@ export const TACO_VERSION='TACO-4-2011';
 export const normalizeFoodName=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\bovos\b/g,'ovo').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
 let cached;
 export function loadTaco(){
- if(!cached)cached=fetch('/data/taco-4.json?v=20261102-categories').then(async response=>{
+ if(!cached)cached=fetch('/data/taco-4.json?v=20261102-macros').then(async response=>{
   if(!response.ok)throw Error('Não foi possível carregar os alimentos. Tente novamente.');
   const data=await response.json();
   if(data.version!==TACO_VERSION||data.basis_g!==100||data.foods?.length!==597)throw Error('A base de alimentos não pôde ser validada.');
