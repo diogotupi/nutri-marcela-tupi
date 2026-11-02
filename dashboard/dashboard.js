@@ -1,4 +1,4 @@
-import {openSubstitutionChat,mountSubstitutionAssistant} from './substitution-chat.js?v=20261102-clean';
+import {openSubstitutionChat,mountSubstitutionAssistant} from './substitution-chat.js?v=20261102-review';
 import {formatGrams,formatKcal} from '../js/taco.mjs?v=20261102-categories';
 import {mountPatientChat} from '../js/patient-chat.js?v=20261030-team';
 import {
@@ -341,7 +341,13 @@ async function init() {
   const auth = await requireAuth({ role: 'patient' });
   if (!auth) return;
   profile = auth.profile;
-  mountSubstitutionAssistant({getDiet:()=>activeDiet,current:()=>foodSubstitutions,saved:()=>savedSubstitutions,onChanged:refreshSubstitutions});
+  mountSubstitutionAssistant({getDiet:()=>activeDiet,current:()=>foodSubstitutions,saved:()=>savedSubstitutions,onChanged:refreshSubstitutions,onAskNutritionist:food=>{
+    switchTab('diet');
+    const field=document.querySelector('#patient-chat textarea');
+    if(!field){document.getElementById('patient-chat').scrollIntoView({block:'center'});return;}
+    if(!field.value.trim())field.value=`Marcela, gostaria de trocar ${food}. Você pode conferir esse alimento e me orientar uma troca?`;
+    field.scrollIntoView({block:'center'});field.focus({preventScroll:true});
+  }});
   document.getElementById('profile-label').textContent = `${profile.full_name} · ${profile.username}`;
 
   initGuidesPanel();

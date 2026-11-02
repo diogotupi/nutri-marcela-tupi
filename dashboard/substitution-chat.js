@@ -54,12 +54,19 @@ function createAssistant(initialOptions){
  function sourceCards(rows,text='Encontrei estes alimentos no seu plano. Qual deles você quer trocar?'){
   const proposedTarget=targetQuery;
   if(!rows.length){message('Não encontrei esse alimento no seu plano atual. Tente o nome, como “batata”, “arroz” ou “ovo”.');return;}
-  const entry=activeCard(message(text,false,`<div class="ai-action-card substitution-choices">${rows.map(row=>`<button type="button" class="ai-choice ai-source-choice" data-swap-origin="${row.item.id}" ${available(row)?'':'disabled'}><span class="ai-choice__icon">↔</span><span><strong>${esc(row.item.food_name)}</strong><small>${esc(context(row))}</small><small>${esc([row.item.quantity,row.item.unit].filter(Boolean).join(' '))}${available(row)?'':' · A Marcela ainda precisa liberar as trocas deste alimento.'}</small></span><b aria-hidden="true">›</b></button>`).join('')}</div>`));
+  const entry=activeCard(message(text,false,`<div class="ai-action-card substitution-choices">${rows.map(row=>`<button type="button" class="ai-choice ai-source-choice" data-swap-origin="${row.item.id}"><span class="ai-choice__icon">↔</span><span><strong>${esc(row.item.food_name)}</strong><small>${esc(context(row))}</small><small>${esc([row.item.quantity,row.item.unit].filter(Boolean).join(' '))}</small>${available(row)?'':'<small class="ai-review-hint">Conferir dados para esta troca</small>'}</span><b aria-hidden="true">›</b></button>`).join('')}</div>`));
   entry.querySelectorAll('[data-swap-origin]').forEach(button=>button.onclick=()=>{
-   const row=rowById(button.dataset.swapOrigin);if(!available(row))return;
+   const row=rowById(button.dataset.swapOrigin);if(!row)return;
    origin=row;message(`${row.item.food_name} · ${context(row)}`,true);
+   if(!available(row)){showMissingDetails(row);return;}
    if(proposedTarget)showTargets(row,{query:proposedTarget});else if(saved().some(s=>s.source_food_id===row.reference.id))showSaved(row);else showTargets(row);
   });
+ }
+ function showMissingDetails(row){
+  origin=row;
+  const entry=activeCard(message(`Encontrei ${row.item.food_name.toLowerCase()} no seu plano. Ainda não consigo calcular uma troca para essa porção. A Marcela pode revisar os dados do alimento ou orientar outra opção. Você pode falar com ela ou escolher outro alimento enquanto isso.`,false,`<div class="ai-action-card">${options.onAskNutritionist?'<button type="button" class="ai-primary-action" data-swap-ask-nutri>Falar com a Marcela <span>›</span></button>':''}<button type="button" class="ai-small-button" data-swap-choose-another>Escolher outro alimento</button></div>`));
+  entry.querySelector('[data-swap-ask-nutri]')?.addEventListener('click',()=>{hide();options.onAskNutritionist(row.item.food_name);});
+  entry.querySelector('[data-swap-choose-another]').onclick=()=>{origin=null;targetQuery='';sourceCards(allRows().filter(available).slice(0,12),'Qual outro alimento do seu plano você quer trocar?');};
  }
  function findSources(query){
   if(/^(oi|ola|bom dia|boa tarde|boa noite)[!. ]*$/i.test(normalizeFoodName(query))){message('Oi! Me diga qual alimento da sua dieta você quer trocar, ou abra suas trocas salvas.');return;}
@@ -154,7 +161,7 @@ function createAssistant(initialOptions){
  reduce.addEventListener('change',()=>{if(reduce.matches)root.getAnimations({subtree:true}).forEach(a=>a.cancel());});
  const api={update(next){options={...options,...next};},async open({initialItemId=null,initialQuery=''}={}){
   reveal();try{await initialize();}catch{return;}
-  if(initialItemId){const row=rowById(initialItemId);if(available(row)){origin=row;showSaved(row);}else message('A Marcela ainda precisa liberar as trocas deste alimento.');}
+  if(initialItemId){const row=rowById(initialItemId);if(available(row)){origin=row;showSaved(row);}else if(row)showMissingDetails(row);else message('Esse alimento não está mais no seu plano atual. Busque pelo nome para continuar.');}
   else if(initialQuery){composer.value=initialQuery;composer.oninput();}
   composer.focus({preventScroll:true});
  },hide};

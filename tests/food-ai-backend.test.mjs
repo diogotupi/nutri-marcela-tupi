@@ -60,3 +60,12 @@ test('out-of-scope requests cannot produce food actions and model quantities are
 test('model context preserves the visible legacy option numbering and excludes clinical notes',()=>{
  const rows=flattenPlan([{name:'Café',notes:'PRIVATE CLINICAL NOTE',options:[{name:'Preparo A'}],diet_items:[{id:'base',food_name:'Ovo',option_name:null},{id:'recipe',food_name:'Crepioca',option_name:'Preparo A'}]}]);assert.equal(rows[0].option_name,'Opção 1');assert.equal(rows[1].option_name,'Opção 2');assert(!JSON.stringify(modelInput(rows,null,[],'trocar ovo')).includes('PRIVATE CLINICAL NOTE'));
 });
+
+test('an identified food without calorie data never promises a calculated replacement',()=>{
+ const missing={...plan[0],food_name:'Proteína de soja texturizada hidratada',taco_food_id:null,portion_g:null};
+ const result=parseModelResponse(modelResult({...answer,intent:'find_target',reply:'Vou buscar opções para essa troca.'}),[missing],catalog,item);
+ assert.equal(result.intent,'find_source');assert.deepEqual(result.source_item_ids,[item]);assert.deepEqual(result.target_food_ids,[]);assert.equal(result.target_query,'');assert.match(result.reply,/revisados pela Marcela/);
+ assert.equal(JSON.parse(modelInput([missing],null,[],'trocar soja').at(-1).content).plan[0].available,false);
+ const unknownEnergy=parseModelResponse(modelResult(answer),plan,[{id:91,kcal_per_100g:null}],null);
+ assert.match(unknownEnergy.reply,/revisados pela Marcela/);assert.deepEqual(unknownEnergy.target_food_ids,[]);
+});
