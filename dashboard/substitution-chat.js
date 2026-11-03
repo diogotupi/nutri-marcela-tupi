@@ -1,7 +1,7 @@
 import {getSupabase,escapeHtml as esc,getLocalDateString} from '../js/app-core.js';
 import {mealOptionsFromRows} from '../js/diet-content.mjs?v=20261031-options';
-import {loadTaco,formatGrams,formatKcal} from '../js/taco.mjs?v=20261102-macros';
-import {requestFoodAI} from './food-ai-client.js?v=20261102-macros';
+import {loadTaco,formatGrams,formatKcal} from '../js/taco.mjs?v=20261103-context';
+import {requestFoodAI} from './food-ai-client.js?v=20261103-context';
 
 const spark='<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4L12 3Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="m20 2 .6 1.4L22 4l-1.4.6L20 6l-.6-1.4L18 4l1.4-.6L20 2Z" fill="currentColor"/></svg>';
 let instance;
@@ -97,7 +97,7 @@ function createAssistant(initialOptions){
   origin=rowById(answer.state?.source_item_id)||null;
   if(answer.intent==='proposal'&&answer.proposal){
    const p=answer.proposal,row=rowById(p.item_id);if(!row)return;
-   if(!p.review_id||p.policy!=='macros-portion-v1'||answer.review?.approved!==true||!p.source_snapshot||['food_name','quantity','unit'].some(key=>String(row.item[key]??'')!==String(p.source_snapshot[key]??''))){
+   if(!p.review_id||p.policy!=='context-review-v2'||answer.review?.approved!==true||!p.source_snapshot||['food_name','quantity','unit'].some(key=>String(row.item[key]??'')!==String(p.source_snapshot[key]??''))){
     const entry=activeCard(message('Essa troca precisa ser reavaliada para o seu plano atual. Vamos conferir?',false,'<button type="button" class="ai-primary-action" data-recalculate>Recalcular esta troca</button>'));
     entry.querySelector('[data-recalculate]').onclick=()=>{newConversation();sendText(`Quero trocar ${row.item.food_name} por ${p.target.name}.`,row.item.id);};return;
    }

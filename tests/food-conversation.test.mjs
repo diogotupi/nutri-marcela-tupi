@@ -8,9 +8,9 @@ const rice={id:3,name:'Arroz, tipo 1, cozido',kcal_per_100g:128,protein_per_100g
 const plan=[{id:item,food_name:'Arroz branco cozido',quantity:'100',unit:'g',meal_name:'Almoço'}];
 const label={name:'Barrinha de cereal',basis_g:25,energy_kcal:32,unit_g:25,protein_g:.6,carbs_g:6.6,fat_g:.1};
 const answer=extra=>({intent:'ask',reply:'Pelo que você quer trocar?',source_item_id:item,source_item_ids:[],target_query:'',choices:[],compatible:true,label_confirmed:false,label:null,...extra});
-async function run(parsed,{history=[],message='Arroz',image=null,selected=null,replacementFood=potato,savedTarget=null}={}){
+async function run(parsed,{history=[],message='Arroz',image=null,selected=null,replacementFood=potato,savedTarget=null,reviewDecision='approve'}={}){
  let providerBody;const resolutions=[],writes=[];
- const result=await runConversation({plan,catalog:[rice,potato],history,savedTarget,body:{message,image,item_id:selected,operation_id:crypto.randomUUID(),conversation_id:conversation},patient:'patient',key:'TEST',model:DEFAULT_MODEL,admin:{rpc:async(name,args)=>{writes.push({name,args});return {data:{id:100009,name:label.name,kcal_per_100g:128,protein_per_100g:2.4,carbs_per_100g:26.4,fat_per_100g:.4}};}},resolve:async args=>{resolutions.push(args);return {food:args.source?rice:replacementFood,portion_g:args.source?100:null};},fetchImpl:async(url,init)=>{providerBody=JSON.parse(init.body);return new Response(JSON.stringify({output:[{content:[{type:'output_text',text:JSON.stringify(parsed)}]}]}));}});
+ const result=await runConversation({plan,catalog:[rice,potato],history,savedTarget,reviewContext:async({candidate})=>({...candidate,approved:reviewDecision==='approve',expert:{decision:reviewDecision},message:reviewDecision==='approve'?'Essa porção preserva a proposta da refeição.':'Essa troca muda a saciedade. Fale com o suporte da nutri.',choices:['Cozida','Assada']}),body:{message,image,item_id:selected,operation_id:crypto.randomUUID(),conversation_id:conversation},patient:'patient',key:'TEST',model:DEFAULT_MODEL,admin:{rpc:async(name,args)=>{writes.push({name,args});return {data:{id:100009,name:label.name,kcal_per_100g:128,protein_per_100g:2.4,carbs_per_100g:26.4,fat_per_100g:.4}};}},resolve:async args=>{resolutions.push(args);return {food:args.source?rice:replacementFood,portion_g:args.source?100:null};},fetchImpl:async(url,init)=>{providerBody=JSON.parse(init.body);return new Response(JSON.stringify({output:[{content:[{type:'output_text',text:JSON.stringify(parsed)}]}]}));}});
  return {result,providerBody,resolutions,writes};
 }
 const turn=(state,user_message='Batata')=>({message:user_message,response:{mode:'conversation',conversation_id:conversation,reply:'Como você vai preparar?',user_message,state}});
@@ -53,9 +53,9 @@ test('corrected label values, changed source or changed target require a new con
  }
 });
 
-test('model approval cannot bypass missing macros or the deterministic equivalence gate',async()=>{
+test('initial conversation approval cannot bypass missing macros or final contextual refusal',async()=>{
  for(const replacementFood of [{id:93,name:'Batata frita',kcal_per_100g:267,protein_per_100g:5,carbs_per_100g:27.5,fat_per_100g:13.1},{...potato,protein_per_100g:null}]){
-  const f=await run(answer({intent:'calculate',target_query:replacementFood.name,compatible:true}),{replacementFood});
+  const f=await run(answer({intent:'calculate',target_query:replacementFood.name,compatible:true}),{replacementFood,reviewDecision:'refer_nutri'});
   assert.equal(f.result.intent,'refer_nutri');assert.equal(f.result.review.approved,false);assert(!f.result.proposal);assert.match(f.result.reply,/suporte da nutri/);
  }
 });

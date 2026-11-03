@@ -5,7 +5,7 @@ import {flattenPlan,modelInput,parseModelResponse,conversationSelection,conversa
 
 const patient='21111111-1111-4111-8111-111111111111',item='31111111-1111-4111-8111-111111111111',operation='41111111-1111-4111-8111-111111111111';
 const plan=[{id:item,food_name:'Batata, inglesa, cozida',meal_name:'Almoço',option_name:'Opção 1',taco_food_id:91,portion_g:200}];
-const catalog=[{id:91,name:'Batata, inglesa, cozida',kcal_per_100g:52},{id:3,name:'Arroz, tipo 1, cozido',kcal_per_100g:128}];
+const catalog=[{id:91,name:'Batata, inglesa, cozida',kcal_per_100g:52,protein_per_100g:1.2,carbs_per_100g:10.6,fat_per_100g:0},{id:3,name:'Arroz, tipo 1, cozido',kcal_per_100g:128,protein_per_100g:2.5,carbs_per_100g:26.5,fat_per_100g:.2}];
 const modelResult=answer=>({output:[{content:[{type:'output_text',text:JSON.stringify(answer)}]}]});
 const answer={intent:'find_source',reply:'Vamos encontrar uma troca no seu almoço.',source_item_ids:[item,'foreign'],source_query:'batata',target_query:'arroz'};
 function fixture({configured=true,authorized=true,role='patient',reservation={created:true},reserveError=null,providerStatus=200,providerAnswer=answer,items=plan,history=[]}={}){
@@ -66,6 +66,10 @@ test('out-of-scope requests cannot produce food actions and model quantities are
 });
 test('model context preserves the visible legacy option numbering and excludes clinical notes',()=>{
  const rows=flattenPlan([{name:'Café',notes:'PRIVATE CLINICAL NOTE',options:[{name:'Preparo A'}],diet_items:[{id:'base',food_name:'Ovo',option_name:null},{id:'recipe',food_name:'Crepioca',option_name:'Preparo A'}]}]);assert.equal(rows[0].option_name,'Opção 1');assert.equal(rows[1].option_name,'Opção 2');assert(!JSON.stringify(modelInput(rows,null,[],'trocar ovo')).includes('PRIVATE CLINICAL NOTE'));
+});
+test('flattened items retain their actual meal for the final nutritional context',()=>{
+ const rows=flattenPlan([{id:'lunch',name:'Almoço',diet_items:[{id:'a',food_name:'Arroz'}]},{id:'dinner',name:'Jantar',diet_items:[{id:'b',food_name:'Ovo'}]}]);
+ assert.equal(rows[0].meal_id,'lunch');assert.equal(rows[1].meal_id,'dinner');
 });
 
 test('an identified food without calorie data never promises a calculated replacement',()=>{

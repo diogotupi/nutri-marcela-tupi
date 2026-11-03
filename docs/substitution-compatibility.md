@@ -1,46 +1,40 @@
-# SUB: compatible substitutions
+# SUB: contextual substitution review
 
-The active policy is `macros-portion-v1`. It supersedes calorie-only substitutions.
-The conversation evaluates the food's role and preparation. The server then checks
-energy, protein, available carbohydrate and total fat. A model's `compatible=true`
-does not override this numerical gate. Patients see food/portion guidance and a
-support button, never provider or reference metadata.
+Active policy: `context-review-v2`, replacing fixed macro/weight cutoffs.
 
-The deterministic calculation minimizes squared differences normalized by each
-nutrient's tolerance, constrained to the intersection of all limits:
+The conversation identifies the patient's requested source, target and preparation.
+The server resolves the nutritional references and computes a candidate portion
+that fits calories (within 10%) while minimizing normalized protein, carbohydrate
+and fat differences. This candidate is never an approval.
 
-- Calories: within 10% of the prescribed portion.
-- Protein/carbohydrate/fat: within 20%, with absolute rounding allowances of
-  2 g / 3 g / 1.5 g respectively.
-- Replacement weight: 50–300% of the original, with an absolute 0.1–5000 g bound.
+GPT-6.1 Sol performs a separate final review with `medium` reasoning. It receives
+the actual calculated portions/nutrients, differences, current conversation and
+other foods in the SAME meal option. It evaluates role, macros, likely satiety,
+preparation and practical portion. All five checks must be acceptable to approve.
+The model can adjust grams within the calorie interval; the server recomputes all
+values. Missing simple details lead to a clarification; consequential differences
+or clinical uncertainty lead to nutritionist support with a draft only.
 
-These are conservative **product heuristics**, not a clinically validated universal
-definition of equivalence. Weight is a proxy for portion size, not measured food
-volume or a prediction of individual satiety. Messages use “pode alterar a
-saciedade”; they do not promise harm or identical nutritional effects. Uncertain
-or incompatible cases go to the nutritionist's support chat, with a draft only.
+No universal gram ratio or macro-difference threshold decides nutritional
+suitability. A substantially different weight can be reasonable for added fats;
+a tiny protein bar replacing a whole fruit changes the meal's role and satiety
+and is referred. Weight is not measured volume; no individual harm is asserted.
+The assistant never presents itself as a licensed human professional or invents
+clinical goals, fiber values, diagnoses or changes to the rest of the plan.
 
-Original TACO protein/fat/total carbohydrate/fiber values are extracted from the
-published PDF and independently checked against the official workbook. Available
-carbohydrate is total minus fiber. `Tr` is approximately zero; unknown or
-inapplicable values remain null. See `data/taco-provenance.json` and
-`scripts/import-taco-macros.py`. TBCA uses the available-carbohydrate row, not the
-total-carbohydrate or household-measure column. Model estimates remain marked
-as estimates internally. Missing data never becomes zero or automatic approval.
+TACO remains preferred, then TBCA, then internally marked common-food estimates.
+Incomplete nutrient profiles may use a complete secondary reference; a published
+TACO row is never overwritten or filled with invented zeros. Private product
+labels require all macros, calories and grams from the same confirmed column.
+Patients see foods, portions and practical explanations, never reference metadata.
 
-Labels require calories, grams, protein, carbohydrate and total fat from the same
-column. All readings must be confirmed, including corrected macros. Images are
-not persisted; private label references stay scoped to their patient.
+`save_reviewed_substitution` trusts only server-written, owned, approved reviews
+with this policy and five acceptable expert checks. It verifies unchanged diet
+and nutrient references, two-hour expiry, today's date, numeric/energy bounds,
+concurrent-write expectation and idempotency. The calorie-only RPC is inaccessible.
+Saved choices undergo the current review again; existing history is retained.
 
-The service stores its reviewed proposal in `substitution_ai_turns.response`.
-`save_reviewed_substitution` accepts only the review ID, operation ID, today's date
-and expected previous swap ID. It checks ownership, approval, policy, a two-hour
-expiry, unchanged prescription and nutrient data, and the numerical bounds again.
-Patients cannot write reviews, supply arbitrary target grams or call the old
-calorie-only save RPC. Clinical history and reusable bookmarks are retained.
-Saved choices run through the current review again; complete saved labels can be
-reused without a new photograph.
-
-Validation: `npm test`, `tests/substitution-chat-browser-qa.cjs`,
-`supabase/nutritional-swap-regression.sql`, `supabase/food-label-regression.sql`.
-SQL/browser fixtures are synthetic; SQL fixtures roll back.
+Validation: `npm test`, browser QA, `nutritional-swap-regression.sql`, label and
+reference regressions with synthetic fixtures and rollback. Live model smoke
+cases cover ordinary substitutions, large weight differences, fruit/bar referral,
+source changes and attempted instruction overrides.

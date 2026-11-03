@@ -22,7 +22,7 @@ export function flattenPlan(meals){
   if(items.some(i=>!i.option_name))groups.push(null);
   for(const option of m.options||[])if(items.some(i=>i.option_name===option.name))groups.push(option.name);
   for(const i of items)if(i.option_name&&!groups.includes(i.option_name))groups.push(i.option_name);
-  return items.map(i=>({...i,meal_name:m.name,option_name:`Opção ${groups.indexOf(i.option_name||null)+1}`}));
+  return items.map(i=>({...i,meal_id:m.id,meal_name:m.name,option_name:`Opção ${groups.indexOf(i.option_name||null)+1}`}));
  });
 }
 

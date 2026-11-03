@@ -4,10 +4,10 @@ import {explicitGrams,resolveFoodReference} from '../supabase/functions/food-sub
 import {parseTBCASearch,parseTBCAEnergy} from '../supabase/functions/food-substitution-ai/tbca.mjs';
 
 const soy={id:'soy',food_name:'Proteína de soja texturizada hidratada',quantity:'120g',unit:''};
-const potato={id:91,name:'Batata, inglesa, cozida',category:'Verduras',kcal_per_100g:52,reference_source:'taco'};
-const rice={id:3,name:'Arroz, tipo 1, cozido',category:'Cereais',kcal_per_100g:128,reference_source:'taco'};
+const potato={id:91,name:'Batata, inglesa, cozida',category:'Verduras',kcal_per_100g:52,protein_per_100g:1.2,carbs_per_100g:10.6,fat_per_100g:0,reference_source:'taco'};
+const rice={id:3,name:'Arroz, tipo 1, cozido',category:'Cereais',kcal_per_100g:128,protein_per_100g:2.5,carbs_per_100g:26.5,fat_per_100g:.2,reference_source:'taco'};
 const list=`<table><tr><td>BRC0170T</td><td><a href="int_composicao_alimentos_2_edit.php?record=soy">Soja, proteína texturizada, hidratada, s/ sal</a></td><td></td><td>Leguminosas</td></tr></table>`;
-const page=`<h5>Código: BRC0170T</h5><table><tr><td>Energia</td><td>kJ</td><td>794</td></tr><tr><td>Energia</td><td>kcal</td><td>187</td><td>999</td></tr></table>`;
+const page=`<h5>Código: BRC0170T</h5><table><tr><td>Energia</td><td>kJ</td><td>794</td></tr><tr><td>Energia</td><td>kcal</td><td>187</td><td>999</td></tr><tr><td>Proteína</td><td>g</td><td>18</td></tr><tr><td>Carboidrato disponível</td><td>g</td><td>12</td></tr><tr><td>Lipídios</td><td>g</td><td>7</td></tr></table>`;
 function fixture({choices=[],cached=null,tableList=list,tablePage=page}={}){
  const calls=[],binds=[],stored=[];let sequence=100000;
  const admin={from(){const q=new Proxy({},{get(_,key){if(key==='then')return resolve=>Promise.resolve(resolve({data:cached?{taco_foods:cached}:null,error:null}));return()=>q;}});return q;},async rpc(name,args){
@@ -57,7 +57,14 @@ test('AI estimates are used only after no usable TACO/TBCA reference, with bound
  const bad=fixture({tableList:'',choices:[{recognized_food:true,name:'X',kcal_per_100g:9000,portion_g:90}]});await assert.rejects(()=>bad.resolve({...soy,food_name:'Crepioca'},[]));assert.equal(bad.binds.length,0);
 });
 test('cached references are reusable, and resolving a target never modifies the prescribed source',async()=>{
- const f=fixture({cached:{id:100001,name:'Soja hidratada',category:'Leguminosas',kcal_per_100g:187,reference_source:'tbca'}});
+ const f=fixture({cached:{id:100001,name:'Soja hidratada',category:'Leguminosas',kcal_per_100g:187,protein_per_100g:18,carbs_per_100g:12,fat_per_100g:7,reference_source:'tbca'}});
  const result=await f.resolve(soy,[]);assert.equal(result.food.id,100001);assert.equal(f.calls.length,0);
  const target=fixture();const found=await target.resolve(soy,[rice],{source:false,query:'Arroz tipo 1 cozido'});assert.equal(found.food.id,3);assert.equal(target.binds.length,0);assert.equal(found.portion_g,null);
+});
+
+test('incomplete official profiles can fall back without inventing zeros or overwriting table values',async()=>{
+ const oil={id:260,name:'Azeite de oliva',kcal_per_100g:884,protein_per_100g:null,carbs_per_100g:null,fat_per_100g:100,reference_source:'taco'};
+ const f=fixture({cached:oil,tableList:'',choices:[{recognized_food:true,name:'Azeite de oliva',kcal_per_100g:884,protein_per_100g:0,carbs_per_100g:0,fat_per_100g:100,portion_g:10}]});
+ const result=await f.resolve({...soy,food_name:'Azeite de oliva',quantity:'10g'},[oil]);
+ assert(result.food.id>=100000);assert.equal(oil.protein_per_100g,null);assert.equal(f.stored[0].reference_source,'ai');assert.equal(f.stored[0].nutrient_fallback_from,260);assert.equal(result.portion_g,10);
 });

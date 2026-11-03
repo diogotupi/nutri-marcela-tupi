@@ -21,7 +21,7 @@ async(existingPage)=>{
     const base={mode:'conversation',conversation_id:b.conversation_id,user_message:b.message,had_image:!!b.image,state:{source_item_id:item,target_query:''},intent:'ask',reply:'Pelo que você quer trocar?',choices:[]};
     if(/Batata|batata/.test(b.message)){Object.assign(base,{reply:'Como você vai preparar a batata?',choices:['Cozida','Assada','Frita']});base.state.target_query='Batata';}
     if(b.message==='Cozida'||b.saved_target_id||b.message==='Sim, está certo'){
-     Object.assign(base,{intent:'proposal',reply:'Você pode usar aproximadamente 247 g de batata cozida no lugar de 100 g de arroz.',review:{approved:true,policy:'macros-portion-v1'},proposal:{policy:'macros-portion-v1',review_id:b.operation_id,item_id:item,source_snapshot:{food_name:'Arroz branco cozido',quantity:'100',unit:'g'},source:rice,source_grams:100,target:potato,target_grams:247,energy_kcal:128}});base.state.target_query='Batata cozida';
+     Object.assign(base,{intent:'proposal',reply:'Você pode usar aproximadamente 247 g de batata cozida no lugar de 100 g de arroz.',review:{approved:true,policy:'context-review-v2'},proposal:{policy:'context-review-v2',review_id:b.operation_id,item_id:item,source_snapshot:{food_name:'Arroz branco cozido',quantity:'100',unit:'g'},source:rice,source_grams:100,target:potato,target_grams:247,energy_kcal:128}});base.state.target_query='Batata cozida';
     }
     if(/barrinha/.test(b.message)){Object.assign(base,{intent:'request_label',reply:'Pode enviar uma foto da tabela nutricional da barrinha?'});base.state.target_query='Barrinha';}
     if(b.image){Object.assign(base,{intent:'confirm_label',reply:'Li 90 kcal em 25 g. Está certo?',choices:['Sim, está certo','Quero corrigir']});base.state.target_query='Barrinha';}
@@ -33,10 +33,10 @@ async(existingPage)=>{
   return r.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify(result)});
  });
  const setup=async({item})=>{
-  for(const href of ['/app/fresh.css','/dashboard/substitution-chat.css?v=20261102-macros']){const l=document.createElement('link');l.rel='stylesheet';l.href=href;document.head.append(l);}
+  for(const href of ['/app/fresh.css','/dashboard/substitution-chat.css?v=20261103-context']){const l=document.createElement('link');l.rel='stylesheet';l.href=href;document.head.append(l);}
   window.APP_CONFIG={supabaseUrl:'https://conversation-qa.invalid',supabaseAnonKey:'SYNTHETIC'};
   const s=window.__AI_QA={saved:[],current:new Map(),writes:[],failSave:true,askNutri:null,diet:{meals:[{id:'lunch',name:'Almoço',scheduled_time:'12:00',diet_items:[{id:item,food_name:'Arroz branco cozido',quantity:'100',unit:'g',taco_food_id:3,portion_g:100}]}]}};
-  const m=await import('/dashboard/substitution-chat.js?v=20261102-macros');s.api=m.mountSubstitutionAssistant({getDiet:()=>s.diet,current:()=>s.current,saved:()=>s.saved,onChanged:async()=>{},onAskNutritionist:text=>{s.askNutri=text;}});
+  const m=await import('/dashboard/substitution-chat.js?v=20261103-context');s.api=m.mountSubstitutionAssistant({getDiet:()=>s.diet,current:()=>s.current,saved:()=>s.saved,onChanged:async()=>{},onAskNutritionist:text=>{s.askNutri=text;}});
  };
  const send=async text=>{await page.locator('#swap-food-search').fill(text);await page.locator('#swap-food-search').press('Enter');await page.waitForFunction(()=>!document.querySelector('.food-ai-widget').classList.contains('is-busy'));};
  try{
