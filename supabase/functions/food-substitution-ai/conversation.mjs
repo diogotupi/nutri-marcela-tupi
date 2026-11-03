@@ -53,7 +53,8 @@ export async function runConversation({plan,catalog,history,body,admin,patient,k
  const source=plan.find(i=>i.id===parsed.source_item_id),ids=new Set(plan.map(i=>i.id));
  const label=validLabel(parsed.label),target=parsed.target_query.trim().slice(0,120);
  let intent=parsed.intent,reply=parsed.reply.trim().slice(0,1000);
- const state={source_item_id:source?.id||null,target_query:target,label,stage:intent};
+ const alreadyConfirmed=!body.image&&previous?.label_confirmed===true&&previous.source_item_id===source?.id&&normalize(previous.target_query)===normalize(target)&&sameLabel(previous.label,label);
+ const state={source_item_id:source?.id||null,target_query:target,label,label_confirmed:alreadyConfirmed,stage:intent};
  const result={mode:'conversation',conversation_id:body.conversation_id,user_message:body.message,had_image:Boolean(body.image),intent,reply,state,source_item_ids:[...new Set(parsed.source_item_ids.filter(id=>ids.has(id)))].slice(0,20),choices:parsed.choices.filter(c=>typeof c==='string'&&c.trim()).map(c=>c.slice(0,80)).slice(0,4)};
  const set=(stage,text)=>{result.intent=stage;state.stage=stage;result.reply=text;return result;};
  if(/TACO|TBCA|Open\s?AI|https?:\/\/|www\./i.test(reply))result.reply='Vamos ajustar essa troca. Me conte um pouco mais sobre o alimento que você quer comer.';
@@ -65,8 +66,9 @@ export async function runConversation({plan,catalog,history,body,admin,patient,k
  if((intent==='confirm_label'||parsed.label)&&!label)return set('request_label','Preciso conferir calorias, proteínas, carboidratos e gorduras da mesma porção, com o peso em gramas. Envie uma foto nítida da tabela nutricional completa, por favor.');
  // Every new/corrected label must be displayed before it can be used. No image is persisted.
  if(label&&['calculate','confirm_label'].includes(intent)){
-  const confirmed=!body.image&&parsed.label_confirmed===true&&previous?.stage==='confirm_label'&&previous.source_item_id===source.id&&normalize(previous.target_query)===normalize(target)&&sameLabel(previous.label,label);
+  const confirmed=alreadyConfirmed||!body.image&&parsed.label_confirmed===true&&previous?.stage==='confirm_label'&&previous.source_item_id===source.id&&normalize(previous.target_query)===normalize(target)&&sameLabel(previous.label,label);
   if(!confirmed){result.choices=['Sim, está certo','Quero corrigir'];return set('confirm_label',`Li ${number(label.energy_kcal)} kcal em ${number(label.basis_g)} g de ${label.name}: ${number(label.protein_g)} g de proteínas, ${number(label.carbs_g)} g de carboidratos e ${number(label.fat_g)} g de gorduras${label.unit_g?`, com ${number(label.unit_g)} g por unidade`:''}. Está certo?`);}
+  state.label_confirmed=true;
   if(parsed.compatible!==true){result.choices=[];return set('refer_nutri','Vamos conferir essa troca com a Marcela para ajustar o alimento à sua refeição?');}
   intent='calculate';
  }

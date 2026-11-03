@@ -52,6 +52,15 @@ test('corrected label values, changed source or changed target require a new con
   assert.equal(f.result.intent,'confirm_label');assert.equal(f.writes.length,0);
  }
 });
+test('expert clarification preserves a confirmed label without forcing another confirmation',async()=>{
+ const prior={source_item_id:item,target_query:'Barrinha de cereal',stage:'confirm_label',label};
+ const first=await run(answer({intent:'calculate',target_query:prior.target_query,label,label_confirmed:true}),{history:[turn(prior)],message:'Sim',reviewDecision:'clarify'});
+ assert.equal(first.result.intent,'ask');assert.equal(first.result.state.label_confirmed,true);assert(!first.result.proposal);
+ const second=await run(answer({intent:'calculate',target_query:prior.target_query,label,label_confirmed:false}),{history:[turn(first.result.state)],message:'É a mesma porção'});
+ assert.equal(second.result.intent,'proposal');assert.equal(second.result.state.label_confirmed,true);
+ const corrected=await run(answer({intent:'calculate',target_query:prior.target_query,label:{...label,protein_g:1}}),{history:[turn(first.result.state)],message:'Corrigindo proteína'});
+ assert.equal(corrected.result.intent,'confirm_label');
+});
 
 test('initial conversation approval cannot bypass missing macros or final contextual refusal',async()=>{
  for(const replacementFood of [{id:93,name:'Batata frita',kcal_per_100g:267,protein_per_100g:5,carbs_per_100g:27.5,fat_per_100g:13.1},{...potato,protein_per_100g:null}]){

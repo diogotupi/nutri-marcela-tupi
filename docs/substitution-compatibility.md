@@ -38,3 +38,11 @@ Validation: `npm test`, browser QA, `nutritional-swap-regression.sql`, label and
 reference regressions with synthetic fixtures and rollback. Live model smoke
 cases cover ordinary substitutions, large weight differences, fruit/bar referral,
 source changes and attempted instruction overrides.
+
+Verified 2026-11-03 with the configured GPT-6.1 Sol API: rice/cooked potato,
+banana/papaya, chicken/lean beef and salad olive oil/avocado were approved with
+calculated portions and meal context. Banana/small protein bar was referred;
+insistence and direct attempts to force an approval did not override the review.
+A later appropriate request resumed normally. No production patient writes.
+The final suite has 94 passing unit tests; database tests roll back and public-site
+browser QA intercepts all writes. Confirmed labels survive clarification questions.
