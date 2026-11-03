@@ -5,3 +5,5 @@
 /* Original horizontal artwork from the supplied brand PDF. */
 .access-card .access-logo{width:min(100%,260px);height:auto;display:block;margin:28px 0}
 @media(max-width:760px){.access-card .access-logo{width:min(100%,230px)}}
+.patient .access-card .access-logo{width:min(80%,208px);margin-inline:auto}
+@media(max-width:760px){.patient .access-card .access-logo{width:min(80%,184px)}}
