@@ -95,3 +95,14 @@ test('the official catalog sends rice-to-egg uncertainty to the nutrition team w
  }});
  assert.equal(answer.intent,'refer_nutri');assert.equal(answer.support,true);assert.equal(answer.proposal,undefined);
 });
+
+test('clear carbohydrate-to-protein/fat mismatch explains the meal-role conflict before asking for preparation or table math',async()=>{
+ let resolverCalled=false;
+ const answer=await runFreeformSwap({message:'Posso trocar 100 g de arroz por dois ovos?',operationId:'review-id',catalog:taco,key:'test',model:'test',resolve:async()=>{resolverCalled=true;throw Error('should not resolve');},fetchImpl:async(url,init)=>{
+  const body=JSON.parse(init.body);assert.equal(body.text.format.name,'freeform_food_names');
+  return Response.json({output:[{content:[{type:'output_text',text:JSON.stringify({source:'arroz',target:'dois ovos',source_quote:'100 g de arroz',suitability:'carb_to_protein_fat'})}]}]});
+ }});
+ assert.equal(answer.intent,'refer_nutri');assert.equal(answer.support,true);assert.equal(answer.proposal,undefined);assert.equal(resolverCalled,false);
+ assert.match(answer.reply,/fonte de carboidratos/i);assert.match(answer.reply,/proteínas e gorduras/i);assert.match(answer.reply,/suporte da nutri/i);
+ assert.doesNotMatch(answer.reply,/[0-9]/);
+});
