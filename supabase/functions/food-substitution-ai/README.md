@@ -1,8 +1,8 @@
 # SUB — conversa de substituições
 
-A interface mantém uma conversa natural: alimento do plano → alimento desejado → preparo, quando necessário → porção calculada. O modelo recebe as últimas 12 interações da mesma `conversation_id` e o plano autorizado. Uma nova troca inicia outra conversa; respostas como “frita” completam a pergunta anterior. Somente ocorrências ambíguas do plano exigem escolher a refeição.
+Na consulta principal, o paciente informa qual alimento quer trocar, o preparo, a quantidade original e o alimento desejado. A conversa funciona com a dieta no WebDiet. Quando o paciente abre um item de uma dieta já cadastrada, a conversa pode usar a porção desse item.
 
-O paciente escolhe o destino. O modelo avalia a plausibilidade da troca na refeição e encaminha pedidos muito discrepantes para o chat da Marcela, com um rascunho que o paciente precisa enviar. Nenhuma mensagem à nutri ou marcação de consumo é automática.
+As consultas usam dados de composição da TACO ou TBCA. A falta de referência suficiente e as trocas inadequadas geram um encaminhamento ao WhatsApp da equipe. O paciente decide se envia a mensagem e se registra uma troca aprovada. A central da equipe distingue solicitações, encaminhamentos e trocas registradas.
 
 ## Credenciais e contexto
 

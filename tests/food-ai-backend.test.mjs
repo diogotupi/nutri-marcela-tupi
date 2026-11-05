@@ -8,9 +8,9 @@ const plan=[{id:item,food_name:'Batata, inglesa, cozida',meal_name:'Almoço',opt
 const catalog=[{id:91,name:'Batata, inglesa, cozida',kcal_per_100g:52,protein_per_100g:1.2,carbs_per_100g:10.6,fat_per_100g:0},{id:3,name:'Arroz, tipo 1, cozido',kcal_per_100g:128,protein_per_100g:2.5,carbs_per_100g:26.5,fat_per_100g:.2}];
 const modelResult=answer=>({output:[{content:[{type:'output_text',text:JSON.stringify(answer)}]}]});
 const answer={intent:'find_source',reply:'Vamos encontrar uma troca no seu almoço.',source_item_ids:[item,'foreign'],source_query:'batata',target_query:'arroz'};
-function fixture({configured=true,authorized=true,role='patient',reservation={created:true},reserveError=null,providerStatus=200,providerAnswer=answer,items=plan,history=[]}={}){
+function fixture({configured=true,authorized=true,role='patient',unlocked=true,reservation={created:true},reserveError=null,providerStatus=200,providerAnswer=answer,items=plan,history=[]}={}){
  const calls=[],updates=[],reservations=[];
- const createClient=(url,key)=>({auth:{getUser:async()=>({data:{user:authorized?{id:'auth-patient'}:null},error:authorized?null:Error('Invalid session')})},rpc:async(name,args)=>{if(name==='cache_food_reference')return {data:{...args.p_reference,id:args.p_reference.id||100001},error:null};if(name==='bind_food_reference')return {data:{id:args.p_item},error:null};reservations.push({name,args});return{data:reservation,error:reserveError};},from(table){
+ const createClient=(url,key)=>({auth:{getUser:async()=>({data:{user:authorized?{id:'auth-patient'}:null},error:authorized?null:Error('Invalid session')})},rpc:async(name,args)=>{if(name==='patient_tracking_unlocked')return {data:unlocked,error:null};if(name==='cache_food_reference')return {data:{...args.p_reference,id:args.p_reference.id||100001},error:null};if(name==='bind_food_reference')return {data:{id:args.p_item},error:null};reservations.push({name,args});return{data:reservation,error:reserveError};},from(table){
   const filters=[];let update=null,single=false;
   const q=new Proxy({}, {get(_,method){if(method==='then')return resolve=>{
    calls.push({table,filters,update,service:key==='service'});
@@ -20,7 +20,7 @@ function fixture({configured=true,authorized=true,role='patient',reservation={cr
   };return(...args)=>{if(method==='eq'||method==='is')filters.push(args);if(method==='update')update=args[0];if(['single','maybeSingle'].includes(method))single=true;return q;};}});return q;
  }});
  let providerCalls=0,providerBody;
- const handler=createHandler({createClient,getEnv:name=>({SUPABASE_URL:'https://project.invalid',SUPABASE_ANON_KEY:'anon',SUPABASE_SERVICE_ROLE_KEY:'service',OPENAI_API_KEY:configured?'sk-TEST-NEVER-REAL':undefined}[name]),fetchImpl:async(url,options)=>{providerCalls++;providerBody=JSON.parse(options.body);assert.equal(url,'https://api.openai.com/v1/responses');return new Response(JSON.stringify(providerStatus===200?modelResult(providerAnswer):{error:'Sensitive provider error sk-TEST-NEVER-REAL'}),{status:providerStatus,headers:{'Content-Type':'application/json'}});}});
+ const handler=createHandler({createClient,getEnv:name=>({SUPABASE_URL:'https://project.invalid',SUPABASE_ANON_KEY:'anon',SUPABASE_SERVICE_ROLE_KEY:'service',OPENAI_API_KEY:configured?'sk-TEST-NEVER-REAL':undefined}[name]),fetchImpl:async(url,options)=>{providerCalls++;providerBody=JSON.parse(options.body);assert.equal(url,'https://api.openai.com/v1/responses');const selected=Array.isArray(providerAnswer)?providerAnswer[Math.min(providerCalls-1,providerAnswer.length-1)]:providerAnswer;return new Response(JSON.stringify(providerStatus===200?modelResult(selected):{error:'Sensitive provider error sk-TEST-NEVER-REAL'}),{status:providerStatus,headers:{'Content-Type':'application/json'}});}});
  const request=(body={operation_id:operation,message:'Quero trocar a batata por arroz',item_id:null},method='POST',auth=true)=>handler(new Request('https://project.invalid/functions/v1/food-substitution-ai',{method,headers:{...(auth?{Authorization:'Bearer fixture'}:{}),'Content-Type':'application/json'},...(method==='POST'?{body:JSON.stringify(body)}:{})}));
  return {request,calls,updates,reservations,get providerCalls(){return providerCalls;},get providerBody(){return providerBody;}};
 }
@@ -28,6 +28,18 @@ test('AI endpoint authenticates and only accepts the patient role',async()=>{
  let f=fixture();assert.equal((await f.request(undefined,'GET',false)).status,401);assert.equal(f.providerCalls,0);
  f=fixture({authorized:false});assert.equal((await f.request()).status,401);
  f=fixture({role:'secretary'});assert.equal((await f.request()).status,403);assert.equal(f.providerCalls,0);
+});
+test('freeform requests use patient described foods even when an active diet exists',async()=>{
+ const expert={decision:'approve',reason:'compatible',explanation:'Os dois alimentos preservam a proposta desta troca.',portion_g:null,checks:{meal_role:'acceptable',macros:'acceptable',satiety:'acceptable',preparation:'acceptable',practical_portion:'acceptable'},choices:[]};
+ const f=fixture({providerAnswer:[{source:'Batata, inglesa, cozida',target:'Arroz, tipo 1, cozido',source_quote:'100 g de batata cozida'},expert]});
+ const response=await f.request({action:'chat',conversation_id:operation,operation_id:operation,item_id:null,message:'Tenho 100 g de batata cozida. Quero trocar por arroz branco cozido.'});
+ assert.equal(response.status,200);const result=await response.json();assert.equal(result.intent,'proposal');
+ assert.equal(result.proposal.source.name,'Batata, inglesa, cozida');assert.equal(result.proposal.target.name,'Arroz, tipo 1, cozido');
+ assert.equal(result.proposal.source_grams,100);assert.equal(result.proposal.item_id,undefined);assert.equal(result.event_id,operation);
+ assert.equal(f.providerCalls,2);assert(f.reservations.some(x=>x.name==='reserve_substitution_ai_turn'&&x.args.p_item===null));
+});
+test('locked patient tracking is rejected before any AI reservation or response replay',async()=>{
+ const f=fixture({unlocked:false});const result=await f.request();assert.equal(result.status,403);assert.equal(f.providerCalls,0);assert.equal(f.reservations.length,0);
 });
 test('saved targets must belong to the patient and source before any provider call',async()=>{
  const f=fixture();
@@ -120,12 +132,12 @@ test('reference actions authenticate, isolate background records and replay conf
  const invalid=fixture();assert.equal((await invalid.request({...body,action:'resolve_target',query:''})).status,400);assert.equal(invalid.reservations.length,0);
 });
 
-test('natural chat isolates conversation history and stores only an image digest and extracted response',async()=>{
+test('natural plan-item chat isolates conversation history and stores only an image digest and extracted response',async()=>{
  const conversation='51111111-1111-4111-8111-111111111111';
  const response={intent:'ask',reply:'Pelo que você quer trocar?',source_item_id:item,source_item_ids:[],target_query:'',choices:[],compatible:true,label_confirmed:false,label:null};
  const f=fixture({providerAnswer:response});
  const image='data:image/jpeg;base64,'+btoa('\xff\xd8\xff'+'0'.repeat(30));
- const body={operation_id:operation,conversation_id:conversation,action:'chat',message:'Arroz',image};
+ const body={operation_id:operation,conversation_id:conversation,action:'chat',item_id:item,message:'Arroz',image};
  const result=await(await f.request(body)).json();assert.equal(result.mode,'conversation');assert.equal(result.user_message,'Arroz');assert.equal(result.had_image,true);
  assert(f.calls.some(c=>c.table==='substitution_ai_turns'&&c.filters.some(([k,v])=>k==='response->>conversation_id'&&v===conversation)));
  assert.match(f.reservations[0].args.p_message,/^\[chat:/);assert(!JSON.stringify(f.reservations).includes('base64'));assert(!JSON.stringify(f.updates).includes('base64'));

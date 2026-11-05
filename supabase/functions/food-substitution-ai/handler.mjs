@@ -1,6 +1,7 @@
 import {DEFAULT_MODEL,modelOptions,instructions,outputSchema,modelInput,parseModelResponse,flattenPlan,conversationSelection,conversationHistory,sourceFoodLookup} from './policy.mjs';
 import {resolveFoodReference} from './references.mjs';
 import {runConversation} from './conversation.mjs';
+import {runFreeformSwap} from './freeform.mjs';
 const cors={'Access-Control-Allow-Origin':'https://nutrimarcelatupi.com','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'GET, POST, OPTIONS'};
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{...cors,'Content-Type':'application/json','Cache-Control':'no-store'}});
 const fallback=reply=>({mode:'guided',reply,intent:'clarify',source_item_ids:[],target_food_ids:[],target_query:''});
@@ -39,6 +40,9 @@ export function createHandler({createClient,getEnv,fetchImpl=fetch}){
    const {data:auth,error:authError}=await caller.auth.getUser();if(authError||!auth?.user)return json({error:'Sessão expirada. Entre novamente.'},401);
    const {data:profile,error:profileError}=await caller.from('profiles').select('id,role').eq('user_id',auth.user.id).single();
    if(profileError||profile?.role!=='patient')return json({error:'Acesso do paciente necessário.'},403);
+   const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});
+   const unlocked=await admin.rpc('patient_tracking_unlocked',{p_patient:profile.id});
+   if(unlocked.error||unlocked.data!==true)return json({error:'Seu acompanhamento está bloqueado no momento. Fale com o suporte da equipe.'},403);
    const key=getEnv('OPENAI_API_KEY')?.trim(),model=getEnv('OPENAI_MODEL')?.trim()||DEFAULT_MODEL;
    if(req.method==='GET'){
     const [{data:history,error},{data:extraFoods,error:foodsError}]=await Promise.all([
@@ -68,14 +72,20 @@ export function createHandler({createClient,getEnv,fetchImpl=fetch}){
     if(referenceAction)return json({kind:'reference',error:'Essa busca não foi concluída. Tente novamente.',confirmed_failure:true},503);
     return json(fallback('Essa consulta não foi concluída. As trocas guiadas continuam disponíveis; envie uma nova mensagem para tentar de novo.'));
    }
-   const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});
    const finish=async(response,status='completed')=>{
+    response={...response,event_id:body.operation_id};
     const {error}=await admin.from('substitution_ai_turns').update({status,response,finished_at:new Date().toISOString()}).eq('id',body.operation_id).eq('patient_id',profile.id);
     if(error)return json({error:'Não consegui confirmar a resposta. Tente novamente.'},503);
     return json(response);
    };
    try{
     const {data:diet,error:dietError}=await caller.from('diets').select('id').eq('patient_id',profile.id).eq('status','active').maybeSingle();if(dietError)throw dietError;
+    if(conversation&&!body.item_id){
+     const {data:catalog,error:catalogError}=await readCatalog(caller);if(catalogError)throw catalogError;
+     const {data:history,error:historyError}=await caller.from('substitution_ai_turns').select('message,response').eq('patient_id',profile.id).eq('status','completed').eq('response->>conversation_id',body.conversation_id).order('created_at',{ascending:false}).limit(12);if(historyError)throw historyError;
+     const answer=body.image?{intent:'refer_nutri',reply:'Não consigo confirmar os dados de um rótulo por foto nesta consulta. Fale com o suporte da nutri para conferir o produto.',choices:[],support:true}:await runFreeformSwap({message:body.message.trim(),operationId:body.operation_id,catalog:catalog||[],admin,patient:profile.id,key,model,history:history||[],fetchImpl});
+     return await finish({...answer,mode:'conversation',conversation_id:body.conversation_id,user_message:body.message.trim()});
+    }
     if(!diet)return await finish(fallback('Seu plano ainda não está disponível. A Marcela poderá liberar as trocas quando cadastrar sua dieta.'));
     const {data:meals,error:mealError}=await caller.from('diet_meals').select('id,name,options,diet_items(id,food_name,quantity,unit,option_name,taco_food_id,portion_g)').eq('diet_id',diet.id).order('sort_order');if(mealError)throw mealError;
     const plan=flattenPlan(meals||[]);
@@ -92,11 +102,12 @@ export function createHandler({createClient,getEnv,fetchImpl=fetch}){
       savedTarget=bookmark&&(catalog||[]).find(f=>f.id===bookmark.target_food_id);
       if(error||!savedTarget)throw Error('Troca salva não encontrada.');
      }
-     return await finish(await runConversation({plan,catalog:catalog||[],history:history||[],body,admin,patient:profile.id,key,model,savedTarget,fetchImpl}));
+     const answer=await runConversation({plan,catalog:catalog||[],history:history||[],body,admin,patient:profile.id,key,model,savedTarget,fetchImpl,resolve:args=>resolveFoodReference({...args,allowEstimate:false})});
+     return await finish(answer);
     }
     if(referenceAction){
      const item=plan.find(i=>i.id===body.item_id);if(!item)throw Error('Esse alimento não está mais no plano atual.');
-     const resolved=await resolveFoodReference({item,query:body.query?.trim(),source:body.action==='resolve_source',catalog:catalog||[],admin,patient:profile.id,key,model,fetchImpl});
+     const resolved=await resolveFoodReference({item,query:body.query?.trim(),source:body.action==='resolve_source',catalog:catalog||[],admin,patient:profile.id,key,model,fetchImpl,allowEstimate:false});
      return await finish(resolved);
     }
     const selected=conversationSelection(plan,catalog||[],body.item_id,body.message);

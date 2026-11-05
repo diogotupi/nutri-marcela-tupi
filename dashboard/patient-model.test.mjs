@@ -2,6 +2,40 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {civilRange,waterTimeline,intensityLabel,hydrationMeter} from './patient-model.mjs';
 import {fittedDimensions,validatePhoto} from '../js/media-sizing.mjs';
+import {progressSeries, workoutChart, weightChart} from '../js/progress-charts.mjs';
+
+test('workout indicators count distinct São Paulo days; weekly totals count all check-ins, even legacy workouts without intensity',()=>{
+  const workout=(occurred_at,intensity,extra={})=>({kind:'exercise',occurred_at,payload:{intensity},...extra});
+  const result=progressSeries([
+    workout('2026-11-01T01:25Z',2), // Saturday, still October locally.
+    workout('2026-11-03T01:25Z',4), // Monday evening.
+    workout('2026-11-03T02:30Z',8),
+    workout('2026-11-05T10:00Z',null),
+    workout('2026-11-05T11:00Z',6,{archived_at:'2026-11-05'}),
+    workout('2026-11-06T10:00Z',10)
+  ], '2026-10-29','2026-11-05');
+  assert.equal(result.weekDays,2);
+  assert.equal(result.monthDays,2);
+  assert.deepEqual(result.weeks,[{day:'2026-10-26',value:1},{day:'2026-11-02',value:3}]);
+  assert.deepEqual(result.sessions.map(s=>s.value),[2,4,8,null]);
+  assert.match(workoutChart(result),/Intensidade por treino/);
+});
+
+test('weight trends combine shared check-ins and older clinical measurements; ignore unmeasured and unrelated records',()=>{
+  const date='2026-11-05T12:00Z';
+  const record=(kind,weight_kg,extra={})=>({kind,occurred_at:date,payload:{weight_kg,...extra}});
+  const series=progressSeries([
+    record('assessment','72.5'),
+    record('checkin',71.45,{category:'weight_checkin'}),
+    record('assessment',null),
+    record('checkin',60,{category:'other'}),
+    {...record('checkin',40,{category:'weight_checkin'}),archived_at:date}
+  ], '2026-11-05','2026-11-05');
+  assert.deepEqual(series.weights.map(w=>[w.value,w.fromPatient]),[[72.5,false],[71.45,true]]);
+  const html=weightChart(series);
+  assert.match(html,/71,45 kg/);
+  assert.doesNotMatch(html,/NaN|Infinity|data-edit-record/);
+});
 
 test('water timeline includes missing days, keeps explicit zero, and uses historically valid goals',()=>{
   const timeline=waterTimeline([{log_date:'2026-10-28',amount_ml:0},{log_date:'2026-10-30',amount_ml:750}], [{valid_from:'2026-10-28',water_ml:1800},{valid_from:'2026-10-30',water_ml:2100}], '2026-10-30',4);

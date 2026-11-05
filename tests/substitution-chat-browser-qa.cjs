@@ -40,7 +40,7 @@ async(existingPage)=>{
  };
  const send=async text=>{await page.locator('#swap-food-search').fill(text);await page.locator('#swap-food-search').press('Enter');await page.waitForFunction(()=>!document.querySelector('.food-ai-widget').classList.contains('is-busy'));};
  try{
-  await page.setViewportSize({width:390,height:844});await page.goto('http://127.0.0.1:8877/');await page.evaluate(setup,{item});await page.locator('#food-ai-launcher').click();await page.getByText('Oi! O que você quer substituir na sua dieta?',{exact:true}).waitFor();
+  await page.setViewportSize({width:390,height:844});await page.goto('http://127.0.0.1:8877/');await page.evaluate(setup,{item});await page.locator('#food-ai-launcher').click();await page.getByText('Qual alimento você quer substituir?',{exact:true}).waitFor();
   await send('Arroz');const conv=requests.at(-1).conversation_id;await send('Batata');await page.getByRole('button',{name:'Cozida',exact:true}).click();await page.locator('[data-swap-confirm]').waitFor();
   assert(requests.slice(-3).every(r=>r.conversation_id===conv),'Conversation must retain its context across short replies');assert(await page.locator('.substitution-targets').count()===0,'No catalog grid should interrupt conversation');
   await page.locator('[data-swap-confirm]').click();await page.locator('[data-swap-status]').filter({hasText:'Não foi possível'}).waitFor();await page.locator('[data-swap-confirm]').click();await page.locator('[data-swap-done]').waitFor();
@@ -61,5 +61,5 @@ async(existingPage)=>{
   await page.reload();await page.evaluate(setup,{item});await page.locator('#food-ai-launcher').click();await page.locator('[data-swap-ask-nutri]').waitFor();await send('Outra alternativa');assert(requests.at(-1).conversation_id!==conv,'History must restore current conversation');
   await page.setViewportSize({width:1440,height:960});await page.emulateMedia({reducedMotion:'reduce'});await page.locator('.substitution-chat').screenshot({path:'.playwright-mcp/sub-natural-desktop.png'});
   assert(errors.length===0,errors.join('; '));return {passed:true,naturalConversation:true,preparationChoices:true,labelPhoto:true,labelConfirmation:true,nutriHandoff:true,retries:true,savedChoices:true,history:true,mobile:true,desktop:true,sourcesHidden:true,productionWrites:0,providerCalls:0};
- }catch(e){return {error:e.message,stack:e.stack,errors,body:await page.locator('.substitution-chat').textContent()};}finally{await page.close();}
+ }catch(e){return {error:e.message,stack:e.stack,errors,body:await page.locator('body').innerText().then(text=>text.slice(-800))};}finally{await page.close();}
 }

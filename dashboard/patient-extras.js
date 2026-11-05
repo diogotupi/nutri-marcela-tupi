@@ -1,6 +1,8 @@
 import { getSupabase, getLocalDateString, escapeHtml as esc } from '../js/app-core.js';
 import { addClinical, uploadAttachment, getSignedAttachment } from '../js/clinical.js';
 import { preparePhotoUpload } from '../js/media-upload.js';
+import {mountWeightCheckin} from './weight-checkin.js';
+import {celebrateWorkout} from './workout-celebration.js';
 import { intensityLabel } from './patient-model.mjs';
 import {openMealPhotoPicker} from './meal-photo.js?v=20261030-patient2';
 
@@ -23,13 +25,31 @@ function badgeSvg(id) {
   return `<svg viewBox="0 0 100 112" aria-hidden="true"><defs><linearGradient id="badge-${id}" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8e3a1"/><stop offset=".45" stop-color="#c79b45"/><stop offset="1" stop-color="#f7df8e"/></linearGradient><linearGradient id="badge-core-${id}" x2=".7" y2="1"><stop stop-color="#6da48c"/><stop offset="1" stop-color="#173e30"/></linearGradient></defs><path d="M23 78l-5 29 22-11 10 10 10-10 22 11-5-29" fill="#b58c45"/><path d="M50 4l35 17v39q0 25-35 38Q15 85 15 60V21z" fill="url(#badge-${id})"/><path d="M50 11l28 14v34q0 21-28 32Q22 80 22 59V25z" fill="url(#badge-core-${id})"/>${art}<path d="M28 25l19-9" stroke="#fff8db" stroke-width="2" opacity=".8"/><path d="M78 13v10m-5-5h10" stroke="#fff8db" stroke-width="2"/></svg>`;
 }
 export async function initPatientExtras(profile) {
+  mountWeightCheckin(document.getElementById('patient-weight'), profile.id);
   const training=document.getElementById('patient-training');
   training.innerHTML=`<div class="training-heading"><div><p class="patient-eyebrow">MOVIMENTO DO SEU JEITO</p><h2>Como foi o treino?</h2><p>Registre sua experiência de hoje, ${new Date().toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit'})}.</p></div>${bearSvg()}</div><form id="training-form" class="app-form"><label>Conte o que você fez<textarea name="description" rows="2" placeholder="Ex.: caminhada no parque, treino de pernas…" required minlength="3" maxlength="4000"></textarea></label><div class="training-scale"><div>${bearSvg()}<span>1 · FOFO</span></div><label>Intensidade percebida<output id="intensity-label" for="training-intensity">5 · Moderado</output><input id="training-intensity" name="intensity" type="range" min="1" max="10" step="1" value="5" aria-describedby="training-scale-hint"></label><div>${bearSvg(true)}<span>10 · Hiper pesado</span></div></div><p id="training-scale-hint">É como você sentiu o treino. Mais intenso não vale mais conquistas.</p><button class="app-btn app-btn--primary">Registrar treino de hoje</button><p role="status"></p></form>`;
   const trainingForm=training.querySelector('form');
+  const celebration=document.createElement('section');
+  celebration.className='workout-celebration';
+  celebration.hidden=true;
+  celebration.setAttribute('aria-label','Comemoração do treino');
+  trainingForm.after(celebration);
   trainingForm.intensity.addEventListener('input',()=>{const n=Number(trainingForm.intensity.value);document.getElementById('intensity-label').textContent=`${n} · ${intensityLabel(n)}`;});
   trainingForm.addEventListener('submit',async event=>{
     event.preventDefault();const button=trainingForm.querySelector('button'),status=trainingForm.querySelector('[role=status]');button.disabled=true;status.textContent='Salvando seu treino…';
-    try {const day=getLocalDateString(),payload={description:trainingForm.description.value.trim(),intensity:Number(trainingForm.intensity.value),date:day,reported_by:'patient'};if(payload.description.length<3)throw Error('Descreva seu treino com pelo menos 3 caracteres.');intensityLabel(payload.intensity);await addClinical(profile.id,'exercise',payload,{id:operationFor(trainingForm,payload),occurredAt:`${day}T12:00:00-03:00`});pendingClinical.delete(trainingForm);trainingForm.reset();document.getElementById('intensity-label').textContent='5 · Moderado';status.textContent='Treino de hoje registrado. A Marcela já pode acompanhar.';notifyPatientSaved();}
+    try {
+      const day=getLocalDateString(),payload={description:trainingForm.description.value.trim(),intensity:Number(trainingForm.intensity.value),date:day,reported_by:'patient'};
+      if(payload.description.length<3)throw Error('Descreva seu treino com pelo menos 3 caracteres.');
+      intensityLabel(payload.intensity);
+      await addClinical(profile.id,'exercise',payload,{id:operationFor(trainingForm,payload)});
+      pendingClinical.delete(trainingForm);
+      trainingForm.reset();
+      document.getElementById('intensity-label').textContent='5 · Moderado';
+      status.textContent='Treino de hoje registrado.';
+      notifyPatientSaved();
+      try {celebrateWorkout(celebration,payload);}
+      catch {celebration.hidden=true;status.textContent+=' Orgulho da nutri!';}
+    }
     catch(error){status.textContent=`Não foi salvo: ${error.message}`;}finally{button.disabled=false;}
   });
   const avatarRoot=document.getElementById('patient-avatar');

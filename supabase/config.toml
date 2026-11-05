@@ -8,3 +8,9 @@ verify_jwt = true
 
 [functions.food-substitution-ai]
 verify_jwt = true
+
+[functions.free-meal-ai]
+verify_jwt = true
+
+[functions.patient-material]
+verify_jwt = true

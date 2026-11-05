@@ -1,6 +1,8 @@
-import {openSubstitutionChat,mountSubstitutionAssistant} from './substitution-chat.js?v=20261103-context';
+import {openSubstitutionChat,mountSubstitutionAssistant} from './substitution-chat.js?v=20261105-clinic';
 import {formatGrams,formatKcal} from '../js/taco.mjs?v=20261103-context';
 import {mountPatientChat} from '../js/patient-chat.js?v=20261030-team';
+import {teamWhatsApp} from '../js/team-contact.mjs';
+import {mountDescribedHistory} from '../js/described-swap-history.mjs';
 import {
   escapeHtml,
   formatDate,
@@ -19,13 +21,15 @@ import {
   requireAuth,
   signOut,
 } from '../js/auth.js?v=20261102-taco';
-import { initGuidesPanel } from './guides-panel.js';
-import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js?v=20261030-chat';
-import { initPatientExtras, bindMealExtras, mealExtrasMarkup, notifyPatientSaved } from './patient-extras.js?v=20261030-profile-photo';
+import { initGuidesPanel } from './guides-panel.js?v=20261105-materials';
+import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js?v=20261105-progress';
+import { initPatientExtras, bindMealExtras, mealExtrasMarkup, notifyPatientSaved } from './patient-extras.js?v=20261105-progress';
 import {splitDietNotes,mealOptionsFromRows,selectedMealOptions} from '../js/diet-content.mjs?v=20261031-options';
 import {confirmAdditionalOption} from './meal-options.js?v=20261031-options';
 import { hydrationMeter } from './patient-model.mjs?v=20261030-water';
 
+import {mountFreeMeal} from './free-meal.mjs';
+import {checkTrackingAccess} from './access-state.mjs';
 const greeting = document.getElementById('patient-greeting');
 const sidebarUser = document.getElementById('sidebar-user');
 const activeDietCard = document.getElementById('active-diet-card');
@@ -69,7 +73,7 @@ function renderWater() {
   const meter = hydrationMeter(tracking.water.amount_ml, validatedWaterGoal?.water_ml);
   h2oAmount.textContent = `${meter.volume} ml`;
   h2oGoal.textContent = meter.target
-    ? `Meta definida pela Marcela: ${meter.target} ml · ${Math.round(meter.percent)}%`
+    ? `Meta definida pela Nutri: ${meter.target} ml · ${Math.round(meter.percent)}%`
     : 'Volume registrado hoje. A Marcela ainda não definiu sua meta individual.';
   h2oFill.style.width = `${meter.percent}%`;
   const axis = document.getElementById('h2o-scale');
@@ -232,6 +236,8 @@ function switchTab(tabId) {
     tab.classList.toggle('is-active', tab.dataset.tab === tabId);
     tab.setAttribute('aria-current', tab.dataset.tab === tabId ? 'page' : 'false');
   });
+  if (tabId === 'guides' && profile) initGuidesPanel();
+  if (tabId === 'evolution' && profile) mountDescribedHistory(document.getElementById('described-swap-history'),profile.id).catch(()=>{});
   if (tabId === 'evolution' && profile) loadEvolution(profile.id).catch(error => { document.getElementById('evolution-content').textContent = error.message; });
 
   Object.entries(panels).forEach(([id, panel]) => {
@@ -285,6 +291,7 @@ async function loadDashboard(profile) {
   const active = diets.find((diet) => diet.status === 'active');
 
   if (active) {
+    activeDietCard.hidden=false;
     const fullDiet = await fetchDietWithMeals(active.id);
     renderDietCard(fullDiet, activeDietCard);
     const planPreview=document.getElementById('plan-preview');
@@ -293,7 +300,8 @@ async function loadDashboard(profile) {
     planPreview.querySelectorAll('.diet-card__hint,.patient-meal-report,.meal-extra-actions,.check-row__box,.meal-check__label small,.meal-option-extra,.check-row__toggle').forEach(el=>el.remove());
     planPreview.querySelectorAll('.is-checked,.is-meal-checked,.is-selected').forEach(el=>el.classList.remove('is-checked','is-meal-checked','is-selected'));
   } else {
-    activeDietCard.innerHTML = '<div class="patient-diet-card app-empty">Você ainda não tem uma dieta ativa. A nutricionista vai liberar em breve.</div>';
+    activeDietCard.hidden=true;
+    document.querySelector('#dashboard-nav [data-tab="plan"]').hidden=true;
     document.getElementById('plan-preview').innerHTML = activeDietCard.innerHTML;
   }
   updateNextMeal();
@@ -341,16 +349,13 @@ async function init() {
   const auth = await requireAuth({ role: 'patient' });
   if (!auth) return;
   profile = auth.profile;
-  mountSubstitutionAssistant({getDiet:()=>activeDiet,current:()=>foodSubstitutions,saved:()=>savedSubstitutions,onChanged:refreshSubstitutions,onAskNutritionist:food=>{
-    switchTab('diet');
-    const field=document.querySelector('#patient-chat textarea');
-    if(!field){document.getElementById('patient-chat').scrollIntoView({block:'center'});return;}
-    if(!field.value.trim())field.value=`Marcela, gostaria de trocar ${food}. Você pode conferir esse alimento e me orientar uma troca?`;
-    field.scrollIntoView({block:'center'});field.focus({preventScroll:true});
-  }});
+  const access=await checkTrackingAccess(getSupabase(),profile.id);
+  document.querySelector('.app-shell').inert=false;
+  if(!access){sidebarUser.textContent=profile.full_name;return;}
+  mountFreeMeal(document.getElementById('free-meal-panel'),{patientId:profile.id,locked:!access});
+  mountSubstitutionAssistant({getDiet:()=>activeDiet,current:()=>foodSubstitutions,saved:()=>savedSubstitutions,onChanged:refreshSubstitutions,onAskNutritionist:(food,targetWindow)=>{const url=teamWhatsApp(`Oi! Preciso de ajuda com uma substituição alimentar: ${food}.`);if(targetWindow)targetWindow.location.replace(url);else location.href=url;}});
   document.getElementById('profile-label').textContent = `${profile.full_name} · ${profile.username}`;
 
-  initGuidesPanel();
   mountPatientChat(document.getElementById('patient-chat'),{patientId:profile.id}).catch(()=>{document.getElementById('patient-chat').textContent='Não foi possível abrir a conversa. Atualize a página.';});
   switchTab('diet');
   initPatientCare(profile).catch(error => { document.getElementById('patient-reminders').textContent = error.message; });
@@ -369,8 +374,8 @@ function updateNextMeal() {
   const time = new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date());
   const scheduled = (activeDiet?.meals || []).filter(meal=>meal.scheduled_time).sort((a,b)=>a.scheduled_time.localeCompare(b.scheduled_time));
   const next = scheduled.find(meal=>meal.scheduled_time.slice(0,5)>=time);
-  document.getElementById('next-meal').textContent = next ? `${next.scheduled_time.slice(0,5)} · ${next.name}` : activeDiet ? scheduled.length ? 'Não há mais refeições previstas para hoje' : 'Horários ainda não definidos' : 'Seu acompanhamento começa aqui';
-  document.getElementById('next-meal-detail').textContent = 'Horário de Brasília. Os checks representam seu relato. Sem registro não significa que você deixou de comer.';
+  document.getElementById('next-meal').textContent = next ? `${next.scheduled_time.slice(0,5)} · ${next.name}` : activeDiet ? scheduled.length ? 'Não há mais refeições previstas para hoje' : 'Horários ainda não definidos' : 'Seu acompanhamento de hoje';
+  document.getElementById('next-meal-detail').textContent = !activeDiet?'Registre seu treino, sua hidratação e suas refeições.':'Horário de Brasília. Os checks representam seu relato. Sem registro não significa que você deixou de comer.';
 }
 document.getElementById('water-undo').addEventListener('click', async () => {
   if (!lastWater) return;

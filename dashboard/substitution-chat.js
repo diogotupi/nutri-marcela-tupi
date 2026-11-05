@@ -2,6 +2,7 @@ import {getSupabase,escapeHtml as esc,getLocalDateString} from '../js/app-core.j
 import {mealOptionsFromRows} from '../js/diet-content.mjs?v=20261031-options';
 import {loadTaco,formatGrams,formatKcal} from '../js/taco.mjs?v=20261103-context';
 import {requestFoodAI} from './food-ai-client.js?v=20261103-context';
+import {teamWhatsApp} from '../js/team-contact.mjs';
 
 const spark='<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4L12 3Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="m20 2 .6 1.4L22 4l-1.4.6L20 6l-.6-1.4L18 4l1.4-.6L20 2Z" fill="currentColor"/></svg>';
 let instance;
@@ -15,7 +16,7 @@ export function openSubstitutionChat(options){return mountSubstitutionAssistant(
 function createAssistant(initialOptions){
  let options=initialOptions,catalog=null,ready=null,configured=false,busy=false,origin=null,unread=0,pendingMessage=null,conversationId=crypto.randomUUID(),attachment=null;
  const reduce=matchMedia('(prefers-reduced-motion: reduce)'),root=document.createElement('div');root.className='food-ai-widget';
- root.innerHTML=`<button type="button" class="ai-launcher" id="food-ai-launcher" aria-label="Abrir assistente de trocas" aria-expanded="false" aria-controls="food-ai-panel"><span class="ai-launcher__halo"></span><span class="ai-launcher__symbol">${spark}<b>SUB</b></span><span class="ai-launcher__label">Trocas da sua dieta</span><span class="ai-unread" hidden></span></button><section class="substitution-chat" id="food-ai-panel" role="dialog" aria-modal="false" aria-labelledby="substitution-title" hidden><header class="ai-header"><div class="ai-avatar">${spark}</div><div class="ai-identity"><p>SEU PLANO, COM MAIS POSSIBILIDADES</p><h2 id="substitution-title">Assistente de trocas <span>SUB</span></h2></div><button type="button" class="ai-minimize" data-swap-close aria-label="Minimizar conversa">−</button></header><div class="ai-source-strip"><span>↔ Trocas compatíveis com seu plano</span></div><div class="ai-feed" role="log" aria-label="Conversa sobre substituições" aria-live="polite"></div><div class="ai-quick-actions"><button type="button" data-quick="search">Nova troca</button><button type="button" data-quick="saved">Trocas salvas</button><button type="button" data-quick="help">Como funciona?</button></div><div class="ai-attachment" hidden></div><div class="ai-photo-menu" hidden><button type="button" data-photo-camera>Tirar foto</button><button type="button" data-photo-gallery>Escolher da galeria</button><button type="button" data-photo-cancel>Cancelar</button></div><form class="ai-composer"><button type="button" class="ai-attach" aria-label="Enviar foto da tabela nutricional" title="Enviar foto da tabela nutricional">＋</button><input type="file" data-label-file accept="image/jpeg,image/png,image/webp,image/heic,image/heif" hidden><label class="sr-only" for="swap-food-search">Mensagem para o assistente</label><textarea id="swap-food-search" rows="1" maxlength="500" placeholder="Quero trocar a batata do almoço…"></textarea><button type="submit" class="ai-send" aria-label="Enviar mensagem" disabled><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m5 12 14-7-4 14-3-5-7-2Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m12 14 7-9" stroke="currentColor" stroke-width="1.7"/></svg></button></form><footer class="ai-footer">A Marcela acompanha suas trocas.</footer></section>`;
+ root.innerHTML=`<button type="button" class="ai-launcher" id="food-ai-launcher" aria-label="Abrir assistente de trocas" aria-expanded="false" aria-controls="food-ai-panel"><span class="ai-launcher__halo"></span><span class="ai-launcher__symbol">${spark}<b>SUB</b></span><span class="ai-launcher__label">Quero substituir um alimento</span><span class="ai-unread" hidden></span></button><section class="substitution-chat" id="food-ai-panel" role="dialog" aria-modal="false" aria-labelledby="substitution-title" hidden><header class="ai-header"><div class="ai-avatar">${spark}</div><div class="ai-identity"><p>TROCAS ALIMENTARES COM SEGURANÇA</p><h2 id="substitution-title">Assistente de trocas <span>SUB</span></h2></div><button type="button" class="ai-minimize" data-swap-close aria-label="Minimizar conversa">−</button></header><div class="ai-source-strip"><span>↔ Valores consultados em tabelas nutricionais</span></div><div class="ai-feed" role="log" aria-label="Conversa sobre substituições" aria-live="polite"></div><div class="ai-quick-actions"><button type="button" data-quick="search">Nova troca</button><button type="button" data-quick="saved">Trocas salvas</button><button type="button" data-quick="help">Como funciona?</button></div><div class="ai-attachment" hidden></div><div class="ai-photo-menu" hidden><button type="button" data-photo-camera>Tirar foto</button><button type="button" data-photo-gallery>Escolher da galeria</button><button type="button" data-photo-cancel>Cancelar</button></div><form class="ai-composer"><button type="button" class="ai-attach" aria-label="Enviar foto da tabela nutricional" title="Enviar foto da tabela nutricional">＋</button><input type="file" data-label-file accept="image/jpeg,image/png,image/webp,image/heic,image/heif" hidden><label class="sr-only" for="swap-food-search">Mensagem para o assistente</label><textarea id="swap-food-search" rows="1" maxlength="500" placeholder="Tenho 100 g de batata cozida e quero trocar por…"></textarea><button type="submit" class="ai-send" aria-label="Enviar mensagem" disabled><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m5 12 14-7-4 14-3-5-7-2Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m12 14 7-9" stroke="currentColor" stroke-width="1.7"/></svg></button></form><footer class="ai-footer">A equipe acompanha suas trocas.</footer></section>`;
  document.body.append(root);
  const launcher=root.querySelector('.ai-launcher'),panel=root.querySelector('#food-ai-panel'),feed=root.querySelector('.ai-feed'),composer=root.querySelector('textarea'),send=root.querySelector('.ai-send');
  const diet=()=>typeof options.getDiet==='function'?options.getDiet():options.diet;
@@ -40,7 +41,7 @@ function createAssistant(initialOptions){
  function resize(){const view=window.visualViewport,keyboard=view?Math.max(0,innerHeight-view.height-view.offsetTop):0,mobile=innerWidth<=760;const bottom=keyboard>100?keyboard+8:mobile?158:96;panel.style.bottom=`${bottom}px`;panel.style.height=`${Math.min(690,Math.max(220,(view?.height||innerHeight)-(keyboard>100?20:mobile?178:116)))}px`;}
  function hide(){panel.hidden=true;launcher.setAttribute('aria-expanded','false');launcher.focus({preventScroll:true});}
  function reveal(){panel.hidden=false;launcher.setAttribute('aria-expanded','true');unread=0;renderUnread();resize();if(reduce.matches)root.getAnimations({subtree:true}).forEach(a=>a.cancel());else panel.animate([{opacity:0,transform:'translateY(18px) scale(.97)'},{opacity:1,transform:'translateY(0) scale(1)'}],{duration:300,easing:'cubic-bezier(.2,.9,.2,1)'});scroll();}
- function updateComposerHint(){composer.placeholder='Converse sobre sua troca…';}
+ function updateComposerHint(){composer.placeholder=origin?'Converse sobre sua troca do plano…':'Tenho 100 g de batata cozida e quero trocar por…';root.querySelector('.ai-attach').hidden=!origin;}
  function showSaved(row){
   origin=row;
   const foods=saved().filter(s=>s.source_food_id===row.reference.id).map(s=>catalog.foods.find(f=>f.id===s.target_food_id)).filter(f=>f?.kcal_per_100g>0);
@@ -80,13 +81,13 @@ function createAssistant(initialOptions){
    const history=(status.history||[]).filter(t=>t.response?.mode==='conversation');
    const recent=history.filter(t=>t.response.conversation_id===history.at(-1)?.response.conversation_id);
    if(recent.length){conversationId=recent.at(-1).response.conversation_id;for(const turn of recent){message(turn.response.user_message,true,turn.response.had_image?'<small class="ai-photo-note">Foto do rótulo enviada</small>':'');message(turn.response.reply);}renderActions(recent.at(-1).response);}
-   else message('Oi! O que você quer substituir na sua dieta?');
+   else message('Qual alimento você quer substituir?');
    return data;
   }).catch(error=>{ready=null;const entry=message(error.message,false,'<button type="button" class="ai-small-button" data-init-retry>Tentar conectar novamente</button>');entry.querySelector('[data-init-retry]').onclick=()=>initialize().catch(()=>{});throw error;});
   return ready;
  }
- function newConversation(){conversationId=crypto.randomUUID();origin=null;pendingMessage=null;clearAttachment();feed.querySelectorAll('[data-ai-current] button').forEach(b=>b.disabled=true);}
- function startSource(row){newConversation();origin=row;return sendText(`Quero substituir ${row.item.food_name} na refeição ${row.meal.name}.`,row.item.id);}
+ function newConversation(){conversationId=crypto.randomUUID();origin=null;updateComposerHint();pendingMessage=null;clearAttachment();feed.querySelectorAll('[data-ai-current] button').forEach(b=>b.disabled=true);}
+ function startSource(row){newConversation();origin=row;updateComposerHint();return sendText(`Quero substituir ${row.item.food_name} na refeição ${row.meal.name}.`,row.item.id);}
  function showSavedSources(){
   const rows=allRows().filter(r=>available(r)&&saved().some(s=>s.source_food_id===r.reference.id));
   if(!rows.length){message('Suas trocas vão aparecer aqui depois que você confirmar a primeira. O que quer substituir?');return;}
@@ -95,8 +96,13 @@ function createAssistant(initialOptions){
  }
  function renderActions(answer){
   origin=rowById(answer.state?.source_item_id)||null;
+  updateComposerHint();
   if(answer.intent==='proposal'&&answer.proposal){
-   const p=answer.proposal,row=rowById(p.item_id);if(!row)return;
+   const p=answer.proposal;if(!p.item_id){
+    const entry=activeCard(message('',false,`<div class="ai-action-card"><div class="substitution-summary"><div><small>VOCÊ INFORMOU</small><strong>${esc(p.original_name)}</strong><small>${formatGrams(p.source_grams)}</small></div><span class="ai-swap-arrow">↔</span><div><small>APROXIMADAMENTE</small><strong>${esc(p.target.name)}</strong><small>${formatGrams(p.target_grams)}</small></div></div><p class="ai-energy-note">${formatKcal(p.energy_kcal)} · equivalência aproximada</p><button type="button" class="ai-primary-action" data-freeform-register>Registrar essa troca <span>✓</span></button><p role="status" data-freeform-status></p></div>`));
+    entry.querySelector('[data-freeform-register]').onclick=async()=>{if(busy)return;setBusy(true);const status=entry.querySelector('[data-freeform-status]');status.textContent='Salvando seu registro…';try{const {data,error}=await getSupabase().rpc('save_patient_described_substitution',{p_review:p.review_id});if(error)throw error;if(!data?.id)throw Error('Não consegui confirmar o registro. Tente novamente.');status.textContent='Troca registrada. A equipe recebeu uma notificação.';entry.querySelector('[data-freeform-register]').disabled=true;await options.onChanged?.();}catch(error){status.textContent=error.message;}finally{setBusy(false);}};return;
+   }
+   const row=rowById(p.item_id);if(!row)return;
    if(!p.review_id||p.policy!=='context-review-v2'||answer.review?.approved!==true||!p.source_snapshot||['food_name','quantity','unit'].some(key=>String(row.item[key]??'')!==String(p.source_snapshot[key]??''))){
     const entry=activeCard(message('Essa troca precisa ser reavaliada para o seu plano atual. Vamos conferir?',false,'<button type="button" class="ai-primary-action" data-recalculate>Recalcular esta troca</button>'));
     entry.querySelector('[data-recalculate]').onclick=()=>{newConversation();sendText(`Quero trocar ${row.item.food_name} por ${p.target.name}.`,row.item.id);};return;
@@ -108,16 +114,19 @@ function createAssistant(initialOptions){
   let html='';
   if(answer.intent==='choose_source')html=`<div class="substitution-choices">${(answer.source_item_ids||[]).map(rowById).filter(Boolean).map(row=>`<button type="button" class="ai-choice" data-swap-origin="${row.item.id}"><span><strong>${esc(row.meal.name)} · ${esc(row.option.label)}</strong><small>${esc(row.item.food_name)} · ${esc([row.item.quantity,row.item.unit].filter(Boolean).join(' '))}</small></span><b>›</b></button>`).join('')}</div>`;
   if(answer.intent==='request_label')html+='<button type="button" class="ai-primary-action" data-label-photo>Enviar foto da tabela nutricional <span>＋</span></button>';
-  if(answer.intent==='refer_nutri'&&options.onAskNutritionist)html+='<div class="ai-review-warning" role="note"><strong>Essa troca precisa da nutri</strong><p>Antes de usar essa alternativa, peça orientação para ajustar seu plano.</p></div><button type="button" class="ai-primary-action" data-swap-ask-nutri>Falar com o suporte da nutri <span>›</span></button>';
+  if(answer.intent==='refer_nutri')html+='<div class="ai-review-warning" role="note"><strong>Essa troca precisa da nutri</strong><p>Antes de usar essa alternativa, peça orientação para ajustar seu plano.</p></div><button type="button" class="ai-primary-action" data-swap-ask-nutri>Falar com o suporte da nutri <span>›</span></button>';
   if(answer.choices?.length&&answer.intent!=='refer_nutri')html+=`<div class="ai-reply-options">${answer.choices.map((choice,i)=>`<button type="button" class="ai-small-button" data-reply="${i}">${esc(choice)}</button>`).join('')}</div>`;
   if(!html)return;
   const entry=activeCard(message('',false,`<div class="ai-action-card">${html}</div>`));
   entry.querySelectorAll('[data-swap-origin]').forEach(b=>b.onclick=()=>{const row=rowById(b.dataset.swapOrigin);sendText(`O da refeição ${row.meal.name}, ${row.option.label}.`,row.item.id);});
   entry.querySelectorAll('[data-reply]').forEach(b=>b.onclick=()=>sendText(answer.choices[Number(b.dataset.reply)]));
   entry.querySelector('[data-label-photo]')?.addEventListener('click',photoMenu);
-  entry.querySelector('[data-swap-ask-nutri]')?.addEventListener('click',()=>{
-   const row=rowById(answer.state?.source_item_id),source=row?.item.food_name||'um alimento do meu plano',target=answer.state?.target_query;
-   hide();options.onAskNutritionist(`${source}${target?' por '+target:''}`);
+  entry.querySelector('[data-swap-ask-nutri]')?.addEventListener('click',async event=>{
+   const row=rowById(answer.state?.source_item_id),source=row?.item.food_name||answer.source_name||'um alimento',target=answer.state?.target_query||answer.target_name;
+   const button=event.currentTarget;button.disabled=true;const supportWindow=window.open('about:blank','_blank');if(supportWindow)supportWindow.opener=null;
+   try{if(answer.event_id){const {error}=await getSupabase().rpc('clinic_request_support',{p_event:answer.event_id,p_description:`Ajuda com substituição alimentar: ${source}${target?' por '+target:''}`});if(error)throw error;}
+    hide();if(options.onAskNutritionist)options.onAskNutritionist(`${source}${target?' por '+target:''}`,supportWindow);else if(supportWindow)supportWindow.location.replace(teamWhatsApp(`Oi! Preciso de ajuda com uma substituição alimentar: ${source}${target?' por '+target:''}.`));else location.href=teamWhatsApp(`Oi! Preciso de ajuda com uma substituição alimentar: ${source}${target?' por '+target:''}.`);
+   }catch(error){supportWindow?.close();button.disabled=false;message(error.message||'Não consegui encaminhar seu pedido agora. Tente novamente.');}
   });
  }
  function photoMenu(){root.querySelector('.ai-photo-menu').hidden=false;root.querySelector('[data-photo-camera]').focus();}
@@ -160,7 +169,7 @@ function createAssistant(initialOptions){
  root.querySelector('[data-photo-cancel]').onclick=()=>{root.querySelector('.ai-photo-menu').hidden=true;composer.focus();};
  root.querySelector('[data-label-file]').onchange=e=>attachPhoto(e.target.files[0]);
  panel.onkeydown=e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();hide();}};
- root.querySelectorAll('[data-quick]').forEach(b=>b.onclick=async()=>{try{await initialize();}catch{return;}if(b.dataset.quick==='saved')showSavedSources();else if(b.dataset.quick==='help')message('Me diga o alimento da sua dieta e o que quer comer no lugar. Conversamos sobre o preparo e eu comparo calorias, nutrientes e porção. Você só pode salvar uma troca compatível com seu plano. Se ela precisar de um ajuste, te encaminho ao suporte da nutri. Se for um produto embalado, pode enviar a foto da tabela nutricional.');else{newConversation();message('O que você quer substituir?');composer.value='';composer.oninput();composer.focus();}});
+ root.querySelectorAll('[data-quick]').forEach(b=>b.onclick=async()=>{try{await initialize();}catch{return;}if(b.dataset.quick==='saved')showSavedSources();else if(b.dataset.quick==='help')message('Me conte o que está na sua dieta, quanto você come e o que gostaria de usar no lugar. Se a troca fizer sentido, vou sugerir uma porção aproximada. Se precisar de um ajuste na dieta, você pode falar com a equipe. Registre a troca quando fizer a refeição.');else{newConversation();message('O que você quer substituir?');composer.value='';composer.oninput();composer.focus();}});
  window.addEventListener('resize',resize);window.visualViewport?.addEventListener('resize',resize);
  reduce.addEventListener('change',()=>{if(reduce.matches)root.getAnimations({subtree:true}).forEach(a=>a.cancel());});
  const api={update(next){options={...options,...next};},async open({initialItemId=null,initialQuery=''}={}){

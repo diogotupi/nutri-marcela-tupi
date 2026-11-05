@@ -62,6 +62,7 @@ export async function runConversation({plan,catalog,history,body,admin,patient,k
   result.choices=[];result.review={policy:NUTRITION_POLICY,approved:false,reason:'meal_context'};
   return set('refer_nutri',(intent==='refer_nutri'&&result.reply===reply?reply:'Essa troca muda bastante os nutrientes e a função desse alimento na refeição.')+' Fale com o suporte da nutri antes de usar essa troca.');
  }
+ if(savedTarget&&(savedTarget.reference_source==='ai'||savedTarget.is_estimate===true)){result.choices=[];return set('refer_nutri','Não encontrei uma referência confiável para essa opção em uma tabela nutricional. Fale com o suporte da nutri para conferir a troca.');}
  if(['calculate','confirm_label'].includes(intent)&&(!source||!target))return set('ask',!source?'Qual alimento do seu plano você quer substituir?':'Pelo que você quer trocar?');
  if((intent==='confirm_label'||parsed.label)&&!label)return set('request_label','Preciso conferir calorias, proteínas, carboidratos e gorduras da mesma porção, com o peso em gramas. Envie uma foto nítida da tabela nutricional completa, por favor.');
  // Every new/corrected label must be displayed before it can be used. No image is persisted.

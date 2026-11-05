@@ -2,14 +2,14 @@
 
 Active policy: `context-review-v2`, replacing fixed macro/weight cutoffs.
 
-The conversation identifies the patient's requested source, target and preparation.
+The main conversation uses the source food, original amount, target and preparation reported by the patient. An existing local diet is optional.
 The server resolves the nutritional references and computes a candidate portion
 that fits calories (within 10%) while minimizing normalized protein, carbohydrate
 and fat differences. This candidate is never an approval.
 
 GPT-6.1 Sol performs a separate final review with `medium` reasoning. It receives
 the actual calculated portions/nutrients, differences, current conversation and
-other foods in the SAME meal option. It evaluates role, macros, likely satiety,
+other foods in the same meal option when an existing plan item is selected. It evaluates role, macros, likely satiety,
 preparation and practical portion. All five checks must be acceptable to approve.
 The model can adjust grams within the calorie interval; the server recomputes all
 values. Missing simple details lead to a clarification; consequential differences
@@ -22,7 +22,7 @@ and is referred. Weight is not measured volume; no individual harm is asserted.
 The assistant never presents itself as a licensed human professional or invents
 clinical goals, fiber values, diagnoses or changes to the rest of the plan.
 
-TACO remains preferred, then TBCA, then internally marked common-food estimates.
+New exchanges use TACO, then TBCA. Missing composition data leads to team support.
 Incomplete nutrient profiles may use a complete secondary reference; a published
 TACO row is never overwritten or filled with invented zeros. Private product
 labels require all macros, calories and grams from the same confirmed column.
@@ -32,7 +32,7 @@ Patients see foods, portions and practical explanations, never reference metadat
 with this policy and five acceptable expert checks. It verifies unchanged diet
 and nutrient references, two-hour expiry, today's date, numeric/energy bounds,
 concurrent-write expectation and idempotency. The calorie-only RPC is inaccessible.
-Saved choices undergo the current review again; existing history is retained.
+Saved plan choices undergo the current review again. Patient-reported portions use `save_patient_described_substitution` with a separate confirmed history.
 
 Validation: `npm test`, browser QA, `nutritional-swap-regression.sql`, label and
 reference regressions with synthetic fixtures and rollback. Live model smoke

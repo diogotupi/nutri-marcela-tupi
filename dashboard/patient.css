@@ -51,3 +51,14 @@
 @media(max-width:480px){.patient-meal-block .meal-option{padding:12px}.meal-option-dialog{padding:22px}}
 
 .check-row__toggle{position:relative;display:flex;align-items:flex-start;justify-content:center;min-width:34px;min-height:34px;margin:-5px 0 -5px -5px;padding:5px;box-sizing:border-box;cursor:pointer}.food-saved-open{display:flex;align-items:flex-start;flex-direction:column;gap:4px;text-align:left;padding:0;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer}.food-saved-open:hover{text-decoration:underline}.food-saved-open small{color:#6a8066;font-size:.66rem;font-weight:500;text-decoration:none}.substitution-saved-list{display:grid;gap:12px;margin:14px 0 20px}.substitution-saved-list article{border:1px solid #bdd0b4;border-radius:15px;padding:14px;background:#f5f9ef}.substitution-saved-list [data-saved-target]{display:grid;gap:8px;padding:0;width:100%;text-align:left;background:transparent;border:0;font:inherit;color:#284e3f}.substitution-saved-list [data-saved-target] span{font-size:.85rem}.substitution-saved-list [data-forget-target]{font-size:.68rem;padding:8px 0 0}
+
+.tracking-banner { max-width: 47rem; margin: 1.5rem auto; padding: clamp(1.3rem,4vw,2.5rem); }
+.tracking-banner p { margin-block: .65rem 1.2rem; }
+.tracking-banner[hidden], .dashboard-tab[hidden] { display: none; }
+.locked-features { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.4rem 0 0; padding: 1rem 0 0; border: 0; border-top: 1px solid #cdd8ce; }
+.locked-features button { padding: .55rem .75rem; color: #52675d; border: 1px solid #cad4c9; background: #edf0e9; border-radius: .7rem; }
+.access-paused .dashboard-tab { opacity: .55; }
+#free-meal-panel > .app-card { margin-bottom: 1rem; padding: clamp(1rem,3vw,1.6rem); }
+#free-meal-panel form { display: grid; gap: .65rem; margin-top: .85rem; }
+#free-meal-panel textarea { display: block; resize: vertical; margin-top: .4rem; width: 100%; }
+#free-meal-panel details { margin-top: .9rem; }

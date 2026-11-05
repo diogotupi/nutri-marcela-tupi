@@ -11,6 +11,7 @@ async (existingPage) => {
   const uid='11111111-1111-4111-8111-111111111111', pid='22222222-2222-4222-8222-222222222222';
   const today = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const profile={id:pid,user_id:uid,username:'demonstracao',full_name:'Paciente Demonstração',role:'patient'};
+  let accessState='open', hasDiet=true;
   let water=0, failNextWater=true, failNextLapse=true, failClinical=false, noWaterGoal=false, failNextMessage=true;
   const applied = new Map(); const itemChecks=[];const optionRequests=[];const swaps=[];const savedSwaps=[];const swapOps=[];let failNextSwap=true;
   const meal={id:'meal1',name:'Café da manhã — demonstração',scheduled_time:'08:00',sort_order:0,options:[1,2,3,4].map(n=>({name:'Preparo '+n,notes:'Instruções de preparo DEMONSTRAÇÃO'})),diet_items:[{id:'item1',food_name:'Batata, inglesa, cozida',quantity:'200',unit:'g',taco_food_id:91,portion_g:200,sort_order:0,option_name:null},{id:'item2',food_name:'Legumes demonstrativos',quantity:'150g',option_name:null,sort_order:1},...[1,2,3,4].map(n=>({id:'prep'+n,food_name:n===3?'Batata, doce, cozida':'Receita demonstrativa '+n,taco_food_id:n===3?88:null,portion_g:n===3?150:null,quantity:'',unit:'',option_name:'Preparo '+n,sort_order:n+1}))]};
@@ -27,11 +28,12 @@ async (existingPage) => {
       return route.fulfill({status:200,contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j6v8AAAAASUVORK5CYII=','base64'),headers:{'access-control-allow-origin':'*'}});
     }
     let body=req.postData()?JSON.parse(req.postData()):null, data=[];
+    if(table==='clinic_tracking_state')data=accessState;
     if(table==='food-substitution-ai') data=method==='GET'?{configured:true,history:[],foods:[]}:{mode:'conversation',conversation_id:body.conversation_id,user_message:body.message,intent:'refer_nutri',reply:'Vamos conversar com a Marcela sobre essa troca?',state:{source_item_id:'item2',target_query:'Trakinas'},choices:[]};
     if(table==='profiles') data=[profile];
     if(table==='patient_goals') data=noWaterGoal?[]:[{id:'g1',patient_id:pid,water_ml:1800,valid_from:'2020-01-01'}];
     if(table==='patient_water_logs') data=water?[{id:'water1',patient_id:pid,log_date:today,amount_ml:water,goal_ml:1800}]:[];
-    if(table==='diets') data=[{id:'diet1',patient_id:pid,title:'Plano DEMONSTRAÇÃO',notes:'Orientações de DEMONSTRAÇÃO\n\nAnexos do PDF\nLista de substituição\nReceita DEMONSTRAÇÃO <texto literal>',status:'active',start_date:today,created_at:new Date().toISOString()}];
+    if(table==='diets' && hasDiet) data=[{id:'diet1',patient_id:pid,title:'Plano DEMONSTRAÇÃO',notes:'Orientações de DEMONSTRAÇÃO\n\nAnexos do PDF\nLista de substituição\nReceita DEMONSTRAÇÃO <texto literal>',status:'active',start_date:today,created_at:new Date().toISOString()}];
     if(table==='diet_meals') data=[meal];
     if(table==='patient_food_substitutions')data=swaps;
     if(table==='patient_saved_substitutions')data=savedSwaps;
@@ -153,7 +155,7 @@ async (existingPage) => {
     assert(checks.at(-1).p_status==='done','Explicit report must save done');
     await page.locator('[data-meal-report="meal1"] select').selectOption('');
     await page.locator('[data-meal-report="meal1"] button').click();
-    await waitFor(()=>document.querySelector('[data-meal-report="meal1"] select').value==='');
+    await waitFor(()=>!document.querySelector('[data-meal-report="meal1"] button').disabled && document.querySelector('[data-meal-report="meal1"] select').value==='');
     assert(checks.at(-1).p_status===null,'Clearing report must clear report state');
     await page.screenshot({path:'C:/Users/diogo/AppData/Local/Temp/patient-demo-mobile.png',fullPage:true,animations:'disabled'});
     await page.locator('#training-form [name=description]').fill('DEMONSTRAÇÃO: caminhada tranquila');
@@ -166,6 +168,14 @@ async (existingPage) => {
     await page.getByRole('button',{name:'Registrar treino de hoje'}).click();
     await page.locator('#training-form [role=status]').filter({hasText:'registrado'}).waitFor();
     assert(clinical[0].kind==='exercise' && clinical[0].payload.date===today && clinical[0].payload.intensity===10,'Training payload/date invalid');
+    await page.locator('.workout-celebration img').waitFor();
+    assert((await page.locator('.workout-celebration a[download]').getAttribute('href')).startsWith('data:image/png'),'Training sticker missing');
+    const weight=page.locator('#patient-weight');
+    if (!await weight.locator('details').evaluate(e=>e.open)) await weight.locator('summary').click();
+    await weight.getByRole('spinbutton').fill('71.3');
+    await weight.getByRole('button',{name:'Salvar peso'}).click();
+    await weight.getByRole('status').filter({hasText:'71,3 kg'}).waitFor();
+    assert(clinical.filter(r=>r.payload.category==='weight_checkin').length===1,'Weight check-in missing');
     await page.bringToFront();
     await page.getByText('Chutei o balde',{exact:true}).focus();await page.getByText('Chutei o balde',{exact:true}).press('Enter');
     await page.locator('[data-meal-difficulty] [name=foods]').fill('DEMONSTRAÇÃO: refeição fora da rotina');
@@ -189,13 +199,26 @@ async (existingPage) => {
     assert(await page.locator('[data-care="checkin"],#patient-upload').count()===0,'Old patient forms remain');
     const chat=page.locator('#patient-chat');
     await page.locator('#open-food-substitutions').click();await page.locator('#swap-food-search').fill('Quero trocar os legumes por Trakinas');await page.locator('#swap-food-search').press('Enter');
+    await page.evaluate(()=>{
+      // Capture only the outgoing address. Keep QA entirely off WhatsApp.
+      window.open=url=>{window.__supportAddress=String(url);return {opener:null,close(){},location:{replace(value){window.__supportAddress=value;}}};};
+      document.addEventListener('click',event=>{
+        const link=event.target.closest('a[href^="https://wa.me/"]');
+        if(link){window.__supportAddress=link.href;event.preventDefault();}
+      },{capture:true});
+    });
     await page.locator('[data-ai-current] [data-swap-ask-nutri]').click();
-    assert((await chat.locator('textarea').inputValue()).includes('Legumes demonstrativos'),'Incompatible food must prepare a nutri draft with context');assert(messageOps.length===0,'Opening the nutri conversation must not send a message');assert(!await page.locator('.substitution-chat').isVisible(),'Assistant must minimize when opening nutri chat');
+    await waitFor(()=>window.__supportAddress?.startsWith('https://wa.me/'));
+    assert((await page.evaluate(()=>new URL(window.__supportAddress).searchParams.get('text'))).includes('Legumes demonstrativos'),'Support link must include the selected food');
+    assert(messageOps.length===0,'Opening support must not send a message');
     await chat.locator('textarea').fill('DEMONSTRAÇÃO: dúvida para a Marcela');await chat.getByRole('button',{name:'Enviar mensagem',exact:true}).click();await chat.locator('.chat-status').filter({hasText:'Não foi possível confirmar'}).waitFor();assert(await chat.locator('textarea').inputValue()==='DEMONSTRAÇÃO: dúvida para a Marcela','Failed send lost draft');await chat.getByRole('button',{name:'Enviar mensagem',exact:true}).click();await chat.locator('.chat-status').filter({hasText:'Mensagem enviada'}).waitFor();assert(messages.length===1&&messageOps[0].p_id===messageOps[1].p_id,'Chat retry duplicated message');
     messages.push({id:'33333333-3333-4333-8333-333333333333',seq:2,patient_id:pid,sender_role:'admin',body:'DEMONSTRAÇÃO: resposta da Marcela',created_at:new Date().toISOString()});await chat.getByRole('button',{name:'Atualizar',exact:true}).click();await chat.getByText('DEMONSTRAÇÃO: resposta da Marcela',{exact:true}).waitFor();
     await chat.locator('[name=file]').setInputFiles({name:'QA document.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4 DEMONSTRAÇÃO')});await chat.locator('[name=consent]').check();await chat.getByRole('button',{name:'Enviar mensagem',exact:true}).click();await chat.locator('.chat-status').filter({hasText:'Mensagem enviada'}).waitFor();assert(messages.at(-1).attachment_path&&uploads.length===2,'Chat document not sent');
     await page.getByRole('button',{name:'Evolução',exact:true}).click();
     await page.getByRole('heading',{name:'Hidratação diária'}).waitFor();
+    await page.getByText('Ver pesagens registradas',{exact:true}).click();
+    await page.getByRole('cell',{name:'71,3 kg'}).waitFor();
+    assert((await page.locator('.progress-totals').innerText()).includes('1 dia'),'One workout must count as one day of consistency');
     assert(await page.locator('[data-water-index]').count()===0,'Empty hydration period must not render missing-day markers');
     water=500;
     await page.getByRole('button',{name:'Atualizar registros',exact:true}).click();
@@ -240,6 +263,25 @@ async (existingPage) => {
     await page.reload();
     await page.locator('#h2o-goal').filter({hasText:'ainda não definiu'}).waitFor();
     assert(await page.locator('#h2o-fill').evaluate(e=>e.style.width)==='50%','No-goal meter must restore the persisted volume');
-    return {passed:true,mobile:390,desktop:1440,waterRequests:operations.length,clinicalVersions:clinical.length,mealChecks:checks.length,checks:['layout mobile/desktop','water failed-response retry idempotency','water undo','numbered open options, cancel, add, replace and persistence','training intensity/date','meal difficulty idempotent retry','camera/gallery photo picker, preview and WebP upload','collapsed PDF appendices','checkable breakfast preparations','floating assistant entry on the patient dashboard','profile photo','live hydration refresh and isolated clinical failure','private chat retry, reply and PDF attachment','empty assessment','read-only plan','structured data export','no-goal meter update, undo and reload'],productionWrites:0};
-  } catch(error) { return {error:error.message,stack:error.stack,optionRequests,itemChecks,state:await page.evaluate(()=>({tab:document.querySelector('#panel-diet')?.hidden,card:document.querySelector('#active-diet-card')?.innerHTML.slice(0,400),checked:[...document.querySelectorAll('[data-item-id]')].map(i=>({id:i.dataset.itemId,checked:i.checked})),rect:document.querySelector('[data-water]')?.getBoundingClientRect().toJSON(),html:document.querySelector('#panel-diet')?.outerHTML.slice(0,1000),css:getComputedStyle(document.querySelector('[data-water]')).display})),errors}; } finally { await page.close(); }
+    hasDiet=false;
+    await page.reload();
+    await page.getByText('Seu acompanhamento de hoje',{exact:true}).waitFor();
+    assert(!await page.locator('#dashboard-nav [data-tab="plan"]').isVisible(),'WebDiet-only patient should not see an empty local plan');
+    await page.locator('#open-food-substitutions').click();
+    await page.locator('#swap-food-search').waitFor();
+    for (const state of ['expired','blocked','unavailable']) {
+      accessState=state;
+      await page.reload();
+      const banner=page.locator('#tracking-access');
+      await banner.waitFor();
+      assert(await page.locator('.dashboard-panel:visible').count()===0,'Locked patient panel exposed');
+      assert(await page.locator('#training-form,#swap-food-search,#patient-chat textarea,#free-meal-panel textarea').count()===0,'Tracking features must not mount while locked');
+      assert(await banner.locator('fieldset:disabled button:disabled').count()===3,'Locked features missing disabled affordance');
+      assert(await page.locator('#logout-btn').isEnabled(),'Patient must stay signed in and be able to sign out');
+      assert((await page.locator('#sidebar-user').textContent()).includes('Paciente Demonstração'),'Patient identity should survive lock');
+      const link=await banner.locator('a').getAttribute('href');
+      assert(state==='unavailable' ? link.startsWith(page.url().split('?')[0]) : link.startsWith('https://wa.me/'),'Renew/retry link incorrect');
+    }
+    return {passed:true,mobile:390,desktop:1440,waterRequests:operations.length,clinicalVersions:clinical.length,mealChecks:checks.length,checks:['layout mobile/desktop','water failed-response retry idempotency','water undo','numbered open options, cancel, add, replace and persistence','training intensity/date, shared sticker and weekly/monthly indicators','weight check-in and trend','expired/manual/unavailable access restrictions','WebDiet-only access to SUB','WhatsApp support link','meal difficulty idempotent retry','camera/gallery photo picker, preview and WebP upload','collapsed PDF appendices','checkable breakfast preparations','floating assistant entry on the patient dashboard','profile photo','live hydration refresh and isolated clinical failure','private chat retry, reply and PDF attachment','empty assessment','read-only plan','structured data export','no-goal meter update, undo and reload'],productionWrites:0};
+  } catch(error) { return {error:error.message,stack:error.stack,optionRequests,itemChecks,state:await page.evaluate(()=>({tab:document.querySelector('#panel-diet')?.hidden,card:document.querySelector('#active-diet-card')?.innerHTML.slice(0,400),checked:[...document.querySelectorAll('[data-item-id]')].map(i=>({id:i.dataset.itemId,checked:i.checked})),rect:document.querySelector('[data-water]')?.getBoundingClientRect().toJSON(),html:document.querySelector('#panel-diet')?.outerHTML.slice(0,1000),css:document.querySelector('[data-water]')?getComputedStyle(document.querySelector('[data-water]')).display:null,url:location.href})),errors}; } finally { await page.close(); }
 }
