@@ -2,7 +2,23 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {civilRange,waterTimeline,intensityLabel,hydrationMeter} from './patient-model.mjs';
 import {fittedDimensions,validatePhoto} from '../js/media-sizing.mjs';
-import {progressSeries, workoutChart, weightChart} from '../js/progress-charts.mjs';
+import {progressSeries, workoutChart, weightChart, weightReminder} from '../js/progress-charts.mjs';
+
+test('weight reminder starts seven civil days after enrollment and stays due until a new measurement',()=>{
+  const base={startsOn:'2026-11-06',registeredOn:'2026-10-01'};
+  assert.deepEqual(weightReminder({...base,today:'2026-11-12'}),{due:false,nextOn:'2026-11-13',measuredToday:false});
+  assert.equal(weightReminder({...base,today:'2026-11-13'}).due,true);
+  assert.equal(weightReminder({...base,today:'2026-11-25'}).due,true);
+  assert.equal(weightReminder({...base,today:'2026-11-06',lastWeighedOn:'2026-10-28'}).nextOn,'2026-11-13');
+});
+
+test('optional weigh-ins reset the seven-day reminder, including month and year boundaries',()=>{
+  assert.deepEqual(weightReminder({today:'2026-11-13',startsOn:'2026-11-06',lastWeighedOn:'2026-11-12'}),{due:false,nextOn:'2026-11-19',measuredToday:false});
+  assert.deepEqual(weightReminder({today:'2026-12-30',lastWeighedOn:'2026-12-30',registeredOn:'2026-12-01'}),{due:false,nextOn:'2027-01-06',measuredToday:true});
+  assert.equal(weightReminder({today:'2024-03-01',startsOn:'2024-02-23'}).due,true);
+  assert.equal(weightReminder({today:'2026-11-06',startsOn:'2026-12-01'}).nextOn,'2026-12-08');
+  assert.equal(weightReminder({today:'2026-11-06',registeredOn:'2026-11-01',lastWeighedOn:'2026-11-09'}).nextOn,'2026-11-08');
+});
 
 test('workout indicators count distinct São Paulo days; weekly totals count all check-ins, even legacy workouts without intensity',()=>{
   const workout=(occurred_at,intensity,extra={})=>({kind:'exercise',occurred_at,payload:{intensity},...extra});

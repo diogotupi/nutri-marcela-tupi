@@ -1,6 +1,6 @@
 import { getSupabase, escapeHtml as esc, getLocalDateString } from '../js/app-core.js';
 import { listClinical, listAppointments, getSignedAttachment } from '../js/clinical.js';
-import {progressSeries, workoutChart, weightChart} from '../js/progress-charts.mjs';
+import {progressSeries, workoutChart, weightChart} from '../js/progress-charts.mjs?v=20261106-weekly';
 import { waterTimeline, civilRange } from './patient-model.mjs';
 import { fetchMyActiveTournaments } from '../js/tournaments.js';
 const date = value => new Date(value.length === 10 ? `${value}T12:00:00-03:00` : value).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
@@ -56,7 +56,7 @@ export async function loadEvolution(patientId) {
   if(clinicalResult.status==='rejected') {root.innerHTML=`${hydration}<section class="app-card patient-chart"><h2>Avaliações e relatos</h2><p role="status">Não foi possível atualizar as avaliações e relatos. Tente atualizar novamente.</p></section>`;bindWaterChart(root,timeline);return;}
   const progress=progressSeries(records,from,today);
   root.innerHTML = `${hydration}
-  <section class="app-card patient-chart"><h2>Constância de treino</h2>${workoutChart(progress)}</section>
+  <section class="app-card patient-chart"><h2>Frequência e intensidade do treino</h2>${workoutChart(progress)}</section>
   <section class="app-card patient-chart"><h2>Evolução do peso</h2>${weightChart(progress)}</section>
   <section class="app-card patient-chart"><h2>Avaliações</h2><p>O significado das mudanças depende do seu objetivo. Converse com a Marcela.</p><h3>IMC (kg/m²)</h3>${lineChart(assessments,'bmi','kg/m²')}<div class="app-table-wrap"><table class="app-table"><thead><tr><th>Data da avaliação</th><th>Peso (kg)</th><th>Altura (cm)</th><th>IMC (kg/m²)</th></tr></thead><tbody>${assessments.map(r=>{const p=r.payload; const w=Number(p.weight_kg),h=Number(p.height_cm);return `<tr><td>${date(r.occurred_at)}</td><td>${w>0?w:'Sem registro'}</td><td>${h>0?h:'Sem registro'}</td><td>${w>0&&h>0?(w/(h/100)**2).toFixed(1):'Não calculado'}</td></tr>`;}).join('') || '<tr><td colspan="4">Sem avaliações no período</td></tr>'}</tbody></table></div><p>IMC = peso (kg) ÷ altura (m)². Não representa interpretação clínica automática.</p></section>`;
   bindWaterChart(root,timeline);

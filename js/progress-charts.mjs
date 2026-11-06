@@ -12,6 +12,17 @@ export function weekStart(day) {
   return date.toISOString().slice(0,10);
 }
 
+export function weightReminder({today,startsOn,registeredOn,lastWeighedOn}) {
+  const valid = day => typeof day==='string' && /^\d{4}-\d{2}-\d{2}$/.test(day)
+    && Number.isFinite(dayTime(day)) && new Date(dayTime(day)).toISOString().slice(0,10)===day;
+  if(!valid(today)) throw Error('Data inválida.');
+  const start = valid(startsOn) ? startsOn : valid(registeredOn) ? registeredOn : today;
+  const last = valid(lastWeighedOn) && lastWeighedOn<=today ? lastWeighedOn : null;
+  const baseline = last && last>start ? last : start;
+  const nextOn = new Date(dayTime(baseline)+7*dayMs).toISOString().slice(0,10);
+  return {due:today>=nextOn,nextOn,measuredToday:last===today};
+}
+
 export function progressSeries(records, from, today) {
   const weights = [], sessions = [], weeks = new Map(), active = new Set();
   const startWeek = weekStart(today), startMonth = today.slice(0,7) + '-01';

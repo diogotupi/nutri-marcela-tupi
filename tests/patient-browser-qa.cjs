@@ -29,6 +29,12 @@ async (existingPage) => {
     }
     let body=req.postData()?JSON.parse(req.postData()):null, data=[];
     if(table==='clinic_tracking_state')data=accessState;
+    if(table==='patient_progress_context') {
+      const shift=offset=>{const date=new Date(today+'T12:00:00Z');date.setUTCDate(date.getUTCDate()+offset);return date.toISOString().slice(0,10);};
+      const latest=clinical.find(row=>row.payload?.category==='weight_checkin');
+      data={starts_on:shift(-21),registered_on:shift(-30),last_weighed_on:latest?.payload.date||shift(-7),last_weight_kg:latest?.payload.weight_kg||70};
+    }
+
     if(table==='food-substitution-ai') data=method==='GET'?{configured:true,history:[],foods:[]}:{mode:'conversation',conversation_id:body.conversation_id,user_message:body.message,intent:'refer_nutri',reply:'Vamos conversar com a Marcela sobre essa troca?',state:{source_item_id:'item2',target_query:'Trakinas'},choices:[]};
     if(table==='profiles') data=[profile];
     if(table==='patient_goals') data=noWaterGoal?[]:[{id:'g1',patient_id:pid,water_ml:1800,valid_from:'2020-01-01'}];
@@ -170,12 +176,33 @@ async (existingPage) => {
     assert(clinical[0].kind==='exercise' && clinical[0].payload.date===today && clinical[0].payload.intensity===10,'Training payload/date invalid');
     await page.locator('.workout-celebration img').waitFor();
     assert((await page.locator('.workout-celebration a[download]').getAttribute('href')).startsWith('data:image/png'),'Training sticker missing');
+    await page.locator('#patient-workout-progress .progress-plot').first().waitFor();
+    assert((await page.locator('#patient-workout-progress [data-charts]').innerText()).includes('1 dia'),'today workout updates frequency chart');
+    await page.locator('#patient-workout-progress select').selectOption('90');
+    await waitFor(()=>!document.querySelector('#patient-workout-progress button').disabled);
+    assert(await page.locator('#patient-workout-progress .progress-plot').count()===2,'frequency and intensity plots visible today');
+    await page.locator('#patient-weight.is-weight-due').waitFor();
+    assert((await page.locator('#patient-weight h2').innerText())==='Dia de atualizar seu peso!','seven-day reminder');
+    assert(await page.locator('#patient-weight details').evaluate(el=>el.open),'weekly form starts open');
+    await page.locator('#patient-weight').screenshot({path:'.playwright-mcp/weekly-weight-card.png'});
+
     const weight=page.locator('#patient-weight');
     if (!await weight.locator('details').evaluate(e=>e.open)) await weight.locator('summary').click();
     await weight.getByRole('spinbutton').fill('71.3');
     await weight.getByRole('button',{name:'Salvar peso'}).click();
     await weight.getByRole('status').filter({hasText:'71,3 kg'}).waitFor();
     assert(clinical.filter(r=>r.payload.category==='weight_checkin').length===1,'Weight check-in missing');
+    assert(await page.locator('#patient-weight.is-weight-due').count()===0,'weigh-in clears the reminder');
+    assert((await page.locator('#patient-weight [data-reminder]').innerText()).includes('Próximo lembrete'),'next reminder scheduled');
+    await page.locator('#patient-weight [data-view-chart]').click();
+    await page.locator('#evolution-content').getByRole('heading',{name:'Evolução do peso',exact:true}).waitFor();
+    assert(await page.locator('#evolution-content .progress-plot title').filter({hasText:'71,3 kg'}).count()===1,'weight appears in line chart');
+    await page.locator('#dashboard-nav [data-tab=diet]').click();
+    await page.reload();
+    await page.locator('#training-form').waitFor();
+    await page.locator('#patient-weight [data-last-weight]').filter({hasText:'71,3 kg'}).waitFor();
+    assert(await page.locator('#patient-weight.is-weight-due').count()===0,'saved weight reminder persists across reload');
+
     await page.bringToFront();
     await page.getByText('Chutei o balde',{exact:true}).focus();await page.getByText('Chutei o balde',{exact:true}).press('Enter');
     await page.locator('[data-meal-difficulty] [name=foods]').fill('DEMONSTRAÇÃO: refeição fora da rotina');
@@ -218,7 +245,7 @@ async (existingPage) => {
     await page.getByRole('heading',{name:'Hidratação diária'}).waitFor();
     await page.getByText('Ver pesagens registradas',{exact:true}).click();
     await page.getByRole('cell',{name:'71,3 kg'}).waitFor();
-    assert((await page.locator('.progress-totals').innerText()).includes('1 dia'),'One workout must count as one day of consistency');
+    assert((await page.locator('#evolution-content .progress-totals').innerText()).includes('1 dia'),'One workout must count as one day of consistency');
     assert(await page.locator('[data-water-index]').count()===0,'Empty hydration period must not render missing-day markers');
     water=500;
     await page.getByRole('button',{name:'Atualizar registros',exact:true}).click();
