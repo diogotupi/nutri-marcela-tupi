@@ -1,8 +1,9 @@
+import {mountWeeklyOverview} from './weekly-overview.js?v=20261106-visual';
 import { getSupabase, getLocalDateString, escapeHtml as esc } from '../js/app-core.js';
 import { addClinical, uploadAttachment, getSignedAttachment } from '../js/clinical.js';
 import { preparePhotoUpload } from '../js/media-upload.js';
-import {mountWeightCheckin} from './weight-checkin.js?v=20261106-weekly';
-import {mountWorkoutProgress} from './workout-progress.js?v=20261106-weekly';
+import {mountWeightCheckin} from './weight-checkin.js?v=20261106-visual';
+import {mountWorkoutProgress} from './workout-progress.js?v=20261106-visual';
 import {celebrateWorkout} from './workout-celebration.js';
 import { intensityLabel } from './patient-model.mjs';
 import {openMealPhotoPicker} from './meal-photo.js?v=20261030-patient2';
@@ -26,6 +27,7 @@ function badgeSvg(id) {
   return `<svg viewBox="0 0 100 112" aria-hidden="true"><defs><linearGradient id="badge-${id}" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8e3a1"/><stop offset=".45" stop-color="#c79b45"/><stop offset="1" stop-color="#f7df8e"/></linearGradient><linearGradient id="badge-core-${id}" x2=".7" y2="1"><stop stop-color="#6da48c"/><stop offset="1" stop-color="#173e30"/></linearGradient></defs><path d="M23 78l-5 29 22-11 10 10 10-10 22 11-5-29" fill="#b58c45"/><path d="M50 4l35 17v39q0 25-35 38Q15 85 15 60V21z" fill="url(#badge-${id})"/><path d="M50 11l28 14v34q0 21-28 32Q22 80 22 59V25z" fill="url(#badge-core-${id})"/>${art}<path d="M28 25l19-9" stroke="#fff8db" stroke-width="2" opacity=".8"/><path d="M78 13v10m-5-5h10" stroke="#fff8db" stroke-width="2"/></svg>`;
 }
 export async function initPatientExtras(profile) {
+  mountWeeklyOverview(document.getElementById('patient-weekly-overview'),profile.id);
   mountWeightCheckin(document.getElementById('patient-weight'), profile.id);
   mountWorkoutProgress(document.getElementById('patient-workout-progress'),profile.id);
   const training=document.getElementById('patient-training');

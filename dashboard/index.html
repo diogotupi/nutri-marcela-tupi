@@ -10,9 +10,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../app/app.css">
   <link rel="stylesheet" href="./patient.css?v=20261105-clinic">
-  <link rel="stylesheet" href="/app/progress.css?v=20261106-weekly">
+  <link rel="stylesheet" href="/app/progress.css?v=20261106-visual">
   <script src="../js/config.js"></script>
-<link rel="stylesheet" href="/app/fresh.css?v=20261030b"><link rel="stylesheet" href="/app/chat.css?v=20261030-chat"><link rel="stylesheet" href="./substitution-chat.css?v=20261103-context"><link rel="stylesheet" href="/app/materials.css"></head>
+<link rel="stylesheet" href="/app/fresh.css?v=20261030b"><link rel="stylesheet" href="/app/chat.css?v=20261030-chat"><link rel="stylesheet" href="./substitution-chat.css?v=20261103-context"><link rel="stylesheet" href="/app/materials.css"><link rel="stylesheet" href="/app/progress-visual.css?v=20261106-visual"></head>
 <body class="app-body">
   <div class="app-shell" inert>
     <aside class="app-sidebar">
@@ -46,6 +46,7 @@
           </div>
         </div>
         <section class="patient-welcome" aria-label="Seu acompanhamento"><p class="patient-eyebrow">FAZ O BÁSICO · SEU DIA</p><h2 id="next-meal">Carregando seu plano…</h2><p id="next-meal-detail">Seus registros ajudam a Marcela a acompanhar sua rotina.</p><div class="patient-shortcuts"><button type="button" class="app-btn app-btn--primary" id="open-food-substitutions">Quero substituir um alimento</button><button class="app-btn app-btn--ghost dashboard-tab" data-tab="guides">Materiais</button></div></section>
+        <section id="patient-weekly-overview" class="weekly-overview" aria-label="Resumo da semana"></section>
         <section id="patient-weight" class="app-card weight-checkin" aria-label="Check-in de peso"></section>
         <div id="free-meal-panel"></div>
         <section id="patient-training" class="app-card patient-training" aria-label="Seu treino de hoje"></section>
@@ -135,6 +136,6 @@
     </main>
   </div>
 
-  <script type="module" src="./dashboard.js?v=20261106-weekly"></script>
+  <script type="module" src="./dashboard.js?v=20261106-visual"></script>
 </body>
 </html>

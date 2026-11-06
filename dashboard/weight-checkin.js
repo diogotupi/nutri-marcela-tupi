@@ -1,6 +1,6 @@
 import {getLocalDateString, getSupabase} from '../js/app-core.js';
 import {addClinical} from '../js/clinical.js';
-import {weightReminder} from '../js/progress-charts.mjs?v=20261106-weekly';
+import {weightReminder} from '../js/progress-charts.mjs?v=20261106-visual';
 
 const dateLabel = day => new Date(day+'T12:00:00Z').toLocaleDateString('pt-BR',{timeZone:'UTC',day:'2-digit',month:'2-digit'});
 

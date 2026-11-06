@@ -7,6 +7,7 @@ async (existingPage) => {
   await page.setViewportSize({width:390,height:844});
   page.setDefaultTimeout(10000);
   const errors = [], operations = [], clinical = [], checks = [], uploads = [], messages = [], messageOps = [];
+  await page.emulateMedia({reducedMotion:'reduce'});
   page.on('pageerror', error => errors.push(error.message));
   const uid='11111111-1111-4111-8111-111111111111', pid='22222222-2222-4222-8222-222222222222';
   const today = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
@@ -106,6 +107,8 @@ async (existingPage) => {
   try {
     await page.goto('http://127.0.0.1:8877/dashboard/?qa=demonstration');
     await page.locator('#training-form').waitFor({state:'attached'});
+    await page.locator('#patient-weekly-overview .week-story').waitFor();
+    await page.locator('#patient-weekly-overview').screenshot({path:'.playwright-mcp/weekly-in-patient-page.png'});
     assert(await page.locator('[data-care="anamnesis"]').count()===0,'Patient anamnesis form must be removed');
     await page.locator('.patient-badge.is-earned').waitFor();
     assert(await page.locator('#active-diet-card .diet-appendices').evaluate(e=>!e.open),'Imported appendix must start collapsed');
@@ -177,6 +180,7 @@ async (existingPage) => {
     await page.locator('.workout-celebration img').waitFor();
     assert((await page.locator('.workout-celebration a[download]').getAttribute('href')).startsWith('data:image/png'),'Training sticker missing');
     await page.locator('#patient-workout-progress .progress-plot').first().waitFor();
+    await page.waitForFunction(()=>document.querySelector('#patient-weekly-overview .week-stat [data-progress-number]')?.dataset.progressNumber==='1');
     assert((await page.locator('#patient-workout-progress [data-charts]').innerText()).includes('1 dia'),'today workout updates frequency chart');
     await page.locator('#patient-workout-progress select').selectOption('90');
     await waitFor(()=>!document.querySelector('#patient-workout-progress button').disabled);
@@ -245,19 +249,20 @@ async (existingPage) => {
     await page.getByRole('heading',{name:'Hidratação diária'}).waitFor();
     await page.getByText('Ver pesagens registradas',{exact:true}).click();
     await page.getByRole('cell',{name:'71,3 kg'}).waitFor();
-    assert((await page.locator('#evolution-content .progress-totals').innerText()).includes('1 dia'),'One workout must count as one day of consistency');
-    assert(await page.locator('[data-water-index]').count()===0,'Empty hydration period must not render missing-day markers');
+    assert((await page.getByRole('heading',{name:'Frequência e intensidade do treino',exact:true}).locator('..').locator('.progress-totals').innerText()).includes('1 dia'),'One workout must count as one day of consistency');
+    assert(await page.getByRole('heading',{name:'Hidratação diária',exact:true}).locator('..').locator('[data-point]').count()===0,'Empty hydration period must not render missing-day markers');
     water=500;
     await page.getByRole('button',{name:'Atualizar registros',exact:true}).click();
-    await page.locator('[data-water-index="29"]').filter({has:page.locator('title',{hasText:'500 ml'})}).waitFor();
+    const waterPanel=page.getByRole('heading',{name:'Hidratação diária',exact:true}).locator('..');
+    await waterPanel.locator('[data-point]').filter({has:page.locator('title',{hasText:'0,5 L'})}).waitFor();
     assert(await page.locator('.patient-chart').filter({has:page.getByRole('heading',{name:'Hidratação diária',exact:true})}).locator('tbody tr').count()===1,'Hydration table must contain only recorded dates');
-    await page.locator('[data-water-index="29"]').press('Enter');
-    assert((await page.locator('#water-day-detail').textContent()).includes('500 ml'),'Hydration refresh/details stale');
+    await waterPanel.locator('[data-point]').press('Enter');
+    assert((await waterPanel.locator('.progress-readout').textContent()).includes('0,5 L'),'Hydration refresh/details stale');
     await page.screenshot({path:'C:/Users/diogo/AppData/Local/Temp/patient-demo-water.png',fullPage:true,animations:'disabled'});
     failClinical=true;
     await page.getByRole('button',{name:'Atualizar registros',exact:true}).click();
     await page.getByText('Não foi possível atualizar as avaliações e relatos. Tente atualizar novamente.',{exact:true}).waitFor();
-    assert(await page.locator('[data-water-index="29"] title').textContent().then(text=>text.includes('500 ml')),'Clinical error must not hide hydration');
+    assert(await waterPanel.locator('[data-point] title').textContent().then(text=>text.includes('0,5 L')),'Clinical error must not hide hydration');
     assert(await page.getByText('Sem avaliações no período',{exact:true}).count()===0,'Clinical error must not pretend empty data');
     failClinical=false;
     await page.getByRole('button',{name:'Atualizar registros',exact:true}).click();

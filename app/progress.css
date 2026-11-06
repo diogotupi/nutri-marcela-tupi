@@ -1,19 +1,3 @@
-.progress-totals,.progress-figures{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr));gap:.85rem}
-.progress-totals{margin:.9rem 0}
-.progress-totals>span{display:grid;align-content:center;gap:.12rem;padding:.8rem 1rem;background:#eef2e9;border:1px solid #c5d4c5;border-radius:14px;color:#405e50;font-size:.83rem}
-.progress-totals strong{font-size:1.2rem;color:#29483f}
-.progress-figures figure{margin:0;min-width:0}
-.progress-figures figcaption{font-size:.87rem;font-weight:700;margin:.5rem 0}
-.progress-plot{width:100%;height:auto;display:block;max-height:230px}
-.progress-plot rect,.progress-plot circle{fill:#376a53}
-.progress-plot polyline{fill:none;stroke:#477f65;stroke-width:2.6;stroke-linejoin:round}
-.progress-plot text{font:14px system-ui,sans-serif;fill:#395547}
-.progress-plot .plot-axis line{stroke:#c9d5c7;stroke-dasharray:3 4}
-.progress-values{font-size:.84rem;color:#355747;margin:.55rem 0 1rem}
-.progress-values summary,.weight-checkin summary{cursor:pointer}
-.progress-values>div{overflow:auto;max-height:15rem}
-.progress-values table{border-collapse:collapse;width:100%;margin:.6rem 0}
-.progress-values th,.progress-values td{padding:.35rem .45rem;text-align:left;border-bottom:1px solid #d6dfd3}
 .weight-checkin{padding:1rem 1.3rem;margin:0 0 1rem}
 .weight-checkin-heading{display:flex;align-items:center;gap:1rem}
 .weight-checkin-heading h2{margin:.15rem 0 .4rem;font-size:1.4rem;line-height:1.25}

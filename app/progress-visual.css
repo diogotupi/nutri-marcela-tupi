@@ -1,0 +1,82 @@
+/* Shared chart language for the patient, nutritionist and secretary. */
+.progress-totals,.progress-figures{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,13rem),1fr));gap:12px;margin:16px 0}
+.progress-figures{grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr))}
+.progress-metric{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:5px;border:1px solid #c8d5c7;border-radius:18px;padding:17px 19px;background:linear-gradient(130deg,#edf3e8,#f8faf3);color:#365847}
+.progress-metric:after{content:"";position:absolute;width:85px;height:85px;border:12px solid #527f6110;border-radius:50%;right:-28px;top:-30px;pointer-events:none}
+.progress-metric.peach{background:linear-gradient(130deg,#f9e8de,#fff6ed);border-color:#e3c9ba}
+.progress-metric.sand{background:linear-gradient(130deg,#f4edd9,#fcf8ed);border-color:#dcd0ac}
+.progress-metric>span{font-size:.74rem;font-weight:600;letter-spacing:.02em}
+.progress-metric strong{font-size:clamp(1.4rem,2.5vw,1.95rem);font-weight:700;line-height:1.3;letter-spacing:-.055em;font-variant-numeric:tabular-nums;color:#264c3d}
+.progress-metric em,.week-stat em{font-style:normal;font-size:.52em;font-weight:500;letter-spacing:0;margin-left:.35em}
+.progress-metric small{font-size:.72rem;line-height:1.5;color:#536858}
+.progress-figures figure{margin:0;min-width:0;border:1px solid #d4dfd0;border-radius:20px;background:linear-gradient(145deg,#fffefa,#f5f7ef);padding:17px 14px 6px}
+.progress-figures figcaption{font-weight:700;font-size:.9rem;margin:0 0 8px;padding:0 4px;color:#284b3e}
+.progress-label{display:block;font-size:.62rem;font-weight:700;letter-spacing:.15em;color:#60785f;margin-bottom:8px;line-height:1.5}
+.progress-figures figcaption small{display:block;font-weight:400;font-size:.7rem;margin-top:5px;color:#5f7164}
+.progress-chart{--chart-ink:#377056;--chart-light:#abd2ad;--chart-soft:#e6eee1;position:relative;min-width:0;padding:4px 0 0}
+.progress-chart.peach{--chart-ink:#a55c43;--chart-light:#ebc3a7;--chart-soft:#f3e2d5}
+.progress-plot{display:block;width:100%;height:auto;max-height:none;overflow:visible}
+.progress-stop-top{stop-color:var(--chart-ink);stop-opacity:.9}.progress-stop-bottom{stop-color:var(--chart-light);stop-opacity:.45}
+.progress-plot .plot-axis line{stroke:#d5dfd0;stroke-dasharray:3 6;stroke-width:.8}
+.progress-plot .plot-axis text{fill:#657264;font:16px system-ui,sans-serif}
+.progress-plot .progress-line{fill:none;stroke:var(--chart-ink);stroke-width:3.2;stroke-linejoin:round;stroke-linecap:round}
+.progress-area{opacity:.17}
+.progress-point{cursor:pointer;outline:none}.progress-plot .progress-hit{fill:transparent;stroke:none}
+.progress-plot .progress-dot{fill:var(--chart-ink);stroke:#fffef8;stroke-width:2}
+.progress-plot .progress-halo{fill:var(--chart-ink);opacity:0;transition:opacity .18s}
+.progress-point.is-active .progress-halo,.progress-point:focus-visible .progress-halo{opacity:.15}
+.progress-point.is-active .progress-bar,.progress-point:focus-visible .progress-bar{stroke:var(--chart-ink);stroke-width:2}
+.progress-point:focus-visible .progress-hit{stroke:var(--chart-ink);stroke-width:1;stroke-dasharray:3 3}
+.progress-goal{fill:none;stroke:#9a752d;stroke-width:2.5;stroke-linecap:round;stroke-dasharray:3 4}
+.progress-readout{min-height:2.5em;display:flex;align-items:center;justify-content:center;text-align:center;padding:7px 10px;border:1px solid transparent;border-radius:12px;color:#657264;font-size:.69rem;line-height:1.5;transition:background .2s,border-color .2s}
+.has-selection .progress-readout{background:var(--chart-soft);border-color:#c8d5c7;color:#294b3c;font-weight:600}
+.progress-values{font-size:.74rem;color:#4e6554;margin:10px 0 12px}
+.progress-values summary{cursor:pointer;padding:8px 2px;min-height:32px}
+.progress-values>div{overflow:auto;max-height:15rem}.progress-values table{border-collapse:collapse;width:100%;margin:8px 0;font-size:.75rem}.progress-values th,.progress-values td{padding:8px 7px;text-align:left;border-bottom:1px solid #dce3d7}
+.progress-caption{font-size:.71rem!important;line-height:1.6;color:#637362;margin:12px 0 4px!important}
+.progress-legend{display:flex;gap:18px;flex-wrap:wrap;color:#5e705e;font-size:.7rem;margin:12px 0}.progress-legend span{display:flex;align-items:center;gap:6px}.progress-legend i{width:8px;height:8px;border-radius:3px;background:#5a8968}.progress-legend .goal{height:0;width:15px;border-top:2px dashed #9a752d;background:none;border-radius:0}
+.progress-empty{min-height:145px;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:24px;text-align:center;background:linear-gradient(120deg,#f4f6ed,#fff9f0);border:1px dashed #cad6c2;border-radius:18px;margin:12px 0;color:#5f725e}
+.progress-empty svg{width:100px;height:44px;fill:none;stroke:#8fa88a;stroke-width:2}.progress-empty circle{fill:#e8c2ac}.progress-empty p{font-size:.82rem;line-height:1.7;margin:12px 0 0}
+
+.weekly-overview{border:1px solid #9daf9a;border-radius:26px;background:linear-gradient(115deg,#f0f4e6,#fffaf0 65%,#fae9df);box-shadow:4px 5px 0 #e8b8a880;overflow:hidden;margin:0 0 24px;padding:22px;container-type:inline-size;color:#294d3e}
+.week-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px}.week-toolbar>.progress-label{margin:0 auto 0 0}.week-toolbar>div{display:flex;gap:3px;background:#fffdf6;border:1px solid #c7d2bf;padding:4px;border-radius:30px}
+.week-toolbar button{font-family:inherit;border:0;background:transparent;color:#4d6655;font-size:.72rem;font-weight:600;border-radius:30px;padding:8px 12px;cursor:pointer;box-shadow:none;min-height:34px}
+.week-toolbar button[aria-pressed=true]{background:#315e48;color:#fffdf3;box-shadow:0 2px 4px #274a3717}
+.week-toolbar>[data-week-refresh]{border:1px solid #c7d2bf;background:#fffdf6;width:36px;height:36px;padding:0;font-size:1.15rem}
+.week-toolbar button:focus-visible,.week-day:focus-visible{outline:2px solid #a36d47;outline-offset:3px}
+.week-status{font-size:.78rem;margin:4px 0 12px;color:#52654e}.week-status:empty{display:none}
+.week-intro{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:20px}
+.week-intro h2{font-family:inherit;font-size:clamp(1.45rem,3vw,2rem);line-height:1.2;letter-spacing:-.055em;margin:0 0 10px!important;color:#274c3a;font-weight:700}
+.week-intro p{font-size:.75rem!important;line-height:1.5;margin:0!important;color:#64745c}
+.week-orbit{position:relative;width:112px;height:112px;flex:none;display:grid;place-content:center;text-align:center}
+.week-orbit svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);fill:none;stroke-width:6;overflow:visible}.week-orbit-track{stroke:#dde6d2}.week-orbit-value{stroke:#477d56;stroke-linecap:round;filter:drop-shadow(0 2px 3px #476d3c1a)}
+.week-orbit strong{font-size:1.8rem;line-height:1;letter-spacing:-.05em;font-variant-numeric:tabular-nums}.week-orbit strong small{font-size:.8rem;font-weight:500;color:#6d7d62;margin-left:1px}.week-orbit>span{font-size:.48rem;margin-top:7px;font-weight:600}
+.week-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.week-stat{position:relative;display:flex;flex-direction:column;align-items:start;gap:7px;background:#fcfff7cc;border:1px solid #c7d6be;border-radius:19px;padding:16px;min-width:0;transition:transform .2s,box-shadow .2s}
+.week-stat.aqua{background:#eaf3edcc;border-color:#bfd4c8}.week-stat.peach{background:#fae8decc;border-color:#e3c5b5}.week-stat.sand{background:#f5eedccc;border-color:#ddd0ad}
+.week-stat-icon{display:grid;place-items:center;background:#fffdf6ba;width:31px;height:31px;border-radius:11px;border:1px solid #b5c7ad;color:#3c6650;font-size:1.2rem;margin-bottom:3px}
+.week-stat-icon svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.week-stat>span:not(.week-stat-icon){font-size:.69rem;font-weight:600;line-height:1.5}.week-stat strong{font-size:2rem;line-height:1.15;letter-spacing:-.055em;font-variant-numeric:tabular-nums}.week-stat small{font-size:.65rem;line-height:1.6;color:#5c705c;max-width:100%;overflow-wrap:anywhere}
+.week-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;margin-top:20px}
+.week-day{font:inherit;display:flex;flex-direction:column;align-items:center;gap:8px;padding:11px 2px;border:1px solid #d4ddca;border-radius:15px;background:#fffcf5;color:#60705b;cursor:pointer;box-shadow:none;min-width:0;transition:background .2s,transform .2s}
+.week-day>span:first-child{font-size:.58rem;font-weight:600;letter-spacing:.04em}.week-day>strong{font-size:1.08rem;font-weight:600}.week-day.has-records{background:#e7efde;border-color:#b3c5a8;color:#365b41}.week-day[aria-pressed=true]{background:#315e48;color:#fffef5;border-color:#315e48;box-shadow:2px 3px 0 #e5b49f}.week-day.is-future{opacity:.4;cursor:default}
+.week-day-dots{display:flex;gap:3px;height:5px}.week-day-dots i{width:5px;height:5px;border-radius:50%;background:#b5c2ad55}.week-day-dots .workout{background:#55804b}.week-day-dots .water{background:#65a196}.week-day-dots .meal{background:#cc8a6c}.week-day[aria-pressed=true] .week-day-dots .workout{background:#c0e3ad}
+.week-day-detail{font-size:.72rem;line-height:1.7;min-height:1.7em;margin:12px 0 0;color:#4d654f}
+@container(max-width:680px){.week-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(hover:hover){.week-stat:hover{transform:translateY(-3px);box-shadow:0 8px 18px #36523a10}.week-day:not(:disabled):hover{transform:translateY(-2px)}}
+@media(max-width:540px){.weekly-overview{padding:17px;border-radius:22px}.week-toolbar{gap:8px;margin-bottom:16px}.week-toolbar>.progress-label{width:100%}.week-toolbar>div{margin-right:auto}.week-toolbar button{font-size:.69rem;padding:7px 10px}.week-intro{gap:10px}.week-intro h2{font-size:1.5rem}.week-orbit{width:88px;height:88px}.week-orbit strong{font-size:1.5rem}.week-orbit>span{font-size:.4rem}.week-stat{padding:13px 11px}.week-stat strong{font-size:1.8rem}.week-days{gap:4px}.week-day{border-radius:12px}.week-day>span:first-child{font-size:.5rem}.week-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.progress-totals{gap:8px}.progress-metric{padding:13px 15px}.progress-plot .plot-axis text{font-size:20px}.progress-readout{font-size:.65rem}.progress-figures figure{padding:15px 8px 5px}}
+@media(prefers-reduced-motion:no-preference){
+  .is-progress-armed.is-progress-visible .progress-line{animation:progress-draw 1.1s cubic-bezier(.22,1,.36,1) both}
+  .is-progress-armed.is-progress-visible .progress-bar{transform-origin:center 174px;animation:progress-grow .8s cubic-bezier(.22,1,.36,1) both;animation-delay:var(--point-delay)}
+  .is-progress-armed.is-progress-visible .progress-area{animation:progress-fill 1.2s both}
+  .is-progress-armed.is-progress-visible .progress-metric,.is-progress-armed.is-progress-visible .week-stat{animation:progress-arrive .55s both}
+  .is-progress-visible .week-stat:nth-child(2){animation-delay:80ms}.is-progress-visible .week-stat:nth-child(3){animation-delay:160ms}.is-progress-visible .week-stat:nth-child(4){animation-delay:240ms}
+  .is-progress-armed.is-progress-visible .week-orbit-value{animation:progress-orbit 1.1s cubic-bezier(.22,1,.36,1) both}
+  @keyframes progress-draw{from{stroke-dasharray:1;stroke-dashoffset:1}to{stroke-dasharray:1;stroke-dashoffset:0}}
+  @keyframes progress-grow{from{transform:scaleY(.02)}to{transform:scaleY(1)}}
+  @keyframes progress-fill{from{opacity:0}to{opacity:.17}}
+  @keyframes progress-arrive{from{opacity:.4;transform:translateY(9px)}to{opacity:1;transform:none}}
+  @keyframes progress-orbit{from{stroke-dasharray:0 100}}
+}
+@media(prefers-reduced-motion:reduce){.progress-chart *,.weekly-overview *{animation:none!important;transition:none!important}}
+@media print{.week-toolbar,.progress-readout{display:none}.progress-values{break-inside:avoid}.weekly-overview{box-shadow:none}.progress-plot{max-height:220px}}
