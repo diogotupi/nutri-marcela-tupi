@@ -1,6 +1,9 @@
 import {dateKey,subtractDays,datesInRange} from './metrics.mjs';
 export {dateKey,subtractDays,datesInRange};
 export const categoryNames={journey:'Journey',legacy:'Legacy',single:'Avulso'};
+export function isPatientInactive(patient,today=dateKey()){
+ return Boolean(patient.enrollment_id&&patient.ends_on&&patient.ends_on<=today);
+}
 export function patientState(p,today=dateKey()){
  if(p.enrollment_status==='active'&&p.ends_on<=today)return 'expired';
  if(!p.enrollment_id||p.enrollment_status==='closed'||p.starts_on>today)return 'neutral';

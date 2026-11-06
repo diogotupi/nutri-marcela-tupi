@@ -7,6 +7,11 @@
 .taco-food-binding{display:grid;gap:8px;margin:12px 0;padding:12px;border:1px solid #d3ddd1;border-radius:12px;background:#f3f7ef}.taco-food-binding>small{font-size:.75rem;color:#53695c;line-height:1.5}.taco-reference{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:.8rem}.taco-food-picker{padding:14px;border:1px solid #9db39d;border-radius:12px;background:#fffdf9}.taco-food-picker header{display:flex;justify-content:space-between;align-items:center;gap:8px}.taco-food-picker [data-taco-results]{max-height:260px;overflow:auto;margin-top:10px}.taco-search-result{display:grid;gap:4px;text-align:left;width:100%;border:1px solid #dde4d9;border-radius:10px;margin-bottom:7px;padding:12px;background:#fffdf9;color:#24483e}.taco-search-result span{font-size:.74rem;font-weight:400}.taco-search-result:hover{background:#edf4e8}.taco-search-result:disabled{opacity:.5;cursor:default}
 
 .rail-notifications { width: 100%; text-align: left; margin-bottom: .6rem; }
+.patient-row.is-inactive { background:#f0f1ee; border-color:#d0d4ce; color:#606861; }
+.patient-row.is-inactive small { color:#666e67; }
+.patient-row.is-inactive .dot { background:#8a938b; }
+.patient-row.is-inactive:hover { background:#e8ebe6; border-color:#9aa59c; }
+.patient-row.is-inactive.selected { background:#e4e8e2; border-color:#87958a; box-shadow:inset 3px 0 0 #87958a; }
 .clinic-activities { max-width: 60rem; margin: auto; }
 .activity-row { padding: 1rem 0; border-top: 1px solid #d7dfd5; }
 .activity-row header { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: space-between; }

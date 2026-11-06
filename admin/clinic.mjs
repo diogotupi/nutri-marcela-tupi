@@ -5,7 +5,7 @@ import {requireAuth,signOut,fetchDietWithMeals,createDiet,saveDietBuilder} from 
 import {listClinical,addClinical,getSignedAttachment} from '../js/clinical.js';
 import {mountPatientChat} from '../js/patient-chat.js';
 import {mountDietEditor,blankDiet,dietFromRows,validateDietDraft} from './diet-editor.mjs?v=20261102-fallback';
-import {dateKey,subtractDays,datesInRange,patientState,stateNames,categoryNames,calendarRange,contactState,mealEntries,auditSentence} from './clinic-model.mjs?v=20261102-taco';
+import {dateKey,subtractDays,datesInRange,isPatientInactive,patientState,stateNames,categoryNames,calendarRange,contactState,mealEntries,auditSentence} from './clinic-model.mjs?v=20261106-inactive';
 
 import {mountActivityCenter,pendingActivities} from './activity-center.mjs';
 import {mountMaterialLibrary} from '../js/material-library.mjs';
@@ -40,16 +40,17 @@ function modal(title,html,save,{button='Salvar'}={}){
 }
 function matchesFilter(p,k) {
  if(k==='all')return true;
+ if(k==='inactive')return isPatientInactive(p);
  if(k==='overdue')return patientState(p)==='late';
  if(k==='nanny')return Boolean(p.nanny_enabled);
  return p.category===k;
 }
 function renderRail(){
  $('#patient-count').textContent=`${patients.length} paciente${patients.length===1?'':'s'} · ${patients.filter(p=>p.enrollment_status==='active'&&p.starts_on<=dateKey()&&p.ends_on>dateKey()).length} em acompanhamento`;
- $('#patient-filters').innerHTML=[['all','Todos'],...Object.entries(categoryNames),['nanny','Modo Babá'],['overdue','Contato atrasado']].map(([k,v])=>`<button type="button" data-filter="${k}" class="${filter===k?'selected':''}" aria-pressed="${filter===k}">${v} (${patients.filter(p=>matchesFilter(p,k)).length})</button>`).join('');
+ $('#patient-filters').innerHTML=[['all','Todos'],...Object.entries(categoryNames),['nanny','Modo Babá'],['overdue','Contato atrasado'],['inactive','Inativos']].map(([k,v])=>`<button type="button" data-filter="${k}" class="${filter===k?'selected':''}" aria-pressed="${filter===k}">${v} (${patients.filter(p=>matchesFilter(p,k)).length})</button>`).join('');
  const search=$('#patient-search').value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
  const list=patients.filter(p=>matchesFilter(p,filter)&&p.full_name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(search));
- $('#patient-list').innerHTML=list.length?list.map(p=>{const state=patientState(p);return `<button class="patient-row ${selected===p.id?'selected':''}" data-patient="${p.id}" aria-label="${esc(p.full_name)} · ${stateNames[state]}"><i class="dot ${state}" aria-hidden="true"></i><span><strong>${esc(p.full_name)}</strong><small>${categoryNames[p.category]||'Sem acompanhamento'}${p.nanny_enabled?' · Babá':''}${p.unread?' · '+Number(p.unread)+' nova(s) no chat':''}</small></span><span aria-hidden="true">›</span></button>`;}).join(''):empty(patients.length?'Nenhum paciente encontrado.':'Comece pelo ＋ para cadastrar o primeiro paciente.');
+ $('#patient-list').innerHTML=list.length?list.map(p=>{const state=patientState(p),inactive=isPatientInactive(p);return `<button class="patient-row ${inactive?'is-inactive':''} ${selected===p.id?'selected':''}" data-patient="${p.id}" aria-label="${esc(p.full_name)} · ${inactive?'Inativo · Período vencido':stateNames[state]}"><i class="dot ${state}" aria-hidden="true"></i><span><strong>${esc(p.full_name)}</strong><small>${categoryNames[p.category]||'Sem acompanhamento'}${inactive?' · Inativo':''}${p.nanny_enabled?' · Babá':''}${p.unread?' · '+Number(p.unread)+' nova(s) no chat':''}</small></span><span aria-hidden="true">›</span></button>`;}).join(''):empty(patients.length?'Nenhum paciente encontrado.':'Comece pelo ＋ para cadastrar o primeiro paciente.');
 }
 async function updatePending(){const n=await pendingActivities(db);$('#pending-count').textContent=n?'('+n+')':'';}
 async function loadPatients(){updatePending().catch(()=>{});const [list,inbox]=await Promise.all([rpc('crm_list'),rpc('patient_chat_inbox')]);patients=(list||[]).map(p=>({...p,unread:(inbox||[]).find(c=>c.id===p.id||c.patient_id===p.id)?.unread||0}));renderRail();}
