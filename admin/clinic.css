@@ -9,9 +9,11 @@
 .rail-notifications { width: 100%; text-align: left; margin-bottom: .6rem; }
 .patient-row.is-inactive { background:#f0f1ee; border-color:#d0d4ce; color:#606861; }
 .patient-row.is-inactive small { color:#666e67; }
-.patient-row.is-inactive .dot { background:#8a938b; }
 .patient-row.is-inactive:hover { background:#e8ebe6; border-color:#9aa59c; }
 .patient-row.is-inactive.selected { background:#e4e8e2; border-color:#87958a; box-shadow:inset 3px 0 0 #87958a; }
+.color-filters { padding:0 0 12px; }
+.color-filters button { display:inline-flex; align-items:center; gap:5px; min-height:30px; }
+.color-filters .dot { margin:0; }
 .clinic-activities { max-width: 60rem; margin: auto; }
 .activity-row { padding: 1rem 0; border-top: 1px solid #d7dfd5; }
 .activity-row header { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: space-between; }

@@ -13,7 +13,7 @@ import {mountFreeMealTeam} from './free-meal.mjs';
 import {mountDescribedHistory} from '../js/described-swap-history.mjs';
 
 const db=getSupabase(),$=s=>document.querySelector(s),view=$('#clinic-view'),dialog=$('#clinic-dialog'),form=$('#clinic-form');
-let actor,patients=[],selected=null,detail=null,tab='summary',filter='all',days=7,anchor=dateKey(),mode='week',epoch=0,disposeChat=null,disposeEditor=null,dirty=false,saving=false;
+let actor,patients=[],selected=null,detail=null,tab='summary',filter='all',colorFilter='all',days=7,anchor=dateKey(),mode='week',epoch=0,disposeChat=null,disposeEditor=null,dirty=false,saving=false;
 const fmt=d=>d?new Date(d.slice(0,10)+'T12:00:00Z').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'UTC'}):'—';
 const stamp=d=>new Date(d).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'});
 const field=(name,label,type='text',value='',extra='')=>`<label>${label}<input name="${name}" type="${type}" value="${esc(value??'')}" ${extra}></label>`;
@@ -45,12 +45,16 @@ function matchesFilter(p,k) {
  if(k==='nanny')return Boolean(p.nanny_enabled);
  return p.category===k;
 }
+function railState(patient){return isPatientInactive(patient)?'expired':patientState(patient);}
 function renderRail(){
  $('#patient-count').textContent=`${patients.length} paciente${patients.length===1?'':'s'} · ${patients.filter(p=>p.enrollment_status==='active'&&p.starts_on<=dateKey()&&p.ends_on>dateKey()).length} em acompanhamento`;
  $('#patient-filters').innerHTML=[['all','Todos'],...Object.entries(categoryNames),['nanny','Modo Babá'],['overdue','Contato atrasado'],['inactive','Inativos']].map(([k,v])=>`<button type="button" data-filter="${k}" class="${filter===k?'selected':''}" aria-pressed="${filter===k}">${v} (${patients.filter(p=>matchesFilter(p,k)).length})</button>`).join('');
  const search=$('#patient-search').value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
- const list=patients.filter(p=>matchesFilter(p,filter)&&p.full_name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(search));
- $('#patient-list').innerHTML=list.length?list.map(p=>{const state=patientState(p),inactive=isPatientInactive(p);return `<button class="patient-row ${inactive?'is-inactive':''} ${selected===p.id?'selected':''}" data-patient="${p.id}" aria-label="${esc(p.full_name)} · ${inactive?'Inativo · Período vencido':stateNames[state]}"><i class="dot ${state}" aria-hidden="true"></i><span><strong>${esc(p.full_name)}</strong><small>${categoryNames[p.category]||'Sem acompanhamento'}${inactive?' · Inativo':''}${p.nanny_enabled?' · Babá':''}${p.unread?' · '+Number(p.unread)+' nova(s) no chat':''}</small></span><span aria-hidden="true">›</span></button>`;}).join(''):empty(patients.length?'Nenhum paciente encontrado.':'Comece pelo ＋ para cadastrar o primeiro paciente.');
+ const matching=patients.filter(p=>matchesFilter(p,filter)&&p.full_name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(search));
+ const colors=[['all','Todas as cores','Todas as cores'],['ok','Em dia','Verdes'],['due','Contato hoje','Roxos'],['late','Atrasados','Amarelos'],['expired','Vencidos','Vermelhos'],['neutral','Sem acompanhamento','Cinzas']];
+ $('#patient-color-filters').innerHTML=colors.map(([state,label,color])=>{const count=matching.filter(p=>state==='all'||railState(p)===state).length;return `<button type="button" data-color="${state}" class="${colorFilter===state?'selected':''}" aria-pressed="${colorFilter===state}" aria-label="${state==='all'?color:color+' · '+label} (${count})" title="${color} · ${label}">${state==='all'?'':`<i class="dot ${state}" aria-hidden="true"></i>`}${label} (${count})</button>`;}).join('');
+ const list=matching.filter(p=>colorFilter==='all'||railState(p)===colorFilter);
+ $('#patient-list').innerHTML=list.length?list.map(p=>{const state=railState(p),inactive=isPatientInactive(p);return `<button class="patient-row ${inactive?'is-inactive':''} ${selected===p.id?'selected':''}" data-patient="${p.id}" aria-label="${esc(p.full_name)} · ${inactive?'Inativo · Período vencido':stateNames[state]}"><i class="dot ${state}" aria-hidden="true"></i><span><strong>${esc(p.full_name)}</strong><small>${categoryNames[p.category]||'Sem acompanhamento'}${inactive?' · Inativo':''}${p.nanny_enabled?' · Babá':''}${p.unread?' · '+Number(p.unread)+' nova(s) no chat':''}</small></span><span aria-hidden="true">›</span></button>`;}).join(''):empty(patients.length?'Nenhum paciente encontrado.':'Comece pelo ＋ para cadastrar o primeiro paciente.');
 }
 async function updatePending(){const n=await pendingActivities(db);$('#pending-count').textContent=n?'('+n+')':'';}
 async function loadPatients(){updatePending().catch(()=>{});const [list,inbox]=await Promise.all([rpc('crm_list'),rpc('patient_chat_inbox')]);patients=(list||[]).map(p=>({...p,unread:(inbox||[]).find(c=>c.id===p.id||c.patient_id===p.id)?.unread||0}));renderRail();}
@@ -188,6 +192,7 @@ async function action(name){
 document.addEventListener('click',async event=>{const b=event.target.closest('button,[data-patient]');if(!b)return;try{
  if(b.hasAttribute('data-close-dialog'))return closeDialog();
  if(b.dataset.patient)return await openPatient(b.dataset.patient);if(b.dataset.filter){filter=b.dataset.filter;renderRail();return;}
+ if(b.dataset.color){colorFilter=b.dataset.color;renderRail();return;}
  if(b.dataset.tab){tab=b.dataset.tab;renderHeader();renderPanel();return;}
  if(b.dataset.days){days=Number(b.dataset.days);return await refreshPatient();}
  if(b.dataset.mode){mode=b.dataset.mode;return await calendar();}
