@@ -1,11 +1,11 @@
-import {mountWeeklyOverview} from './weekly-overview.js?v=20261106-visual';
+import {mountWeeklyOverview} from './weekly-overview.js?v=20261108-week-story';
 import { getSupabase, getLocalDateString, escapeHtml as esc } from '../js/app-core.js';
 import { addClinical, uploadAttachment, getSignedAttachment } from '../js/clinical.js';
 import { preparePhotoUpload } from '../js/media-upload.js';
 import {mountWeightCheckin} from './weight-checkin.js?v=20261106-visual';
 import {mountWorkoutProgress} from './workout-progress.js?v=20261106-visual';
 import {celebrateWorkout} from './workout-celebration.js';
-import {openWorkoutStory} from './workout-story.js?v=20261108-story';
+import {openWorkoutStory} from './workout-story.js?v=20261108-week-story';
 import { intensityLabel } from './patient-model.mjs';
 import {openMealPhotoPicker} from './meal-photo.js?v=20261030-patient2';
 
@@ -44,7 +44,7 @@ export async function initPatientExtras(profile) {
       <img src="/assets/story-treino-exemplo.jpg" alt="" loading="lazy" width="81" height="144">
       <div>
         <h3 id="story-invite-title">Faz o Básico Club</h3>
-        <p>Uma foto do treino com os seus registros do dia.</p>
+        <p>Sua foto do treino com os registros do dia ou da semana.</p>
         <button type="button" class="app-btn app-btn--primary" data-create-workout-story>Criar Story do treino <span aria-hidden="true">↗</span></button>
       </div>
     </section>`);

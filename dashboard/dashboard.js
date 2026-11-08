@@ -23,7 +23,7 @@ import {
 } from '../js/auth.js?v=20261102-taco';
 import { initGuidesPanel } from './guides-panel.js?v=20261105-materials';
 import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js?v=20261106-visual';
-import { initPatientExtras, bindMealExtras, mealExtrasMarkup, notifyPatientSaved } from './patient-extras.js?v=20261108-story';
+import { initPatientExtras, bindMealExtras, mealExtrasMarkup, notifyPatientSaved } from './patient-extras.js?v=20261108-week-story';
 import {splitDietNotes,mealOptionsFromRows,selectedMealOptions} from '../js/diet-content.mjs?v=20261031-options';
 import {confirmAdditionalOption} from './meal-options.js?v=20261031-options';
 import { hydrationMeter } from './patient-model.mjs?v=20261030-water';

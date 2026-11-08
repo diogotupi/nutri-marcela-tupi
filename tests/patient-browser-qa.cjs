@@ -11,6 +11,10 @@ async (existingPage) => {
   page.on('pageerror', error => errors.push(error.message));
   const uid='11111111-1111-4111-8111-111111111111', pid='22222222-2222-4222-8222-222222222222';
   const today = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const shift = (day, n) => new Date(Date.parse(day + 'T12:00Z') + n * 86400000).toISOString().slice(0, 10);
+  const monday = shift(today, -((new Date(today + 'T12:00Z').getUTCDay() + 6) % 7));
+  const lastSunday = shift(monday, -1);
+  let storyHistory = false;
   const profile={id:pid,user_id:uid,username:'demonstracao',full_name:'Paciente Demonstração',role:'patient'};
   let accessState='open', hasDiet=true;
   let water=0, failNextWater=true, failNextLapse=true, failClinical=false, noWaterGoal=false, failNextMessage=true;
@@ -40,6 +44,15 @@ async (existingPage) => {
     if(table==='profiles') data=[profile];
     if(table==='patient_goals') data=noWaterGoal?[]:[{id:'g1',patient_id:pid,water_ml:1800,valid_from:'2020-01-01'}];
     if(table==='patient_water_logs') data=water?[{id:'water1',patient_id:pid,log_date:today,amount_ml:water,goal_ml:1800}]:[];
+    if (table === 'patient_water_logs' && storyHistory && url.searchParams.get('select') === 'log_date,amount_ml') {
+      assert(url.searchParams.get('patient_id') === 'eq.' + pid, 'Weekly hydration must belong to the patient');
+      const bounds = url.searchParams.getAll('log_date');
+      const from = bounds.find(b => b.startsWith('gte.')).slice(4);
+      const until = bounds.find(b => b.startsWith('lte.')).slice(4);
+      if (monday !== today) data.push({log_date:monday,amount_ml:1250});
+      data.push({log_date:lastSunday,amount_ml:3750});
+      data = data.filter(row => row.log_date >= from && row.log_date <= until);
+    }
     if(table==='diets' && hasDiet) data=[{id:'diet1',patient_id:pid,title:'Plano DEMONSTRAÇÃO',notes:'Orientações de DEMONSTRAÇÃO\n\nAnexos do PDF\nLista de substituição\nReceita DEMONSTRAÇÃO <texto literal>',status:'active',start_date:today,created_at:new Date().toISOString()}];
     if(table==='diet_meals') data=[meal];
     if(table==='patient_food_substitutions')data=swaps;
@@ -96,6 +109,19 @@ async (existingPage) => {
       }
       data=method==='POST'?[clinical[0]]:clinical;
       if(url.searchParams.get('id')?.startsWith('eq.'))data=data.filter(row=>row.id===url.searchParams.get('id').slice(3));
+      const fields = url.searchParams.get('select');
+      if (fields === 'kind,occurred_at,intensity:payload->>intensity,category:payload->>category') {
+        assert(url.searchParams.get('patient_id') === 'eq.' + pid && url.searchParams.get('visibility') === 'eq.shared', 'Weekly activity must be shared with this patient');
+        data = data.map(row => ({kind:row.kind, occurred_at:row.occurred_at, intensity:row.payload.intensity, category:row.payload.category}));
+      }
+      if (fields === 'occurred_at,weight_kg:payload->>weight_kg') {
+        assert(url.searchParams.get('patient_id') === 'eq.' + pid && url.searchParams.get('visibility') === 'eq.shared' && url.searchParams.get('archived_at') === 'is.null', 'Weight history must be scoped to the patient’s visible records');
+        assert(url.searchParams.getAll('or').includes('(status.eq.reviewed,created_by.eq.' + pid + ')'), 'Only clinician-reviewed or self-reported weights may appear on the Story');
+        const before = Date.parse(url.searchParams.get('occurred_at').slice(3));
+        data = storyHistory ? [[shift(today,-28),80],[lastSunday,78],[today,76],[shift(today,1),68]]
+          .map(([measured,weight_kg]) => ({occurred_at:measured+'T12:00:00-03:00',weight_kg}))
+          .filter(row => Date.parse(row.occurred_at) < before) : [];
+      }
       if (method === 'GET' && url.searchParams.get('select') === 'intensity:payload->>intensity') {
         const start = new Date(today + 'T00:00:00-03:00').getTime();
         const end = start + 86400000;
@@ -276,9 +302,42 @@ async (existingPage) => {
       await page.evaluate(restore => restore(), mockSharing);
       await mockSharing.dispose();
       await dialog.screenshot({path:'.playwright-mcp/story-mobile.png'});
+      storyHistory = true;
+      const weekly = page.getByRole('dialog',{name:'Story da semana'});
+      const weeklyDownload = weekly.locator('[data-download][href]');
+      await dialog.getByRole('radio',{name:'Esta semana',exact:true}).check();
+      await weeklyDownload.waitFor();
+      const weeklyWater = monday === today ? '2,05 L de água' : '3,3 L de água';
+      assert(await weekly.getByRole('checkbox',{name:weeklyWater}).isChecked(),'Weekly volume uses only the chosen week and has its own selection');
+      assert(await weekly.getByRole('checkbox',{name:'1 dia de treino'}).isChecked(),'Weekly workout frequency must use distinct days');
+      assert(await weekly.getByRole('checkbox',{name:'1 refeição concluída'}).isChecked(),'Weekly meals must use the weekly recap definition');
+      const weightBadge = weekly.getByRole('checkbox',{name:'5% abaixo do peso inicial'});
+      assert(!await weightBadge.isChecked() && !(await weekly.locator('canvas').getAttribute('aria-label')).includes('peso inicial'), 'Weight must be opt-in');
+      await weightBadge.check();
+      await weeklyDownload.waitFor();
+      const artLabel = await weekly.locator('canvas').getAttribute('aria-label');
+      assert(artLabel.includes('5% abaixo do peso inicial') && artLabel.includes('Pesagens de') && !artLabel.includes(' kg'), 'Personal Story must carry the percentage and the measurement dates');
+      assert(await weeklyDownload.getAttribute('download') === 'faz-o-basico-club-semana-' + monday + '_' + today + '.jpg', 'Weekly download must identify its actual interval');
+      await weekly.screenshot({path:'.playwright-mcp/story-week-mobile.png'});
+      await weekly.getByRole('radio',{name:'Semana passada'}).check();
+      await weeklyDownload.waitFor();
+      assert(await weekly.getByRole('checkbox',{name:'3,75 L de água'}).isChecked() && !await weekly.getByRole('checkbox',{name:'2,5% abaixo do peso inicial'}).isChecked(), 'Past weeks must not inherit later measurements or consent');
+      await weekly.getByRole('radio',{name:'Hoje',exact:true}).check();
+      await ready.waitFor();
+      assert(!await badge('water').isChecked(), 'Switching periods must retain choices for the daily Story');
       await page.setViewportSize({width:1440,height:1000});
       await dialog.screenshot({path:'.playwright-mcp/story-desktop.png'});
       await dialog.getByRole('button',{name:'Fechar editor do Story'}).click();
+      const overview = page.locator('#patient-weekly-overview');
+      await overview.locator('[data-week="-1"]').click();
+      await overview.getByRole('button',{name:'Criar Story da semana'}).click();
+      await weekly.getByRole('checkbox',{name:'3,75 L de água'}).waitFor();
+      assert(await weekly.getByRole('radio',{name:'Semana passada'}).isChecked() && !await weekly.locator('[data-example]').isVisible(), 'Opening from the overview must use the selected week with real statistics');
+      await weekly.screenshot({path:'.playwright-mcp/story-week-desktop.png'});
+      await weekly.press('Escape');
+      await weekly.waitFor({state:'detached'});
+      await overview.locator('[data-week="0"]').click();
+      storyHistory = false;
       water = 0;
       checks.pop();
       failClinical = true;

@@ -11,12 +11,38 @@ const decimal = new Intl.NumberFormat('pt-BR', {maximumFractionDigits: 3});
 const dateFormat = new Intl.DateTimeFormat('pt-BR', {
   day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC'
 });
+const number = new Intl.NumberFormat('pt-BR', {maximumFractionDigits: 1});
+const shortDate = day => day.slice(8, 10) + '/' + day.slice(5, 7);
+const fullDate = day => shortDate(day) + '/' + day.slice(0, 4);
+const waterLabel = ml => (ml < 1000 ? decimal.format(ml) + ' ml' : decimal.format(ml / 1000) + ' L') + ' de água';
+
+export function storyWeekLabel({start, until}) {
+  if (start === until) return fullDate(until);
+  const from = start.slice(0, 4) === until.slice(0, 4) ? shortDate(start) : fullDate(start);
+  return from + ' – ' + fullDate(until);
+}
+
+export function weeklyStoryBadges(summary, weight) {
+  const badges = [];
+  if (summary?.water > 0) badges.push({key: 'water', label: waterLabel(summary.water), selected: true});
+  if (summary?.workoutDays > 0) badges.push({key: 'strength', label: summary.workoutDays + (summary.workoutDays === 1 ? ' dia de treino' : ' dias de treino'), selected: true});
+  const meals = summary?.meals.done;
+  if (meals > 0) badges.push({key: 'diet', label: meals + (meals === 1 ? ' refeição concluída' : ' refeições concluídas'), selected: true});
+  if (summary?.waterGoalDays > 0) badges.push({key: 'goal', label: 'Meta de água em ' + summary.waterGoalDays + (summary.waterGoalDays === 1 ? ' dia' : ' dias'), selected: false});
+  if (weight) {
+    const magnitude = Math.abs(weight.percent);
+    const amount = magnitude > 0 && magnitude < 0.1 ? '<0,1' : number.format(magnitude);
+    const label = weight.percent === 0 ? 'Peso · 0% de variação' : amount + '% ' + (weight.percent < 0 ? 'abaixo' : 'acima') + ' do peso inicial';
+    badges.push({key: 'weight', label, selected: false,
+      note: 'Pesagens de ' + fullDate(weight.from) + ' e ' + fullDate(weight.to)});
+  }
+  return badges;
+}
 
 export function storyBadges({waterMl, mealCount, intensity}) {
   const badges = [];
   if (Number.isFinite(waterMl) && waterMl > 0) {
-    const amount = waterMl < 1000 ? decimal.format(waterMl) + ' ml' : decimal.format(waterMl / 1000) + ' L';
-    badges.push({key: 'water', label: amount + ' de água', selected: true});
+    badges.push({key: 'water', label: waterLabel(waterMl), selected: true});
   }
   badges.push({key: 'strength', label: 'Treino de força', selected: false});
   badges.push({key: 'cardio', label: 'Cardio', selected: false});
@@ -60,6 +86,15 @@ export async function prepareStoryPhoto(file) {
 function paintPhoto(context, photo, fit, position) {
   context.fillStyle = INK;
   context.fillRect(0, 0, WIDTH, HEIGHT);
+  if (!photo) {
+    const wash = context.createLinearGradient(0, 0, WIDTH * .8, HEIGHT * .85);
+    wash.addColorStop(0, '#d2dfc8');
+    wash.addColorStop(.48, '#628873');
+    wash.addColorStop(1, '#2c5242');
+    context.fillStyle = wash;
+    context.fillRect(0, 0, WIDTH, HEIGHT);
+    return;
+  }
   const cover = Math.max(WIDTH / photo.width, HEIGHT / photo.height);
   const width = photo.width * cover;
   const height = photo.height * cover;
@@ -99,7 +134,9 @@ const badgeIcons = {
   strength: 'M3 9v6 M6 6v12 M9 9v6 M9 12h6 M15 9v6 M18 6v12 M21 9v6',
   cardio: 'M1 13h5l3-8 5 15 3-9 2 2h4',
   diet: 'M4 3v6q0 3 3 3t3-3V3 M7 3v18 M18 3q-4 3-4 10h4 M18 3v18',
-  intensity: 'M4 19v-4 M9 19v-8 M14 19V7 M19 19V3'
+  intensity: 'M4 19v-4 M9 19v-8 M14 19V7 M19 19V3',
+  goal: 'M12 2C9 7 5 11 5 15a7 7 0 0 0 14 0c0-4-4-8-7-13z M8.5 14.5l2.4 2.5 4.8-5',
+  weight: 'M5 3h14q2 0 2 3v13q0 2-2 2H5q-2 0-2-2V6q0-3 2-3z M7 10a5 5 0 0 1 10 0 M12 11l2-4'
 };
 
 function paintBadge(context, badge, x, y, width) {
@@ -134,7 +171,7 @@ function badgeRows(context, badges) {
   return rows;
 }
 
-export function drawWorkoutStory(canvas, {photo, logo, day, badges, fit = 'cover', position = .5}) {
+export function drawWorkoutStory(canvas, {photo, logo, day, week, badges, fit = 'cover', position = .5}) {
   if (canvas.width !== WIDTH) canvas.width = WIDTH;
   if (canvas.height !== HEIGHT) canvas.height = HEIGHT;
   const context = canvas.getContext('2d');
@@ -161,7 +198,7 @@ export function drawWorkoutStory(canvas, {photo, logo, day, badges, fit = 'cover
   context.drawImage(logo, MARGIN + 30, 263 - logoHeight / 2, logoWidth, logoHeight);
 
   const date = dateFormat.formatToParts(new Date(day + 'T12:00:00Z'));
-  const stamp = date.filter(part => ['day', 'month', 'year'].includes(part.type))
+  const stamp = week ? storyWeekLabel(week) : date.filter(part => ['day', 'month', 'year'].includes(part.type))
     .map(part => part.value.replace('.', '').toUpperCase()).join('  ');
   context.textBaseline = 'middle';
   context.font = '700 27px ' + FONT;
@@ -176,6 +213,11 @@ export function drawWorkoutStory(canvas, {photo, logo, day, badges, fit = 'cover
   context.fillText(stamp, dateX + 45, 263);
 
   const title = 'Faz o básico';
+  if (week) {
+    context.fillStyle = PAPER;
+    context.font = '700 30px ' + FONT;
+    context.fillText('MINHA SEMANA', MARGIN, titleY - 92);
+  }
   context.font = '700 99px ' + FONT;
   const fontSize = Math.min(99, Math.floor(99 * (WIDTH - 2 * MARGIN - 204) / context.measureText(title).width));
   context.font = '700 ' + fontSize + 'px ' + FONT;
@@ -199,5 +241,11 @@ export function drawWorkoutStory(canvas, {photo, logo, day, badges, fit = 'cover
       x += width + 14;
     }
   });
+  const weight = badges.find(badge => badge.key === 'weight');
+  if (weight) {
+    context.fillStyle = PAPER;
+    context.font = '600 26px ' + FONT;
+    context.fillText(weight.note, MARGIN, bottom + 22);
+  }
   context.restore();
 }

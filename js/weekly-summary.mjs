@@ -3,7 +3,8 @@ const dayMs=86400000;
 const addDays=(day,n)=>new Date(Date.parse(day+'T12:00:00Z')+n*dayMs).toISOString().slice(0,10);
 const short=day=>day.slice(8,10)+'/'+day.slice(5,7);
 const format=n=>new Intl.NumberFormat('pt-BR',{maximumFractionDigits:1}).format(n);
-const civilDate=timestamp=>Number.isFinite(Date.parse(timestamp))?new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Sao_Paulo'}).format(new Date(timestamp)):null;
+const clinicDay = new Intl.DateTimeFormat('sv-SE', {timeZone:'America/Sao_Paulo'});
+const civilDate=timestamp=>Number.isFinite(Date.parse(timestamp))?clinicDay.format(new Date(timestamp)):null;
 const iconPaths={
   movement:'<path d="M5 8v8m3-11v14m8-14v14m3-11v8M8 12h8"/>',
   water:'<path d="M12 3C9 7 5 11 5 15a7 7 0 0014 0c0-4-4-8-7-12zM8 15a4 4 0 004 4"/>',
@@ -12,8 +13,30 @@ const iconPaths={
 };
 const icon=key=>`<svg viewBox="0 0 24 24" aria-hidden="true">${iconPaths[key]}</svg>`;
 
+export function weeklyRange(today, offset = 0) {
+  const start = addDays(weekStart(today), offset * 7);
+  const end = addDays(start, 6);
+  return {start, end, until: end < today ? end : today};
+}
+
+export function weightChangeThrough(rows, until) {
+  let first, last;
+  for (const row of rows) {
+    const value = Number(row.weight_kg);
+    const instant = Date.parse(row.occurred_at);
+    if (!Number.isFinite(instant) || !Number.isFinite(value) || value < 1 || value > 700) continue;
+    const day = civilDate(row.occurred_at);
+    if (day > until) continue;
+    const point = {day, instant, value};
+    if (!first || instant < first.instant) first = point;
+    if (!last || instant >= last.instant) last = point;
+  }
+  if (!first || first.day === last.day) return null;
+  return {from: first.day, to: last.day, percent: 100 * (last.value - first.value) / first.value};
+}
+
 export function weeklySummary({today,offset=0,records=[],water=[],goals=[],reports=[],checks=[],items=[]}) {
-  const start=addDays(weekStart(today),offset*7),end=addDays(start,6),until=end<today?end:today;
+  const {start,end,until}=weeklyRange(today,offset);
   const days=Array.from({length:7},(_,i)=>({date:addDays(start,i),water:null,goal:null,workouts:0,meals:0,difficulties:0}));
   const map=new Map(days.map(d=>[d.date,d])),inside=day=>day>=start&&day<=until;
   const sortedGoals=[...goals].sort((a,b)=>a.valid_from.localeCompare(b.valid_from));

@@ -1,5 +1,7 @@
 import {getLocalDateString, getSupabase} from '../js/app-core.js';
-import {drawWorkoutStory, loadStoryImage, prepareStoryPhoto, storyBadges} from './workout-story-art.mjs';
+import {weeklyRange} from '../js/weekly-summary.mjs?v=20261108-week-story';
+import {loadPatientWeek, loadStoryWeight} from './weekly-data.js?v=20261108-week-story';
+import {drawWorkoutStory, loadStoryImage, prepareStoryPhoto, storyBadges, storyWeekLabel, weeklyStoryBadges} from './workout-story-art.mjs?v=20261108-week-story';
 
 const exampleUrl = '/assets/story-treino-exemplo.jpg';
 const logoUrl = '/assets/logo-horizontal.png';
@@ -41,6 +43,14 @@ const editorMarkup = `
       <figcaption data-example-label>Exemplo</figcaption>
     </figure>
     <div class="story-source">
+      <fieldset class="story-period">
+        <legend>Período do Story</legend>
+        <div class="story-choices">
+          <label><input type="radio" name="period" value="day">Hoje</label>
+          <label><input type="radio" name="period" value="week">Esta semana</label>
+          <label><input type="radio" name="period" value="previous">Semana passada</label>
+        </div>
+      </fieldset>
       <h3>Sua foto</h3>
       <div class="story-source-actions">
         <button type="button" class="app-btn app-btn--primary" data-pick="gallery">Escolher da galeria</button>
@@ -48,18 +58,19 @@ const editorMarkup = `
       </div>
       <input type="file" name="gallery" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" hidden>
       <input type="file" name="camera" accept="image/*" capture="user" hidden>
-      <p class="story-hint">A foto é preparada no seu aparelho.</p>
+      <p class="story-hint">Escolha uma foto para baixar ou compartilhar seu Story.</p>
       <p class="story-feedback" data-photo-status role="status"></p>
     </div>
     <div class="story-settings" hidden>
       <fieldset>
-        <legend>O que você fez hoje?</legend>
+        <legend data-badge-title>Selos do dia</legend>
         <p class="story-hint">Marque os selos que quer mostrar na foto.</p>
         <div class="story-choices" data-badges></div>
-        <p class="story-feedback" data-day-status role="status"></p>
-        <button type="button" class="story-text-button" data-retry-day hidden>Recarregar registros</button>
+        <p class="story-hint story-weight-note" data-weight-note></p>
+        <p class="story-feedback" data-stats-status role="status"></p>
+        <button type="button" class="story-text-button" data-retry-stats hidden>Recarregar registros</button>
       </fieldset>
-      <fieldset>
+      <fieldset data-crop hidden>
         <legend>Enquadramento</legend>
         <div class="story-choices story-fit">
           <label><input name="fit" type="radio" value="cover" checked>Preencher</label>
@@ -81,10 +92,9 @@ const editorMarkup = `
     </div>
   </footer>`;
 
-export function openWorkoutStory(patientId) {
+export function openWorkoutStory(patientId, initialPeriod = 'day') {
   if (openEditor?.open) return;
   const day = getLocalDateString();
-  const filename = 'faz-o-basico-club-' + day + '.jpg';
   const dialog = document.createElement('dialog');
   dialog.className = 'workout-story-dialog';
   dialog.setAttribute('aria-labelledby', 'workout-story-title');
@@ -96,11 +106,12 @@ export function openWorkoutStory(patientId) {
   const position = find('[name=position]');
   const photoStatus = find('[data-photo-status]');
   const exportStatus = find('[data-export-status]');
-  const choices = new Map();
-  let badges = storyBadges({});
+  const choices = {day: new Map(), week: new Map(), previous: new Map()};
+  let period = initialPeriod;
+  let week, badges = [];
   let photo, logo, file, url;
   let loadingPhoto = false;
-  let dayRequest;
+  let statsRequest;
   let renderVersion = 0, photoVersion = 0, frame, encodeTimer;
 
   openEditor = dialog;
@@ -126,6 +137,7 @@ export function openWorkoutStory(patientId) {
     canvas.toBlob(blob => {
       if (!dialog.open || renderVersion !== version) return;
       if (!blob) { artError(); return; }
+      const filename = 'faz-o-basico-club-' + (week ? 'semana-' + week.start + '_' + week.until : day) + '.jpg';
       file = new File([blob], filename, {type: blob.type});
       url = URL.createObjectURL(file);
       download.href = url;
@@ -145,9 +157,9 @@ export function openWorkoutStory(patientId) {
     clearTimeout(encodeTimer);
     clearExport();
     find('[data-retry-art]').hidden = true;
-    if (!photo || loadingPhoto || !dialog.open) return;
+    if ((!photo && !week) || loadingPhoto || !dialog.open) return;
     const fit = find('[name=fit]:checked').value;
-    const ratio = photo.width / photo.height;
+    const ratio = photo ? photo.width / photo.height : 9 / 16;
     find('[data-position-control]').hidden = fit === 'contain' || Math.abs(ratio - 9 / 16) < .005;
     find('[data-position-label]').textContent = ratio > 9 / 16 ? 'Posição horizontal' : 'Posição vertical';
     exportStatus.textContent = 'Preparando imagem…';
@@ -156,14 +168,15 @@ export function openWorkoutStory(patientId) {
         logo ??= loadStoryImage(logoUrl).catch(error => { logo = null; throw error; });
         const wordmark = await logo;
         if (!dialog.open || renderVersion !== version) return;
-        const included = badges.filter(badge => choices.get(badge.key) ?? badge.selected);
-        drawWorkoutStory(canvas, {photo, logo: wordmark, day, badges: included, fit, position: Number(position.value) / 100});
-        canvas.setAttribute('aria-label', ['Prévia do Story Faz o Básico Club', day, ...included.map(badge => badge.label)].join(' · '));
+        const included = badges.filter(badge => choices[period].get(badge.key) ?? badge.selected);
+        drawWorkoutStory(canvas, {photo, logo: wordmark, day, week, badges: included, fit, position: Number(position.value) / 100});
+        const periodLabel = week ? 'Minha semana · ' + storyWeekLabel(week) : day;
+        canvas.setAttribute('aria-label', ['Prévia do Story Faz o Básico Club', periodLabel, ...included.map(badge => [badge.label, badge.note].filter(Boolean).join(' · '))].join(' · '));
         canvas.hidden = false;
         find('[data-example]').hidden = true;
         find('[data-example-label]').hidden = true;
         // Coalesce fast changes to the crop slider before encoding the exact preview.
-        if (!dayRequest) encodeTimer = setTimeout(() => prepareExport(version), 100);
+        if (photo && !statsRequest) encodeTimer = setTimeout(() => prepareExport(version), 100);
       } catch {
         if (dialog.open && renderVersion === version) artError();
       }
@@ -175,10 +188,10 @@ export function openWorkoutStory(patientId) {
       const label = document.createElement('label');
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
-      checkbox.checked = choices.get(badge.key) ?? badge.selected;
+      checkbox.checked = choices[period].get(badge.key) ?? badge.selected;
       checkbox.dataset.badgeKey = badge.key;
       checkbox.onchange = () => {
-        choices.set(badge.key, checkbox.checked);
+        choices[period].set(badge.key, checkbox.checked);
         redraw();
       };
       label.append(checkbox, document.createTextNode(badge.label));
@@ -187,24 +200,50 @@ export function openWorkoutStory(patientId) {
     find('[data-badges]').replaceChildren(...labels);
   }
 
-  async function refreshDay() {
-    dayRequest?.abort();
+  async function refreshStats() {
+    statsRequest?.abort();
     const request = new AbortController();
-    dayRequest = request;
+    statsRequest = request;
     const timeout = setTimeout(() => request.abort(), 12000);
-    find('[data-day-status]').textContent = 'Buscando seus registros de hoje…';
-    find('[data-retry-day]').hidden = true;
-    redraw();
-    let result;
-    try { result = await readDay(patientId, day, request.signal); }
-    catch { result = {incomplete: true}; }
-    finally { clearTimeout(timeout); }
-    if (!dialog.open || dayRequest !== request) return;
-    dayRequest = null;
-    badges = storyBadges(result);
+    const offset = period === 'previous' ? -1 : 0;
+    week = period === 'day' ? null : weeklyRange(day, offset);
+    badges = week ? [] : storyBadges({});
     renderChoices();
-    find('[data-day-status]').textContent = result.incomplete ? 'Alguns registros de hoje não carregaram.' : '';
-    find('[data-retry-day]').hidden = !result.incomplete;
+    find('#workout-story-title').textContent = week ? 'Story da semana' : 'Story do treino';
+    find('[data-badge-title]').textContent = week ? 'Selos da semana' : 'Selos do dia';
+    find('.story-settings').hidden = !week && !photo;
+    find('[data-weight-note]').textContent = '';
+    find('[data-example]').hidden = find('[data-example-label]').hidden = Boolean(photo || week);
+    canvas.hidden = true;
+    const status = find('[data-stats-status]');
+    status.textContent = week ? 'Buscando os registros da semana…' : 'Buscando seus registros de hoje…';
+    find('[data-retry-stats]').hidden = true;
+    redraw();
+    let nextBadges, weightNote = '', incomplete = false;
+    try {
+      if (week) {
+        const [totals, weight] = await Promise.allSettled([
+          loadPatientWeek(patientId, day, offset, request.signal), loadStoryWeight(patientId, week.until, request.signal)
+        ]);
+        incomplete = totals.status === 'rejected' || weight.status === 'rejected';
+        nextBadges = weeklyStoryBadges(totals.value, weight.value);
+        if (weight.status === 'fulfilled') {
+          weightNote = nextBadges.find(b => b.key === 'weight')?.note || 'O percentual de peso aparece com pesagens em dois dias diferentes.';
+        }
+      } else {
+        const result = await readDay(patientId, day, request.signal);
+        nextBadges = storyBadges(result);
+        incomplete = result.incomplete;
+      }
+    } catch { incomplete = true; }
+    finally { clearTimeout(timeout); }
+    if (!dialog.open || statsRequest !== request) return;
+    statsRequest = null;
+    if (nextBadges) badges = nextBadges;
+    renderChoices();
+    find('[data-weight-note]').textContent = weightNote;
+    status.textContent = incomplete ? 'Alguns registros não carregaram.' : week && !badges.length ? 'Ainda não há selos para este período.' : '';
+    find('[data-retry-stats]').hidden = !incomplete;
     redraw();
   }
 
@@ -223,6 +262,7 @@ export function openWorkoutStory(patientId) {
       photo = prepared;
       position.value = '50';
       find('.story-settings').hidden = false;
+      find('[data-crop]').hidden = false;
       find('.story-footer').hidden = false;
       photoStatus.textContent = '';
     } catch (error) {
@@ -241,9 +281,16 @@ export function openWorkoutStory(patientId) {
     input.onchange = () => choosePhoto(input);
   });
   dialog.querySelectorAll('[name=fit]').forEach(radio => radio.onchange = redraw);
+  dialog.querySelectorAll('[name=period]').forEach(radio => {
+    radio.checked = radio.value === period;
+    radio.onchange = () => {
+      period = radio.value;
+      refreshStats();
+    };
+  });
   position.oninput = redraw;
   find('[data-retry-art]').onclick = redraw;
-  find('[data-retry-day]').onclick = refreshDay;
+  find('[data-retry-stats]').onclick = refreshStats;
   share.onclick = async () => {
     if (!file) return;
     try {
@@ -255,7 +302,7 @@ export function openWorkoutStory(patientId) {
   dialog.addEventListener('close', () => {
     ++renderVersion;
     ++photoVersion;
-    dayRequest?.abort();
+    statsRequest?.abort();
     cancelAnimationFrame(frame);
     clearTimeout(encodeTimer);
     clearExport();
@@ -266,7 +313,6 @@ export function openWorkoutStory(patientId) {
   }, {once: true});
 
   dialog.showModal();
-  renderChoices();
-  refreshDay();
-  document.fonts?.ready.then(() => { if (dialog.open && photo) redraw(); });
+  refreshStats();
+  document.fonts?.ready.then(() => { if (dialog.open && (photo || week)) redraw(); });
 }

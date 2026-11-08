@@ -21,6 +21,7 @@
 .workout-story-invite h3 { margin: 0; font-size: 1.2rem; letter-spacing: -.04em; }
 .workout-story-invite p { margin: 5px 0 12px; color: #516657; font-size: .82rem; line-height: 1.5; }
 .workout-story-invite .app-btn { min-height: 40px; gap: 9px; }
+.weekly-story-button { margin-top: 12px; }
 
 .workout-story-dialog {
   box-sizing: border-box;
@@ -103,6 +104,11 @@
 .story-source { grid-area: source; min-width: 0; }
 .story-settings { grid-area: settings; min-width: 0; }
 .story-source h3, .story-settings legend { padding: 0; margin: 0 0 9px; font: inherit; font-weight: 700; }
+.story-period { min-width: 0; margin: 0 0 17px; padding: 0; border: 0; }
+.story-period legend { margin: 0 0 8px; padding: 0; font-weight: 700; }
+.story-period .story-choices { gap: 5px; }
+.story-period label { min-height: 34px; padding: 5px 9px; }
+.story-period input { width: 14px; height: 14px; }
 .story-source-actions, .story-choices, .story-export-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .story-source-actions .app-btn, .story-export-actions .app-btn { min-height: 42px; justify-content: center; }
 .story-hint, .story-feedback { margin: 8px 0 0; font-size: .76rem; line-height: 1.55; color: #526659; }
@@ -110,6 +116,8 @@
 .story-settings fieldset { margin: 0; padding: 0; border: none; min-width: 0; }
 .story-settings fieldset + fieldset { margin-top: 22px; }
 .story-settings .story-hint { margin: -3px 0 10px; }
+.story-settings .story-weight-note { margin: 9px 0 0; }
+.story-weight-note:empty { display: none; }
 .story-choices label {
   display: inline-flex;
   align-items: center;
@@ -144,4 +152,4 @@
 @media (max-height: 530px) and (min-width: 591px) {
   .story-frame { max-width: 170px; }
 }
-@media print { .workout-story-dialog, .workout-story-invite { display: none !important; } }
+@media print { .workout-story-dialog, .workout-story-invite, .weekly-story-button { display: none !important; } }
