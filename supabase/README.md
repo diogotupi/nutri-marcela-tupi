@@ -75,71 +75,11 @@ npx supabase link --project-ref pvkkxzatvuubkddzvbiq
 npx supabase functions deploy create-patient
 ```
 
-## 6. Tracking diário (checks + H2Ômetro)
+## 6. Acompanhamento e hábitos
 
-Execute no **SQL Editor**:
+Aplique as migrações versionadas em `supabase/migrations/` em ordem. O esquema inicial sozinho não representa a aplicação atual. As migrações históricas de dieta são anteriores à retirada dessas funcionalidades.
 
-`supabase/migration-tracking.sql`
-
-Isso habilita:
-- check de refeições e alimentos por dia
-- registro de água (H2Ômetro)
-
-## 7. Banco de pontos + desafios
-
-Execute no **SQL Editor**:
-
-`supabase/migration-tournaments.sql`
-
-Isso habilita:
-- rastreador BDP salvo no Supabase (conta para desafios)
-- desafios criados pela Marcela em `/admin/desafios/`
-- ranking por **Banco de pontos** e/ou **H2Ômetro**
-
-### Desafios (admin)
-
-1. Acesse `/admin/desafios/`
-2. Crie o desafio (título, datas, métricas, participantes)
-3. Pacientes inscritos veem o ranking na aba **Banco de pontos**
-4. Ao fim, clique **Encerrar** e veja o vencedor no ranking
-
-**Critério de ranking (v1):** mais água total no período; em empate, menos pontos no BDP.
-
-Se o desafio não aparecer para o paciente, rode também:
-
-`supabase/migration-desafios-fetch.sql`
-
-(e confirme que o paciente foi marcado como participante ao criar o desafio)
-
-## 8. Testar
-
-| URL | Quem usa |
-|-----|----------|
-| `/login/` | Admin e pacientes |
-| `/admin/` | Marcela — pacientes e dietas |
-| `/admin/desafios/` | Marcela — desafios |
-| `/dashboard/` | Pacientes |
-
-Fluxo:
-1. Admin entra em `/admin/`
-2. Cria paciente (nome, usuário, senha)
-3. Abre o paciente → **Nova dieta**
-4. Monta refeições → **Ativar dieta**
-5. Paciente entra em `/login/` e vê a dieta em `/dashboard/`
-6. Paciente usa **Banco de pontos** (com H2Ômetro espelhado) e participa de desafios
-
-## Estrutura das dietas (estilo WebDiet)
-
-- Refeições padrão: café, lanches, almoço, jantar, ceia
-- Tabela por refeição: alimento, quantidade, medida, observação
-- Status: `rascunho`, `ativa`, `arquivada`
-- Só **uma dieta ativa** por paciente
-
-## Próximos passos (futuro)
-
-- Salvar rastreador de pontos no Supabase (sync entre dispositivos)
-- Admin ajustar tabela de alimentos e cotas por paciente
-- Banco de alimentos com busca
-- Cálculo automático de macros
-- PDF da dieta
-- Reset de senha pelo admin
+- Pacientes acessam `/dashboard/` para registrar hábitos, água, treino e peso, consultar materiais e conversar com a equipe.
+- Marcela e secretária usam `/admin/` e `/secretaria/`. O cadastro de acompanhamento mantém modalidade, prazo, medidas e meta de água. Dieta e anamnese são mantidas no WebDiet.
+- Cada check é único por paciente, data civil de São Paulo e hábito. Confira as políticas e a verificação em `daily-habits-regression.sql`.
+- Dados ativos não migram entre os serviços; a migração de retirada elimina os antigos registros de dieta e anamnese, inclusive cópias no histórico de edição. Não remova registros de autenticação, consultas, mensagens, pesos ou hidratação.

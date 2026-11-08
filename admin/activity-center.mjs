@@ -1,6 +1,6 @@
 import {escapeHtml as esc} from '../js/app-core.js';
 
-const names = {swap_request:'Pergunta sobre troca', swap_registered:'Troca registrada', support:'Encaminhamento ao suporte', free_meal:'Refeição livre registrada'};
+const names = {support:'Encaminhamento ao suporte'};
 const dateTime = new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Sao_Paulo'});
 export async function pendingActivities(db) {
   const result = await db.from('clinic_activity_notifications').select('id',{count:'exact',head:true}).is('resolved_at',null);

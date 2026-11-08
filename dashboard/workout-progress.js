@@ -1,3 +1,5 @@
+import {getSupabase} from '../js/app-core.js';
+import {readHabits,withHabitWorkouts} from '../js/daily-habits.mjs';
 import {enhanceProgress} from '../js/progress-motion.mjs?v=20261106-visual';
 import {getLocalDateString} from '../js/app-core.js';
 import {listClinical} from '../js/clinical.js';
@@ -15,9 +17,10 @@ export function mountWorkoutProgress(root,patientId) {
     const current=++request;
     status.textContent='Carregando seus treinos…';button.disabled=true;
     try {
-      const records=await listClinical(patientId);
-      if(current!==request||!root.isConnected)return;
       const today=getLocalDateString(), start=civilRange(today,Number(select.value))[0];
+      const [clinical,habits]=await Promise.all([listClinical(patientId),readHabits(getSupabase(),patientId,start.slice(0,7)+'-01',today)]);
+      const records=withHabitWorkouts(clinical,habits);
+      if(current!==request||!root.isConnected)return;
       disposeMotion();
       charts.innerHTML=workoutChart(progressSeries(records,start,today));
       disposeMotion=enhanceProgress(charts);
@@ -27,7 +30,7 @@ export function mountWorkoutProgress(root,patientId) {
     } finally {if(current===request)button.disabled=false;}
   }
   select.onchange=refresh;button.onclick=refresh;
-  addEventListener('patient:record-saved',event=>{if(event.detail?.kind==='exercise')refresh();});
+  addEventListener('patient:record-saved',event=>{if(['exercise','habit'].includes(event.detail?.kind))refresh();});
   addEventListener('focus',()=>{if(root.offsetParent!==null)refresh();});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&root.offsetParent!==null)refresh();});
   refresh();

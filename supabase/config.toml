@@ -6,11 +6,12 @@ enabled = true
 [functions.create-patient]
 verify_jwt = true
 
+[functions.patient-material]
+verify_jwt = true
+
+# Old mobile clients receive HTTP 410; no AI calls or patient data are processed.
 [functions.food-substitution-ai]
 verify_jwt = true
 
 [functions.free-meal-ai]
-verify_jwt = true
-
-[functions.patient-material]
 verify_jwt = true

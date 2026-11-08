@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="/app/progress.css?v=20261106-visual">
   <link rel="stylesheet" href="./workout-story.css?v=20261108-week-story">
   <script src="../js/config.js"></script>
-<link rel="stylesheet" href="/app/fresh.css?v=20261030b"><link rel="stylesheet" href="/app/chat.css?v=20261030-chat"><link rel="stylesheet" href="./substitution-chat.css?v=20261103-context"><link rel="stylesheet" href="/app/materials.css"><link rel="stylesheet" href="/app/progress-visual.css?v=20261106-visual"></head>
+<link rel="stylesheet" href="/app/fresh.css?v=20261030b"><link rel="stylesheet" href="/app/chat.css?v=20261030-chat"><link rel="stylesheet" href="/app/habits.css?v=20261108"><link rel="stylesheet" href="/app/materials.css"><link rel="stylesheet" href="/app/progress-visual.css?v=20261106-visual"></head>
 <body class="app-body">
   <div class="app-shell" inert>
     <aside class="app-sidebar">
@@ -24,8 +24,8 @@
         </div>
       </div>
       <nav class="app-nav" id="dashboard-nav">
-        <button type="button" class="dashboard-tab is-active" data-tab="diet">Hoje</button>
-        <button type="button" class="dashboard-tab" data-tab="plan">Meu plano</button>
+        <button type="button" class="dashboard-tab is-active" data-tab="today">Hoje</button>
+        <button type="button" class="dashboard-tab" data-tab="guides">Materiais</button>
         <button type="button" class="dashboard-tab" data-tab="evolution">Evolução</button>
         <button type="button" class="dashboard-tab" data-tab="account">Perfil</button>
       </nav>
@@ -35,21 +35,20 @@
     </aside>
 
     <main class="app-main">
-      <section id="tracking-access" class="app-card tracking-banner" hidden aria-live="polite"><h2></h2><p>Para retomar seu acompanhamento, entre em contato com a equipe.</p><a class="app-btn app-btn--primary" target="_blank" rel="noopener noreferrer">Quero renovar meu acompanhamento</a><fieldset disabled class="locked-features" aria-label="Recursos bloqueados"><button>🔒 Treinos e registros</button><button>🔒 Assistentes</button><button>🔒 Materiais exclusivos</button></fieldset></section>
+      <section id="tracking-access" class="app-card tracking-banner" hidden aria-live="polite"><h2></h2><p>Para retomar seu acompanhamento, entre em contato com a equipe.</p><a class="app-btn app-btn--primary" target="_blank" rel="noopener noreferrer">Quero renovar meu acompanhamento</a><fieldset disabled class="locked-features" aria-label="Recursos bloqueados"><button>🔒 Treinos e registros</button><button>🔒 Materiais exclusivos</button></fieldset></section>
       <p id="connection-status" class="patient-status" role="status" hidden></p>
       <aside id="patient-badges" class="patient-badges" aria-label="Suas conquistas"></aside>
-      <!-- DIETA -->
-      <div class="dashboard-panel" id="panel-diet">
+      <!-- HOJE -->
+      <div class="dashboard-panel" id="panel-today">
         <div class="app-topbar">
           <div>
             <h1>Olá, <span id="patient-greeting">paciente</span></h1>
             <p>Um cuidado de cada vez. Como está seu dia?</p>
           </div>
         </div>
-        <section class="patient-welcome" aria-label="Seu acompanhamento"><p class="patient-eyebrow">FAZ O BÁSICO · SEU DIA</p><h2 id="next-meal">Carregando seu plano…</h2><p id="next-meal-detail">Seus registros ajudam a Marcela a acompanhar sua rotina.</p><div class="patient-shortcuts"><button type="button" class="app-btn app-btn--primary" id="open-food-substitutions">Quero substituir um alimento</button><button class="app-btn app-btn--ghost dashboard-tab" data-tab="guides">Materiais</button></div></section>
+        <section id="patient-habits" class="app-card habit-board" aria-label="Checks do dia"></section>
         <section id="patient-weekly-overview" class="weekly-overview" aria-label="Resumo da semana"></section>
         <section id="patient-weight" class="app-card weight-checkin" aria-label="Check-in de peso"></section>
-        <div id="free-meal-panel"></div>
         <section id="patient-training" class="app-card patient-training" aria-label="Seu treino de hoje"></section>
         <section id="patient-workout-progress" class="app-card patient-chart" aria-label="Frequência e intensidade do treino"></section>
 
@@ -75,28 +74,13 @@
           <p id="water-status" class="patient-status" role="status"></p>
         </section>
 
-        <section class="app-card" id="active-diet-card" style="margin-bottom:1rem">
-          <div class="patient-diet-card">
-            <div class="app-empty">Carregando dieta...</div>
-          </div>
-        </section>
-
         <section id="patient-reminders" class="patient-reminders" aria-live="polite"></section>
         <section id="patient-chat" class="app-card" aria-label="Chat com a nutri"></section>
-      </div>
-      <div class="dashboard-panel" id="panel-plan" hidden>
-        <div class="app-topbar"><div><p class="patient-eyebrow">ORIENTAÇÃO INDIVIDUAL</p><h1>Meu plano alimentar</h1><p>Seu plano e as orientações da Marcela, sempre à mão.</p></div><button id="print-plan" class="app-btn app-btn--ghost">Imprimir / salvar PDF</button></div>
-        <section class="app-card" id="plan-preview"><p class="app-empty">Carregando seu plano…</p></section>
-        <section class="app-card" style="padding:1.2rem;margin-top:1rem">
-          <h2 class="panel-section-title">Histórico de dietas</h2>
-          <div id="diet-history"></div>
-        </section>
       </div>
       <div class="dashboard-panel" id="panel-evolution" hidden>
         <button type="button" id="refresh-evolution" class="app-btn app-btn--ghost">Atualizar registros</button>
         <div class="app-topbar"><div><p class="patient-eyebrow">SEU ACOMPANHAMENTO</p><h1>Minha evolução</h1><p>Observe seus registros junto com a nutricionista.</p></div><label>Período <select id="evolution-range"><option value="7">7 dias</option><option value="30" selected>30 dias</option><option value="90">90 dias</option></select></label></div>
         <div id="evolution-content" aria-live="polite"></div>
-        <section class="app-card patient-chart"><h2>Substituições registradas</h2><div id="described-swap-history"></div></section>
       </div>
 
       <!-- GUIAS -->
@@ -137,6 +121,6 @@
     </main>
   </div>
 
-  <script type="module" src="./dashboard.js?v=20261108-week-story"></script>
+  <script type="module" src="./dashboard.js?v=20261108-habits"></script>
 </body>
 </html>

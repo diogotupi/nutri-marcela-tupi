@@ -25,9 +25,10 @@ export function storyWeekLabel({start, until}) {
 export function weeklyStoryBadges(summary, weight) {
   const badges = [];
   if (summary?.water > 0) badges.push({key: 'water', label: waterLabel(summary.water), selected: true});
-  if (summary?.workoutDays > 0) badges.push({key: 'strength', label: summary.workoutDays + (summary.workoutDays === 1 ? ' dia de treino' : ' dias de treino'), selected: true});
-  const meals = summary?.meals.done;
-  if (meals > 0) badges.push({key: 'diet', label: meals + (meals === 1 ? ' refeição concluída' : ' refeições concluídas'), selected: true});
+  if (summary?.strengthDays) badges.push({key:'strength',label:'Força · '+summary.strengthDays+(summary.strengthDays===1?' dia':' dias'),selected:true});
+  if (summary?.cardioDays) badges.push({key:'cardio',label:'Cardio · '+summary.cardioDays+(summary.cardioDays===1?' dia':' dias'),selected:true});
+  if (summary?.workoutDays && !summary.strengthDays && !summary.cardioDays) badges.push({key:'strength',label:summary.workoutDays+(summary.workoutDays===1?' dia de treino':' dias de treino'),selected:true});
+  if (summary?.dietDays) badges.push({key:'diet',label:'Gabaritei a dieta · '+summary.dietDays+(summary.dietDays===1?' dia':' dias'),selected:true});
   if (summary?.waterGoalDays > 0) badges.push({key: 'goal', label: 'Meta de água em ' + summary.waterGoalDays + (summary.waterGoalDays === 1 ? ' dia' : ' dias'), selected: false});
   if (weight) {
     const magnitude = Math.abs(weight.percent);
@@ -39,16 +40,14 @@ export function weeklyStoryBadges(summary, weight) {
   return badges;
 }
 
-export function storyBadges({waterMl, mealCount, intensity}) {
+export function storyBadges({waterMl, strength, cardio, diet, intensity}) {
   const badges = [];
   if (Number.isFinite(waterMl) && waterMl > 0) {
     badges.push({key: 'water', label: waterLabel(waterMl), selected: true});
   }
-  badges.push({key: 'strength', label: 'Treino de força', selected: false});
-  badges.push({key: 'cardio', label: 'Cardio', selected: false});
-  let dietLabel = 'Dieta';
-  if (mealCount > 0) dietLabel += mealCount === 1 ? ' · 1 refeição' : ' · ' + mealCount + ' refeições';
-  badges.push({key: 'diet', label: dietLabel, selected: mealCount > 0});
+  if(strength)badges.push({key:'strength', label:'Treino de força', selected:true});
+  if(cardio)badges.push({key:'cardio', label:'Cardio', selected:true});
+  if(diet)badges.push({key:'diet', label:'Gabaritei a dieta', selected:true});
   if (Number.isInteger(intensity) && intensity >= 1 && intensity <= 10) {
     badges.push({key: 'intensity', label: 'Intensidade ' + intensity + '/10', selected: true});
   }

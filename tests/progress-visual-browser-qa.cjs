@@ -9,9 +9,9 @@ async(existingPage)=>{
  const water=[-12,-10,-8,-4,-3,-2,-1,0].map((n,i)=>({id:'w'+i,log_date:shift(n),amount_ml:[1200,1800,2200,2100,1800,2400,2000,1500][i],goal_ml:2000}));
  const records=[-25,-23,-22,-20,-18,-16,-14,-12,-10,-8,-4,-3,-1,0].map((n,i)=>({id:'e'+i,kind:'exercise',occurred_at:shift(n)+'T12:00Z',payload:{description:'Treino de demonstração',intensity:[3,6,5,7,4,8,6,7,5,8,6,8,5,7][i]}}));
  records.push(...[-28,-24,-20,-16,-12,-8,-4,0].map((n,i)=>({id:'p'+i,kind:'checkin',occurred_at:shift(n)+'T12:00Z',payload:{category:'weight_checkin',weight_kg:[73.4,73.1,73.3,72.8,72.9,72.4,72.6,72.2][i]}})));
- const reports=[-4,-3,-2,-1,0].flatMap((n,i)=>[0,1,2,3].map(k=>({meal_id:'m'+k,report_date:shift(n),status:k===3&&i%2?'partial':'done'})));
- window.__data={records,water,reports};
- const data=t=>window.__empty?[]:t==='clinical_records'?records.filter(row=>row.kind==='exercise').map(row=>({...row,intensity:row.payload.intensity})):t==='patient_water_logs'?water:t==='meal_reports'?reports:t==='patient_goals'?[{id:'g1',valid_from:'2020-01-01',water_ml:2000}]:[];
+ const habits=[-3,-2,0].map(n=>({habit_date:shift(n),habit:'diet',level:1}));
+ window.__data={records,water,habits};
+ const data=t=>window.__empty?[]:t==='clinical_records'?records.filter(row=>row.kind==='exercise').map(row=>({...row,intensity:row.payload.intensity})):t==='patient_water_logs'?water:t==='patient_daily_habits'?habits:t==='patient_goals'?[{id:'g1',valid_from:'2020-01-01',water_ml:2000}]:[];
  const db={from(t){let offset=0,filters=[];const q=new Proxy({}, {get(_,k){if(k==='then')return f=>Promise.resolve(f({data:data(t).filter(r=>filters.every(([key,op,v])=>op==='gte'?r[key]>=v:r[key]<=v)).slice(offset,offset+500),error:window.__fail?{message:'QA offline'}:null}));return(...a)=>{if(k==='range')offset=a[0];if(k==='gte'||k==='lte')filters.push([a[0],k,a[1]]);return q;};}});return q;}};
  export const getSupabase=()=>db;export const getLocalDateString=()=>today;export const escapeHtml=s=>String(s);
  `;
@@ -34,7 +34,7 @@ async(existingPage)=>{
  assert(await page.locator('.week-day:disabled').count()===2,'Future weekend must not be shown as missed');
  assert(await page.locator('.week-stat').nth(0).locator('[data-progress-number]').getAttribute('data-progress-number')==='4','Distinct workout days');
  assert(await page.locator('.week-stat').nth(1).locator('[data-progress-number]').getAttribute('data-progress-number')==='9.8','Weekly water total');
- assert(await page.locator('.week-stat').nth(2).locator('[data-progress-number]').getAttribute('data-progress-number')==='18','Completed meals');
+ assert(await page.locator('.week-stat').nth(2).locator('[data-progress-number]').getAttribute('data-progress-number')==='3','Days with diet check');
  await page.locator('[data-week-day="4"]').click();assert((await page.locator('.week-day-detail').innerText()).includes('1,5 L'),'Day details');
  await page.waitForTimeout(1300);await page.screenshot({path:'.playwright-mcp/progress-modern-desktop.png',fullPage:true});
  await page.locator('#workouts .progress-chart').last().scrollIntoViewIfNeeded();
@@ -55,7 +55,7 @@ async(existingPage)=>{
  await page.evaluate(()=>window.__fail=true);await page.locator('[data-week-refresh]').click();await page.getByText('Não foi possível carregar seu resumo. Toque em atualizar para tentar novamente.',{exact:true}).waitFor();
  assert(await page.locator('.week-story').count()===0,'Failed fetch must not show stale weekly totals');
  await page.evaluate(()=>{window.__fail=false;window.__empty=true;});await page.locator('[data-week-refresh]').click();await page.getByText('Sua semana começa aqui.',{exact:true}).waitFor();
- assert((await page.locator('.week-stats').innerText()).includes('Nenhum “chutei o balde” relatado.'),'Honest empty state');
+ assert((await page.locator('.week-stats').innerText()).includes('Pontos da semana'),'Honest empty state');
  await page.emulateMedia({reducedMotion:'reduce'});await page.reload();await page.locator('.week-story').waitFor();
  assert(await page.locator('.week-stat').nth(1).locator('strong').innerText()==='9,8L','Reduced motion shows final value immediately');
  assert(await page.locator('.progress-line').first().evaluate(e=>e.getAnimations().length)===0,'Reduced motion must disable draw animation');

@@ -1,7 +1,7 @@
 import {getLocalDateString} from '../js/app-core.js';
-import {weeklyMarkup,weekDayDescription} from '../js/weekly-summary.mjs?v=20261108-week-story';
-import {loadPatientWeek} from './weekly-data.js?v=20261108-week-story';
-import {openWorkoutStory} from './workout-story.js?v=20261108-week-story';
+import {weeklyMarkup,weekDayDescription} from '../js/weekly-summary.mjs?v=20261108-habits';
+import {loadPatientWeek} from './weekly-data.js?v=20261108-habits';
+import {openWorkoutStory} from './workout-story.js?v=20261108-habits';
 import {enhanceProgress} from '../js/progress-motion.mjs?v=20261106-visual';
 
 export function mountWeeklyOverview(root,patientId) {

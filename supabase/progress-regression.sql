@@ -18,15 +18,15 @@ begin
  execute 'set local role authenticated';perform public.evaluate_badges();perform public.evaluate_badges();
  if (select count(*) from public.patient_badges where patient_id=pp)<>2 or not exists(select 1 from public.patient_badges where patient_id=pp and badge_id='water3') or not exists(select 1 from public.patient_badges where patient_id=pp and badge_id='training7') then raise exception 'FAIL water/training evidence or idempotency';end if;
  execute 'reset role';
- insert into public.diets(patient_id,title,status,created_by,start_date) values(pp,'QA plan','active',ap,t-30) returning id into d;
- insert into public.diet_meals(diet_id,name) values(d,'QA meal') returning id into m;
- insert into public.patient_meal_checks(patient_id,meal_id,check_date) select pp,m,t-i from generate_series(0,20)i;
- insert into public.clinical_records(patient_id,kind,payload,visibility,status,created_by,occurred_at) values(pp,'checkin','{"category":"meal_difficulty"}','shared','submitted',pp,(t-10)::timestamp at time zone 'America/Sao_Paulo') returning id into r;
- execute 'set local role authenticated';perform public.evaluate_badges();if exists(select 1 from public.patient_badges where patient_id=pp and badge_id='steady21') then raise exception 'FAIL lapse ignored';end if;execute 'reset role';
- delete from public.clinical_records where id=r;delete from public.patient_meal_checks where patient_id=pp and check_date=t-10;
- execute 'set local role authenticated';perform public.evaluate_badges();if exists(select 1 from public.patient_badges where patient_id=pp and badge_id='steady21') then raise exception 'FAIL missing day treated as evidence';end if;execute 'reset role';
- insert into public.patient_meal_checks(patient_id,meal_id,check_date) values(pp,m,t-10);
- execute 'set local role authenticated';perform public.evaluate_badges();if not exists(select 1 from public.patient_badges where patient_id=pp and badge_id='steady21') then raise exception 'FAIL 21 covered days';end if;execute 'reset role';
+ insert into public.patient_daily_habits(patient_id,habit_date,habit,level)
+   select pp,t-i,'diet',1 from generate_series(0,20)i where i<>10;
+ execute 'set local role authenticated';perform public.evaluate_badges();
+ if not exists(select 1 from public.patient_badges where patient_id=pp and badge_id='meals3') then raise exception 'FAIL diet streak';end if;
+ if exists(select 1 from public.patient_badges where patient_id=pp and badge_id='steady21') then raise exception 'FAIL missing day treated as evidence';end if;
+ execute 'reset role';
+ insert into public.patient_daily_habits(patient_id,habit_date,habit,level) values(pp,t-10,'bowel',1);
+ execute 'set local role authenticated';perform public.evaluate_badges();
+ if not exists(select 1 from public.patient_badges where patient_id=pp and badge_id='steady21') then raise exception 'FAIL 21 covered days';end if;execute 'reset role';
  -- Contact recurrence is covered by crm-regression.sql; legacy weekly tasks are retired.
  insert into public.clinical_records(patient_id,kind,payload,visibility,status,created_by) values(pp,'note','{"text":"QA original"}','shared','reviewed',ap) returning id into r;
  execute 'set local role authenticated';
@@ -43,4 +43,4 @@ begin
  execute 'reset role';
 end $$;
 rollback;
-select 'PASS progress: evidence-backed badges, idempotency, lapse/coverage, admin-only awards, anamnesis denied, clinical revision/archive visibility' as result;
+select 'PASS progress: evidence-backed badges, idempotency, habit streak coverage, admin-only awards, anamnesis denied, clinical revision/archive visibility' as result;

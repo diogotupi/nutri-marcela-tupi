@@ -23,7 +23,7 @@ export function nextCelebration() {
   return messages[chosen];
 }
 
-function workoutSticker(intensity, day, phrase) {
+function workoutSticker(intensity, day, phrase, modes) {
   const canvas = document.createElement('canvas');
   canvas.width = 960; canvas.height = 460;
   const ctx = canvas.getContext('2d');
@@ -48,13 +48,14 @@ function workoutSticker(intensity, day, phrase) {
   ctx.moveTo(73,176);ctx.lineTo(116,176);ctx.stroke();
   ctx.fillStyle='#fff8e9';ctx.font='bold 71px system-ui';ctx.fillText('Treino concluído',155,199);
   ctx.font='bold 33px system-ui';ctx.fillText('Intensidade '+intensity+' / 10',57,272);
+  if(modes){ctx.font='bold 27px system-ui';ctx.textAlign='right';ctx.fillText(modes,880,272);ctx.textAlign='left';}
   ctx.fillStyle='#efbeaa';ctx.fillRect(57,308,66,4);
   ctx.fillStyle='#fff8e9';ctx.font='31px system-ui';ctx.fillText(phrase,57,377,822);
   return canvas.toDataURL('image/png');
 }
 
-export function celebrateWorkout(root, {intensity,date}) {
-  const phrase = nextCelebration(), src = workoutSticker(intensity,date,phrase);
+export function celebrateWorkout(root, {intensity,date,strength,cardio}) {
+  const phrase = nextCelebration(), src = workoutSticker(intensity,date,phrase,[strength&&'Força',cardio&&'Cardio'].filter(Boolean).join(' · '));
   root.replaceChildren();
   const image = document.createElement('img');
   image.src = src;

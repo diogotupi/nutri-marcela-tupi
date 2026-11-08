@@ -1,6 +1,6 @@
 -- All fixtures roll back. No sample patient remains in production.
 begin;
-do $$ declare au uuid:=gen_random_uuid();su uuid:=gen_random_uuid();pu uuid:=gen_random_uuid();ap uuid:=gen_random_uuid();sp uuid:=gen_random_uuid();pp uuid;en uuid;op uuid:=gen_random_uuid();mid uuid;msg uuid:=gen_random_uuid();payload jsonb;cnt int;begin
+do $$ declare au uuid:=gen_random_uuid();su uuid:=gen_random_uuid();pu uuid:=gen_random_uuid();ap uuid:=gen_random_uuid();sp uuid:=gen_random_uuid();pp uuid;en uuid;op uuid:=gen_random_uuid();msg uuid:=gen_random_uuid();payload jsonb;cnt int;begin
  insert into auth.users(id,email) values(au,'qa-admin-'||au||'@example.invalid'),(su,'qa-team-'||su||'@example.invalid'),(pu,'qa-patient-'||pu||'@example.invalid');
  insert into public.profiles(id,user_id,username,full_name,role) values(ap,au,'qa-'||au,'QA Marcela','admin'),(sp,su,'qa-'||su,'QA Secretaria','secretary');
  insert into public.staff_permissions(user_id,enabled) values(su,true);
@@ -8,13 +8,12 @@ do $$ declare au uuid:=gen_random_uuid();su uuid:=gen_random_uuid();pu uuid:=gen
  if not public.is_clinic_staff() or public.is_admin() then raise exception 'FAIL staff roles';end if;
  pp:=public.clinic_save_patient(null,'QA Paciente','5521998765432','qa@example.invalid',date '1995-01-01');
  perform public.crm_link_login(pp,pu,'qa-'||pu);
- payload:=jsonb_build_object('category','journey','start',current_date-7,'end',current_date+83,'weight',65,'height',170,'water',2300,'anamnesis',jsonb_build_object('objective','QA Objetivo','preferences','QA preferencias'),'diet',jsonb_build_object('title','QA Plano','meals',jsonb_build_array(jsonb_build_object('name','Jantar','options',jsonb_build_array(jsonb_build_object('name','Jantar A','items',jsonb_build_array(jsonb_build_object('food_name','QA Alimento A','quantity','100g'))),jsonb_build_object('name','Jantar B','items',jsonb_build_array(jsonb_build_object('food_name','QA Alimento B','quantity','200g'))))))));
- payload:=jsonb_set(payload,'{diet,meals,0,shared_items}','[{"food_name":"QA Alimento comum","quantity":"3 unidades (3g)","substitutions":"QA Original"}]'::jsonb);
+ payload:=jsonb_build_object('category','journey','start',current_date-7,'end',current_date+83,'weight',65,'height',170,'water',2300);
  en:=public.clinic_start_care(op,pp,payload);
  if public.clinic_start_care(op,pp,payload)<>en or (select count(*) from public.crm_enrollments where patient_id=pp)<>1 then raise exception 'FAIL idempotent care';end if;
- select m.id into mid from public.diet_meals m join public.diets d on d.id=m.diet_id where d.patient_id=pp and d.status='active';
- if (select count(distinct option_name) from public.diet_items where meal_id=mid)<>2 then raise exception 'FAIL options';end if;
- if (select count(*) from public.diet_items where meal_id=mid and option_name is null)<>1 or not exists(select 1 from public.diet_items where meal_id=mid and option_name is null and quantity='3 unidades (3g)' and substitutions='QA Original') then raise exception 'FAIL shared prescribed food/quantity';end if;
+ perform public.set_daily_habit(pp,current_date-2,'alcohol',4);
+ perform public.set_daily_habit(pp,current_date-2,'alcohol',8);
+ if not exists(select 1 from public.patient_daily_habits where patient_id=pp and habit='alcohol' and level=8 and points=-1) then raise exception 'FAIL staff habit correction';end if;
  if (select water_ml from public.patient_goals where patient_id=pp)<>2300 then raise exception 'FAIL water goal';end if;
  perform public.send_patient_message(msg,pp,'QA mensagem');perform public.send_patient_message(msg,pp,'QA mensagem');
  if (select count(*) from public.patient_messages where id=msg)<>1 or (select sender_name from public.patient_messages where id=msg)<>'QA Secretaria' then raise exception 'FAIL staff chat attribution';end if;

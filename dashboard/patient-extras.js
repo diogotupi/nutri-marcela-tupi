@@ -1,13 +1,13 @@
-import {mountWeeklyOverview} from './weekly-overview.js?v=20261108-week-story';
+import {readHabits,groupHabits} from '../js/daily-habits.mjs';
+import {mountWeeklyOverview} from './weekly-overview.js?v=20261108-habits';
 import { getSupabase, getLocalDateString, escapeHtml as esc } from '../js/app-core.js';
 import { addClinical, uploadAttachment, getSignedAttachment } from '../js/clinical.js';
 import { preparePhotoUpload } from '../js/media-upload.js';
 import {mountWeightCheckin} from './weight-checkin.js?v=20261106-visual';
-import {mountWorkoutProgress} from './workout-progress.js?v=20261106-visual';
-import {celebrateWorkout} from './workout-celebration.js';
-import {openWorkoutStory} from './workout-story.js?v=20261108-week-story';
+import {mountWorkoutProgress} from './workout-progress.js?v=20261108-habits';
+import {celebrateWorkout} from './workout-celebration.js?v=20261108-habits';
+import {openWorkoutStory} from './workout-story.js?v=20261108-habits';
 import { intensityLabel } from './patient-model.mjs';
-import {openMealPhotoPicker} from './meal-photo.js?v=20261030-patient2';
 
 const db=()=>getSupabase();
 const pendingClinical=new WeakMap();
@@ -17,8 +17,8 @@ export function bearSvg(strong=false) {
   return `<svg viewBox="0 0 110 100" aria-hidden="true" class="intensity-bear"><g stroke="#76543c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${strong?'<path fill="#bc885d" d="M33 56Q19 34 11 48L6 65Q10 83 33 72M77 56Q91 32 100 48L105 65Q100 83 77 72"/><path d="M15 61q8-8 16 0m49 0q8-8 15 0" fill="none"/>':'<ellipse cx="31" cy="67" rx="11" ry="16" fill="#d9b38e"/><ellipse cx="79" cy="67" rx="11" ry="16" fill="#d9b38e"/>'}<ellipse cx="55" cy="70" rx="25" ry="25" fill="${strong?'#bc885d':'#dfbf9c'}"/><ellipse cx="55" cy="75" rx="15" ry="15" fill="#f4e1c9"/><circle cx="34" cy="24" r="11" fill="#d9b38e"/><circle cx="76" cy="24" r="11" fill="#d9b38e"/><circle cx="34" cy="24" r="5" fill="#edc9b5"/><circle cx="76" cy="24" r="5" fill="#edc9b5"/><ellipse cx="55" cy="39" rx="26" ry="24" fill="${strong?'#c59267':'#e4c5a3'}"/><ellipse cx="55" cy="48" rx="13" ry="10" fill="#f8ead8"/><circle cx="44" cy="37" r="2" fill="#3f332b"/><circle cx="66" cy="37" r="2" fill="#3f332b"/><path d="M51 44h8l-4 4z" fill="#6e4b37"/><path d="M55 48v4m-6 0q6 6 12 0" fill="none"/>${strong?'<path d="M39 31l9 3m14 0 9-3m-22 39h12m-12 7h12" fill="none"/><path d="M32 29h46v-7H32z" fill="#416e58"/>':'<path d="M47 65l8 4 8-4v10l-8-4-8 4z" fill="#719e83"/>'}</g></svg>`;
 }
 const badgeCatalog=[
-  {id:'steady21',title:'21 dias de cuidado',description:'21 dias seguidos com registros que sustentem sua constância.'},
-  {id:'meals3',title:'Rotina no prato',description:'Todas as refeições previstas registradas em 3 dias seguidos.'},
+  {id:'steady21',title:'21 dias de cuidado',description:'Um check positivo em 21 dias seguidos.'},
+  {id:'meals3',title:'Rotina no prato',description:'Marcou “Gabaritei a dieta” em três dias seguidos.'},
   {id:'water3',title:'Hidratação em dia',description:'Sua meta individual atingida em 3 dias seguidos. Beber além dela não dá pontos extras.'},
   {id:'training7',title:'Movimento presente',description:'7 dias seguidos com treino registrado. A intensidade não aumenta a conquista.'},
   {id:'nutri_pride',title:'Orgulho da nutri',description:'Um reconhecimento concedido pela Marcela.'},
@@ -32,7 +32,7 @@ export async function initPatientExtras(profile) {
   mountWeightCheckin(document.getElementById('patient-weight'), profile.id);
   mountWorkoutProgress(document.getElementById('patient-workout-progress'),profile.id);
   const training=document.getElementById('patient-training');
-  training.innerHTML=`<div class="training-heading"><div><p class="patient-eyebrow">MOVIMENTO DO SEU JEITO</p><h2>Como foi o treino?</h2><p>Registre sua experiência de hoje, ${new Date().toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit'})}.</p></div>${bearSvg()}</div><form id="training-form" class="app-form"><label>Conte o que você fez<textarea name="description" rows="2" placeholder="Ex.: caminhada no parque, treino de pernas…" required minlength="3" maxlength="4000"></textarea></label><div class="training-scale"><div>${bearSvg()}<span>1 · FOFO</span></div><label>Intensidade percebida<output id="intensity-label" for="training-intensity">5 · Moderado</output><input id="training-intensity" name="intensity" type="range" min="1" max="10" step="1" value="5" aria-describedby="training-scale-hint"></label><div>${bearSvg(true)}<span>10 · Hiper pesado</span></div></div><p id="training-scale-hint">É como você sentiu o treino. Mais intenso não vale mais conquistas.</p><button class="app-btn app-btn--primary">Registrar treino de hoje</button><p role="status"></p></form>`;
+  training.innerHTML=`<div class="training-heading"><div><p class="patient-eyebrow">MOVIMENTO DO SEU JEITO</p><h2>Como foi o treino?</h2><p>Registre sua experiência de hoje, ${new Date().toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit'})}.</p></div>${bearSvg()}</div><form id="training-form" class="app-form"><label>Quer registrar mais detalhes? Conte o que você fez<textarea name="description" rows="2" placeholder="Ex.: caminhada no parque, treino de pernas…" required minlength="3" maxlength="4000"></textarea></label><div class="training-scale"><div>${bearSvg()}<span>1 · FOFO</span></div><label>Intensidade percebida<output id="intensity-label" for="training-intensity">5 · Moderado</output><input id="training-intensity" name="intensity" type="range" min="1" max="10" step="1" value="5" aria-describedby="training-scale-hint"></label><div>${bearSvg(true)}<span>10 · Hiper pesado</span></div></div><p id="training-scale-hint">É como você sentiu o treino. Mais intenso não vale mais conquistas.</p><button class="app-btn app-btn--primary">Registrar treino de hoje</button><p role="status"></p></form>`;
   const trainingForm=training.querySelector('form');
   const celebration=document.createElement('section');
   celebration.className='workout-celebration';
@@ -62,7 +62,7 @@ export async function initPatientExtras(profile) {
       document.getElementById('intensity-label').textContent='5 · Moderado';
       status.textContent='Treino de hoje registrado.';
       notifyPatientSaved({kind:'exercise'});
-      try {celebrateWorkout(celebration,payload);}
+      try {const flags=groupHabits(await readHabits(db(),profile.id,day,day)).get(day);celebrateWorkout(celebration,{...payload,...flags});}
       catch {celebration.hidden=true;status.textContent+=' Orgulho da nutri!';}
     }
     catch(error){status.textContent=`Não foi salvo: ${error.message}`;}finally{button.disabled=false;}
@@ -91,15 +91,4 @@ export async function initPatientExtras(profile) {
   refreshBadges();
   let timer;addEventListener('patient:record-saved',()=>{clearTimeout(timer);timer=setTimeout(()=>refreshBadges(),200);});
   const {error}=await db().rpc('record_patient_visit');if(error)console.warn('Não foi possível registrar a atividade de acesso.');
-}
-export function bindMealExtras(container,profile) {
-  container.querySelectorAll('[data-meal-photo-open]').forEach(button=>button.onclick=()=>openMealPhotoPicker({patientId:profile.id,mealId:button.dataset.mealPhotoOpen,onSent:()=>{const status=button.parentElement.querySelector('[data-photo-status]');if(status)status.textContent='Foto salva. A Marcela já pode acompanhar.';notifyPatientSaved();}}));
-  container.querySelectorAll('[data-meal-difficulty]').forEach(form=>form.addEventListener('submit',async event=>{
-    event.preventDefault();const button=form.querySelector('button'),status=form.querySelector('[role=status]');button.disabled=true;status.textContent='Salvando seu relato…';
-    try {const day=getLocalDateString(),payload={category:'meal_difficulty',meal_id:form.dataset.mealDifficulty,date:day,trigger:form.trigger.value.trim(),foods:form.foods.value.trim(),reported_by:'patient'};await addClinical(profile.id,'checkin',payload,{id:operationFor(form,payload),occurredAt:`${day}T12:00:00-03:00`});pendingClinical.delete(form);form.reset();status.textContent='Relato salvo. Obrigada por compartilhar; a Marcela pode te ajudar com isso.';notifyPatientSaved();}
-    catch(error){status.textContent=`Não foi salvo: ${error.message}`;}finally{button.disabled=false;}
-  }));
-}
-export function mealExtrasMarkup(mealId) {
-  return `<div class="meal-extra-actions"><div class="meal-photo-action"><button type="button" class="app-btn app-btn--ghost" data-meal-photo-open="${esc(mealId)}">Enviar foto</button><p data-photo-status role="status"></p></div><details class="meal-difficulty-panel"><summary>Chutei o balde</summary><p>Acontece. Este é um espaço para entender o momento, sem culpa ou julgamento.</p><form data-meal-difficulty="${esc(mealId)}" class="app-form"><label>O que você comeu?<textarea name="foods" rows="2" maxlength="4000" required></textarea></label><label>Percebeu algum gatilho? (opcional)<textarea name="trigger" rows="2" maxlength="4000" placeholder="Pode ser fome, cansaço, ansiedade…"></textarea></label><button class="app-btn app-btn--primary">Compartilhar com a Marcela</button><p role="status"></p></form></details></div>`;
 }

@@ -1,3 +1,2 @@
-import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.49.1';
-import {createHandler} from './handler.mjs';
-Deno.serve(createHandler({createClient,getEnv:(name:string)=>Deno.env.get(name)}));
+// Retired endpoint: cached clients must never launch another paid analysis.
+Deno.serve(() => new Response(null, {status:410, headers:{'Cache-Control':'no-store','Access-Control-Allow-Origin':'*'}}));

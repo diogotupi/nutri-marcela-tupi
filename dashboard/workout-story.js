@@ -1,7 +1,8 @@
+import {readHabits,groupHabits} from '../js/daily-habits.mjs';
 import {getLocalDateString, getSupabase} from '../js/app-core.js';
-import {weeklyRange} from '../js/weekly-summary.mjs?v=20261108-week-story';
-import {loadPatientWeek, loadStoryWeight} from './weekly-data.js?v=20261108-week-story';
-import {drawWorkoutStory, loadStoryImage, prepareStoryPhoto, storyBadges, storyWeekLabel, weeklyStoryBadges} from './workout-story-art.mjs?v=20261108-week-story';
+import {weeklyRange} from '../js/weekly-summary.mjs?v=20261108-habits';
+import {loadPatientWeek, loadStoryWeight} from './weekly-data.js?v=20261108-habits';
+import {drawWorkoutStory, loadStoryImage, prepareStoryPhoto, storyBadges, storyWeekLabel, weeklyStoryBadges} from './workout-story-art.mjs?v=20261108-habits';
 
 const exampleUrl = '/assets/story-treino-exemplo.jpg';
 const logoUrl = '/assets/logo-horizontal.png';
@@ -13,8 +14,7 @@ async function readDay(patientId, day, signal) {
   const nextMidnight = new Date(midnight.getTime() + 86400000);
   const water = db.from('patient_water_logs').select('amount_ml')
     .eq('patient_id', patientId).eq('log_date', day).abortSignal(signal).maybeSingle();
-  const meals = db.from('patient_meal_checks').select('meal_id', {count: 'exact', head: true})
-    .eq('patient_id', patientId).eq('check_date', day).abortSignal(signal);
+  const flags = readHabits(db,patientId,day,day,signal).then(data=>({data})).catch(error=>({error}));
   const workout = db.from('clinical_records')
     .select('intensity:payload->>intensity')
     .eq('patient_id', patientId).eq('kind', 'exercise').is('archived_at', null)
@@ -22,12 +22,12 @@ async function readDay(patientId, day, signal) {
     .order('occurred_at', {ascending: false}).order('id', {ascending: false})
     .limit(1).abortSignal(signal).maybeSingle();
 
-  const [hydration, completed, latest] = await Promise.all([water, meals, workout]);
+  const [hydration, checked, latest] = await Promise.all([water, flags, workout]);
   return {
     waterMl: Number(hydration.data?.amount_ml),
-    mealCount: completed.count,
+    ...groupHabits(checked.data).get(day),
     intensity: Number(latest.data?.intensity),
-    incomplete: Boolean(hydration.error || completed.error || latest.error)
+    incomplete: Boolean(hydration.error || checked.error || latest.error)
   };
 }
 
@@ -242,7 +242,7 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
     if (nextBadges) badges = nextBadges;
     renderChoices();
     find('[data-weight-note]').textContent = weightNote;
-    status.textContent = incomplete ? 'Alguns registros não carregaram.' : week && !badges.length ? 'Ainda não há selos para este período.' : '';
+    status.textContent = incomplete ? 'Alguns registros não carregaram.' : !badges.length ? 'Registre o treino ou a água para incluir selos neste período.' : '';
     find('[data-retry-stats]').hidden = !incomplete;
     redraw();
   }

@@ -1,3 +1,4 @@
+import {readHabits,withHabitWorkouts} from '../js/daily-habits.mjs';
 import {enhanceProgress} from '../js/progress-motion.mjs?v=20261106-visual';
 import { getSupabase, escapeHtml as esc, getLocalDateString } from '../js/app-core.js';
 import { listClinical, listAppointments, getSignedAttachment } from '../js/clinical.js';
@@ -15,15 +16,6 @@ function lineChart(rows,key,unit) {
  if(!points.length)return '<p>Sem medições válidas no período.</p>';
  return progressPlot(points,{label:'Evolução em '+unit,unit,min:Math.max(0,Math.floor(Math.min(...points.map(p=>p.value)))-1),max:Math.ceil(Math.max(...points.map(p=>p.value)))+1,tone:'peach'});
 }
-function patientRecord(record) {
-  if(record.payload?.category!=='meal_substitution')return record;
-  const p=record.payload;
-  return {...record,payload:{
-    category:p.category,action:p.action,original_name:p.original_name||p.source_name,
-    source_grams:p.source_grams,target_name:p.target_name,target_grams:p.target_grams
-  }};
-}
-
 export async function initPatientCare(profile) {
  const root=document.getElementById('patient-reminders');
  const [appointments,notifications,tournaments]=await Promise.allSettled([listAppointments(profile.id),getSupabase().from('care_notifications').select('id,title,body,created_at').eq('patient_id',profile.id).order('created_at',{ascending:false}).limit(20),fetchMyActiveTournaments()]);
@@ -35,10 +27,11 @@ export async function loadEvolution(patientId) {
   const request = ++evolutionRequest; disposeEvolutionMotion();
   const root = document.getElementById('evolution-content'); root.innerHTML = '<p class="app-empty">Carregando registros…</p>';
   const days = Number(document.getElementById('evolution-range').value),today=getLocalDateString(),from=civilRange(today,days)[0];
-  const [waterResult,clinicalResult,goalsResult] = await Promise.allSettled([
+  const [waterResult,clinicalResult,goalsResult,habitResult] = await Promise.allSettled([
     getSupabase().from('patient_water_logs').select('log_date,amount_ml,goal_ml').eq('patient_id',patientId).gte('log_date',from).lte('log_date',today).order('log_date'),
     listClinical(patientId),
-    getSupabase().from('patient_goals').select('water_ml,valid_from').eq('patient_id',patientId).order('valid_from')
+    getSupabase().from('patient_goals').select('water_ml,valid_from').eq('patient_id',patientId).order('valid_from'),
+    readHabits(getSupabase(),patientId,from.slice(0,7)+'-01',today)
   ]);
   if (request !== evolutionRequest) return;
   const waterError=waterResult.status==='rejected'?waterResult.reason:waterResult.value.error;
@@ -48,24 +41,22 @@ export async function loadEvolution(patientId) {
   const assessments=records.filter(r=>r.kind==='assessment' && getLocalDateString(new Date(r.occurred_at))>=from && getLocalDateString(new Date(r.occurred_at))<=today).reverse();
   const hydration=waterError?`<section class="app-card patient-chart"><h2>Hidratação diária</h2><p role="status">Não foi possível carregar sua hidratação. Use Atualizar registros para tentar novamente.</p></section>`:waterChartMarkup(timeline,goalsError);
   if(clinicalResult.status==='rejected') {root.innerHTML=`${hydration}<section class="app-card patient-chart"><h2>Avaliações e relatos</h2><p role="status">Não foi possível atualizar as avaliações e relatos. Tente atualizar novamente.</p></section>`;disposeEvolutionMotion=enhanceProgress(root);return;}
-  const progress=progressSeries(records,from,today);
+  const progress=progressSeries(withHabitWorkouts(records,habitResult.status==='fulfilled'?habitResult.value:[]),from,today);
   root.innerHTML = `${hydration}
-  <section class="app-card patient-chart"><h2>Frequência e intensidade do treino</h2>${workoutChart(progress)}</section>
+  <section class="app-card patient-chart"><h2>Frequência e intensidade do treino</h2>${habitResult.status==='rejected'?'<p role="status">Não foi possível carregar os checks de treino.</p>':''}${workoutChart(progress)}</section>
   <section class="app-card patient-chart"><h2>Evolução do peso</h2>${weightChart(progress)}</section>
   <section class="app-card patient-chart"><h2>Avaliações</h2><p>O significado das mudanças depende do seu objetivo. Converse com a Marcela.</p><h3>IMC (kg/m²)</h3>${lineChart(assessments,'bmi','kg/m²')}<div class="app-table-wrap"><table class="app-table"><thead><tr><th>Data da avaliação</th><th>Peso (kg)</th><th>Altura (cm)</th><th>IMC (kg/m²)</th></tr></thead><tbody>${assessments.map(r=>{const p=r.payload; const w=Number(p.weight_kg),h=Number(p.height_cm);return `<tr><td>${date(r.occurred_at)}</td><td>${w>0?w:'Sem registro'}</td><td>${h>0?h:'Sem registro'}</td><td>${w>0&&h>0?(w/(h/100)**2).toFixed(1):'Não calculado'}</td></tr>`;}).join('') || '<tr><td colspan="4">Sem avaliações no período</td></tr>'}</tbody></table></div><p>IMC = peso (kg) ÷ altura (m)². Não representa interpretação clínica automática.</p></section>`;
   disposeEvolutionMotion=enhanceProgress(root);
-  const fieldLabels={original_name:'Alimento original',source_grams:'Porção original (g)',target_name:'Alimento substituto',target_grams:'Porção orientada (g)',description:'Descrição',intensity:'Intensidade percebida',foods:'O que comeu',feelings:'Sentimentos',trigger:'Gatilho relatado',objective:'Objetivos',routine:'Rotina',preferences:'Preferências',restrictions:'Restrições',allergies:'Alergias',history:'Histórico informado',medications:'Medicamentos',supplements:'Suplementos',sleep:'Sono',exercise:'Atividade física',habits:'Hábitos alimentares',difficulties:'Dificuldades',reported_by:'Informado por',hunger:'Fome',satiety:'Saciedade',energy:'Energia',sleep_hours:'Sono (horas)',difficulty:'Dificuldades',achievement:'Conquistas',notes:'Observações',help_requested:'Solicitou ajuda',modality:'Modalidade',date:'Data',duration_minutes:'Duração (minutos)',frequency:'Frequência'};
-  const labels={anamnesis:'Anamnese',checkin:'Check-in',exercise:'Atividade física',attachment:'Arquivo',note:'Orientação',consent:'Preferência registrada'};
-  root.insertAdjacentHTML('beforeend',`<section class="app-card patient-chart"><h2>Meus relatos e arquivos</h2>${records.filter(r=>labels[r.kind] && r.payload?.category!=='weight_checkin' && !(r.payload?.category==='meal_substitution'&&r.payload.action==='registered')).map(patientRecord).map(r=>`<details><summary>${labels[r.kind]} · ${date(r.occurred_at)} · versão ${r.version} · ${{draft:'rascunho',submitted:'enviado',reviewed:'revisado'}[r.status] || 'registrado'}</summary>${r.kind==='attachment'?`<p>${esc(r.payload.filename || r.payload.name || 'Arquivo')}</p><button class="app-btn app-btn--ghost" data-file="${esc(r.payload.path || '')}">Abrir arquivo privado</button>`:`<dl>${Object.entries(r.payload).filter(([key,value])=>!['template','scale_max'].includes(key)&&!(r.payload.category==='meal_substitution'&&['category','action'].includes(key))&&value!==null&&value!==undefined&&value!==''&&!(typeof value==='string'&&!value.trim())&&!(typeof value==='object'&&!Object.keys(value).length)).map(([key,value])=>`<dt>${esc(r.payload.template?.fields?.find(f=>f.key===key)?.label || fieldLabels[key] || key)}</dt><dd>${esc(typeof value==='boolean'?(value?'Sim':'Não'):typeof value==='object'?JSON.stringify(value):String(value === 'patient' ? 'Paciente' : value || 'Não informado'))}</dd>`).join('')}</dl>`}</details>`).join('')||'<p>Você ainda não enviou relatos ou arquivos.</p>'}<p role="status" id="file-open-status"></p></section>`);
+  const fieldLabels={description:'Descrição',intensity:'Intensidade percebida',reported_by:'Informado por',energy:'Energia',sleep_hours:'Sono (horas)',difficulty:'Dificuldades',achievement:'Conquistas',notes:'Observações',help_requested:'Solicitou ajuda',modality:'Modalidade',date:'Data',duration_minutes:'Duração (minutos)',frequency:'Frequência'};
+  const labels={checkin:'Check-in',exercise:'Atividade física',attachment:'Arquivo',note:'Orientação',consent:'Preferência registrada'};
+  root.insertAdjacentHTML('beforeend',`<section class="app-card patient-chart"><h2>Meus relatos e arquivos</h2>${records.filter(r=>labels[r.kind] && r.payload?.category!=='weight_checkin').map(r=>`<details><summary>${labels[r.kind]} · ${date(r.occurred_at)} · versão ${r.version} · ${{draft:'rascunho',submitted:'enviado',reviewed:'revisado'}[r.status] || 'registrado'}</summary>${r.kind==='attachment'?`<p>${esc(r.payload.filename || r.payload.name || 'Arquivo')}</p><button class="app-btn app-btn--ghost" data-file="${esc(r.payload.path || '')}">Abrir arquivo privado</button>`:`<dl>${Object.entries(r.payload).filter(([key,value])=>!['template','scale_max'].includes(key)&&value!==null&&value!==undefined&&value!==''&&!(typeof value==='string'&&!value.trim())&&!(typeof value==='object'&&!Object.keys(value).length)).map(([key,value])=>`<dt>${esc(r.payload.template?.fields?.find(f=>f.key===key)?.label || fieldLabels[key] || key)}</dt><dd>${esc(typeof value==='boolean'?(value?'Sim':'Não'):typeof value==='object'?JSON.stringify(value):String(value === 'patient' ? 'Paciente' : value || 'Não informado'))}</dd>`).join('')}</dl>`}</details>`).join('')||'<p>Você ainda não enviou relatos ou arquivos.</p>'}<p role="status" id="file-open-status"></p></section>`);
   root.querySelectorAll('[data-file]').forEach(button=>button.addEventListener('click',async()=>{button.disabled=true;try {const url=await getSignedAttachment(button.dataset.file);const link=document.createElement('a');link.href=url;link.target='_blank';link.rel='noopener';link.click();}catch(error){document.getElementById('file-open-status').textContent=error.message;}finally{button.disabled=false;}}));
 }
 async function allRows(table, column, id) {
   const rows = [];
   for (let offset = 0; ; offset += 500) {
-    const fields=['patient_food_substitutions','patient_described_substitutions'].includes(table)
-      ? 'id,created_at,original_name,original_quantity,source_name,source_grams,target_name,target_grams,energy_kcal' : '*';
-    let query=getSupabase().from(table).select(fields).eq(column,id);
-    query=table==='meal_reports'?query.order('report_date').order('meal_id'):query.order('id');
+    let query=getSupabase().from(table).select('*').eq(column,id);
+    query=table==='patient_daily_habits'?query.order('habit_date').order('habit'):query.order('id');
     const {data,error} = await query.range(offset,offset+499);
     if(error) throw error;
     rows.push(...data);
@@ -77,22 +68,14 @@ export async function exportPatientData(profile) {
   const button = document.getElementById('export-patient-data'); button.disabled = true;
   status.textContent = 'Preparando exportação completa dos registros acessíveis…';
   try {
-    const tables = ['clinical_records','patient_water_logs','patient_meal_checks','patient_item_checks','meal_reports','diets','appointments','care_notifications','patient_goals','patient_messages','patient_described_substitutions','patient_food_substitutions','patient_free_meals'];
+    const tables = ['clinical_records','patient_water_logs','patient_daily_habits','appointments','care_notifications','patient_goals','patient_messages'];
     const values = await Promise.all(tables.map(table=>allRows(table,'patient_id',profile.id)));
     const records = Object.fromEntries(tables.map((table,i)=>[table,values[i]]));
-    records.clinical_records=records.clinical_records.map(patientRecord);
-    const plans = [];
-    for (const diet of records.diets) {
-      const meals = await allRows('diet_meals','diet_id',diet.id);
-      for (const meal of meals) meal.diet_items = await allRows('diet_items','meal_id',meal.id);
-      plans.push({...diet,meals});
-    }
-    records.diets = plans;
     const {data:bank,error} = await getSupabase().from('weekend_banks').select('payload,revision,updated_at').eq('user_id',profile.user_id).maybeSingle();
     if(error) throw error;
     records.weekendBank=bank;
     const url = URL.createObjectURL(new Blob([JSON.stringify({exportedAt:new Date().toISOString(),profile:{name:profile.full_name,username:profile.username},records},null,2)],{type:'application/json'}));
     const a=document.createElement('a');a.href=url;a.download='meu-acompanhamento.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
-    status.textContent='Registros exportados, incluindo planos, refeições, hidratação, banco e histórico clínico. Arquivos aparecem como referências privadas; abra-os na aba Evolução para baixar os originais.';
+    status.textContent='Registros exportados, incluindo seus checks, hidratação e histórico do acompanhamento. Arquivos aparecem como referências privadas; abra-os na aba Evolução para baixar os originais.';
   } catch(error) { status.textContent=`A exportação não foi concluída: ${error.message}`; } finally { button.disabled = false; }
 }
