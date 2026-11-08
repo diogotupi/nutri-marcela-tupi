@@ -3,7 +3,8 @@ export function fittedDimensions(width, height, maxEdge = 1600) {
   const ratio=Math.min(1,maxEdge/Math.max(width,height));
   return {width:Math.max(1,Math.round(width*ratio)),height:Math.max(1,Math.round(height*ratio))};
 }
-export function validatePhoto(file) {
-  if(!file || !['image/jpeg','image/png','image/webp'].includes(file.type)) throw Error('Escolha uma foto JPG, PNG ou WebP. Para HEIC, exporte como JPG antes de enviar.');
+export function validatePhoto(file, {allowHeic = false} = {}) {
+  const heic = allowHeic && (['image/heic','image/heif'].includes(file?.type) || (!file?.type && /\.hei[cf]$/i.test(file?.name || '')));
+  if(!file || (!heic && !['image/jpeg','image/png','image/webp'].includes(file.type))) throw Error('Escolha uma foto JPG, PNG ou WebP. Para HEIC, exporte como JPG antes de enviar.');
   if(!file.size || file.size>20*1024*1024) throw Error('Escolha uma foto de até 20 MB.');
 }

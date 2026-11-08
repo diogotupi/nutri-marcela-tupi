@@ -5,6 +5,7 @@ import { preparePhotoUpload } from '../js/media-upload.js';
 import {mountWeightCheckin} from './weight-checkin.js?v=20261106-visual';
 import {mountWorkoutProgress} from './workout-progress.js?v=20261106-visual';
 import {celebrateWorkout} from './workout-celebration.js';
+import {openWorkoutStory} from './workout-story.js?v=20261108-story';
 import { intensityLabel } from './patient-model.mjs';
 import {openMealPhotoPicker} from './meal-photo.js?v=20261030-patient2';
 
@@ -38,6 +39,16 @@ export async function initPatientExtras(profile) {
   celebration.hidden=true;
   celebration.setAttribute('aria-label','Comemoração do treino');
   trainingForm.after(celebration);
+  trainingForm.insertAdjacentHTML('afterend', `
+    <section class="workout-story-invite" aria-labelledby="story-invite-title">
+      <img src="/assets/story-treino-exemplo.jpg" alt="" loading="lazy" width="81" height="144">
+      <div>
+        <h3 id="story-invite-title">Faz o Básico Club</h3>
+        <p>Uma foto do treino com os seus registros do dia.</p>
+        <button type="button" class="app-btn app-btn--primary" data-create-workout-story>Criar Story do treino <span aria-hidden="true">↗</span></button>
+      </div>
+    </section>`);
+  training.querySelector('[data-create-workout-story]').onclick = () => openWorkoutStory(profile.id);
   trainingForm.intensity.addEventListener('input',()=>{const n=Number(trainingForm.intensity.value);document.getElementById('intensity-label').textContent=`${n} · ${intensityLabel(n)}`;});
   trainingForm.addEventListener('submit',async event=>{
     event.preventDefault();const button=trainingForm.querySelector('button'),status=trainingForm.querySelector('[role=status]');button.disabled=true;status.textContent='Salvando seu treino…';

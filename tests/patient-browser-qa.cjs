@@ -68,7 +68,19 @@ async (existingPage) => {
       }
       data={conflict:conflict&&!body.p_resolution,item_ids:itemChecks.map(i=>i.item_id)};
     }
-    if(table==='patient_meal_checks') {if(method==='POST') checks.push(body);data=checks;}
+    if(table==='patient_meal_checks') {
+      const meals = new Set();
+      for (const report of checks) {
+        if (report.p_date !== today) continue;
+        if (report.p_status === 'done') meals.add(report.p_meal);
+        else meals.delete(report.p_meal);
+      }
+      data = [...meals].map(meal_id => ({meal_id, check_date: today}));
+      if (method === 'HEAD') {
+        assert(url.searchParams.get('patient_id') === 'eq.' + pid && url.searchParams.get('check_date') === 'eq.' + today, 'Story needs the signed-in patient’s completed meals for today');
+        return route.fulfill({status:200, headers:{'access-control-allow-origin':'*','access-control-expose-headers':'content-range','content-range':'*/' + data.length}, body:''});
+      }
+    }
     if(table==='record_water') {
       operations.push(body);
       if(!applied.has(body.p_operation)) {water=Math.max(0,water+body.p_delta);applied.set(body.p_operation,water);}
@@ -84,6 +96,15 @@ async (existingPage) => {
       }
       data=method==='POST'?[clinical[0]]:clinical;
       if(url.searchParams.get('id')?.startsWith('eq.'))data=data.filter(row=>row.id===url.searchParams.get('id').slice(3));
+      if (method === 'GET' && url.searchParams.get('select') === 'intensity:payload->>intensity') {
+        const start = new Date(today + 'T00:00:00-03:00').getTime();
+        const end = start + 86400000;
+        const bounds = url.searchParams.getAll('occurred_at');
+        assert(url.searchParams.get('patient_id') === 'eq.' + pid && url.searchParams.get('kind') === 'eq.exercise', 'Story workout must belong to the signed-in patient');
+        assert(url.searchParams.get('archived_at') === 'is.null' && bounds.includes('gte.' + new Date(start).toISOString()) && bounds.includes('lt.' + new Date(end).toISOString()), 'Story workout must belong to today in São Paulo');
+        data = clinical.filter(row => row.kind === 'exercise' && Date.parse(row.occurred_at) >= start && Date.parse(row.occurred_at) < end)
+          .sort((a, b) => b.occurred_at.localeCompare(a.occurred_at)).slice(0, 1).map(row => ({intensity:row.payload.intensity}));
+      }
     }
     if(table==='patient_messages') { data=messages;const seq=url.searchParams.get('seq');if(seq?.startsWith('gt.'))data=data.filter(m=>m.seq>Number(seq.slice(3)));if(seq?.startsWith('lt.'))data=data.filter(m=>m.seq<Number(seq.slice(3)));}
     if(table==='send_patient_message') { messageOps.push(body);let row=messages.find(m=>m.id===body.p_id);if(!row){row={id:body.p_id,seq:messages.length+1,patient_id:pid,sender_role:'patient',body:body.p_body,attachment_path:body.p_attachment,attachment_name:body.p_attachment?'QA document.pdf':null,created_at:new Date().toISOString()};messages.push(row);}if(failNextMessage){failNextMessage=false;return route.abort('failed');}data=row;}
@@ -185,6 +206,97 @@ async (existingPage) => {
     await page.locator('#patient-workout-progress select').selectOption('90');
     await waitFor(()=>!document.querySelector('#patient-workout-progress button').disabled);
     assert(await page.locator('#patient-workout-progress .progress-plot').count()===2,'frequency and intensity plots visible today');
+    {
+      const open = page.getByRole('button', {name:'Criar Story do treino'});
+      const dialog = page.getByRole('dialog', {name:'Story do treino'});
+      const ready = dialog.locator('[data-download][href]');
+      water = 2050;
+      checks.push({p_meal:'meal1', p_date:today, p_status:'done'});
+      const priorRecords = clinical.length;
+      await open.click();
+      await dialog.locator('[data-example-label]').waitFor();
+      assert(!await dialog.locator('[data-download]').isVisible(), 'Example image cannot be exported as a personal Story');
+      assert(await dialog.locator('[name=camera]').getAttribute('capture') === 'user', 'Missing camera capture');
+      await dialog.locator('[name=gallery]').setInputFiles({name:'broken.jpg', mimeType:'image/jpeg', buffer:Buffer.from('invalid image')});
+      await dialog.locator('[data-photo-status]').filter({hasText:'Não foi possível abrir'}).waitFor();
+      const horizontalImage = await page.evaluate(() => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1200;
+        canvas.height = 640;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#315749';
+        ctx.fillRect(0, 0, 600, 640);
+        ctx.fillStyle = '#ebb69e';
+        ctx.fillRect(600, 0, 600, 640);
+        return canvas.toDataURL('image/jpeg').split(',')[1];
+      });
+      const mockSharing = await page.evaluateHandle(() => {
+        const original = ['share','canShare'].map(name => Object.getOwnPropertyDescriptor(navigator, name));
+        Object.defineProperty(navigator, 'canShare', {configurable:true, value:payload => payload.files[0] instanceof File});
+        Object.defineProperty(navigator, 'share', {configurable:true, value:async payload => {window.storyShared = payload.files[0].name;}});
+        return () => ['share','canShare'].forEach((name,i) => original[i] ? Object.defineProperty(navigator,name,original[i]) : delete navigator[name]);
+      });
+      const chooser = page.waitForEvent('filechooser');
+      await dialog.getByRole('button', {name:'Escolher da galeria'}).click();
+      await (await chooser).setFiles({name:'treino.jpg', mimeType:'image/jpeg', buffer:Buffer.from(horizontalImage, 'base64')});
+      await ready.waitFor();
+      const badge = key => dialog.locator('[data-badge-key=' + key + ']');
+      assert(await dialog.getByRole('checkbox',{name:'2,05 L de água'}).isChecked(), 'Use recorded intake, not a water goal');
+      assert(await dialog.getByRole('checkbox',{name:'Dieta · 1 refeição'}).isChecked(), 'Use only completed meals');
+      assert(await dialog.getByRole('checkbox',{name:'Intensidade 10/10'}).isChecked(), 'Missing recorded intensity');
+      assert(!await badge('strength').isChecked() && !await badge('cardio').isChecked(), 'Workout types must be confirmed');
+      await badge('strength').check();
+      await badge('water').uncheck();
+      await dialog.locator('[name=position]').fill('0');
+      await ready.waitFor();
+      const redChannelAtCenter = () => dialog.locator('canvas').evaluate(el => el.getContext('2d').getImageData(540,960,1,1).data[0]);
+      assert(await redChannelAtCenter() < 100, 'Crop must show left side of a landscape photo');
+      await dialog.locator('[name=position]').fill('100');
+      await ready.waitFor();
+      assert(await redChannelAtCenter() > 180, 'Crop must show right side of that photo');
+      await dialog.getByLabel('Foto inteira').check();
+      await ready.waitFor();
+      assert(!await dialog.locator('[name=position]').isVisible(), 'Full-photo fit should not crop');
+      const description = await dialog.locator('canvas').getAttribute('aria-label');
+      assert(description.includes('Treino de força') && !description.includes('água'), 'Stamp selections must reach the preview');
+      const output = await ready.evaluate(async anchor => {
+        const blob = await (await fetch(anchor.href)).blob();
+        const bitmap = await createImageBitmap(blob);
+        const result = [blob.type, bitmap.width, bitmap.height];
+        bitmap.close();
+        return result;
+      });
+      assert(output.join('/') === 'image/jpeg/1080/1920', 'Download must be a portrait Story JPEG');
+      const downloadEvent = page.waitForEvent('download');
+      await ready.click();
+      const filename = (await downloadEvent).suggestedFilename();
+      assert(filename === 'faz-o-basico-club-' + today + '.jpg', 'Download filename must identify the day');
+      await dialog.getByRole('button',{name:'Compartilhar',exact:true}).click();
+      assert(await page.evaluate(() => window.storyShared) === filename, 'Share must hand off the rendered file');
+      await page.evaluate(restore => restore(), mockSharing);
+      await mockSharing.dispose();
+      await dialog.screenshot({path:'.playwright-mcp/story-mobile.png'});
+      await page.setViewportSize({width:1440,height:1000});
+      await dialog.screenshot({path:'.playwright-mcp/story-desktop.png'});
+      await dialog.getByRole('button',{name:'Fechar editor do Story'}).click();
+      water = 0;
+      checks.pop();
+      failClinical = true;
+      await open.click();
+      await dialog.locator('[data-example-label]').waitFor();
+      assert(!await dialog.locator('[data-download]').isVisible() && uploads.length === 0 && clinical.length === priorRecords, 'Story must stay on the device and reopening must not log another workout');
+      await dialog.locator('[name=camera]').setInputFiles({name:'treino.jpg', mimeType:'image/jpeg', buffer:Buffer.from(horizontalImage, 'base64')});
+      await dialog.getByRole('button',{name:'Recarregar registros'}).waitFor();
+      await ready.waitFor();
+      assert(await badge('water').count() === 0 && await badge('intensity').count() === 0 && !await badge('diet').isChecked(), 'Missing records must not become accomplishments');
+      failClinical = false;
+      await dialog.getByRole('button',{name:'Recarregar registros'}).click();
+      await dialog.getByRole('checkbox',{name:'Intensidade 10/10'}).waitFor();
+      await ready.waitFor();
+      await dialog.press('Escape');
+      await dialog.waitFor({state:'detached'});
+      await page.setViewportSize({width:390,height:844});
+    }
     await page.locator('#patient-weight.is-weight-due').waitFor();
     assert((await page.locator('#patient-weight h2').innerText())==='Dia de atualizar seu peso!','seven-day reminder');
     assert(await page.locator('#patient-weight details').evaluate(el=>el.open),'weekly form starts open');
