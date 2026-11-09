@@ -537,6 +537,10 @@ async (existingPage) => {
     await page.getByRole('button',{name:'Comunidade',exact:true}).click();
     const post=page.locator('article.community-post[data-id="'+photoPost.id+'"]');
     await post.getByRole('img',{name:'Marcela · Administradora'}).waitFor();
+    const cupIsWhole=await post.locator('.community-coffee svg').evaluate(svg=>
+      [...svg.querySelectorAll('g,path,ellipse')].every(part=>getComputedStyle(part).clipPath==='none')
+    );
+    assert(cupIsWhole,'The avatar crop must not hide any part of the coffee reaction');
     await post.getByRole('button',{name:'Dar um cafezinho'}).click();
     await post.getByRole('button',{name:'Retirar cafezinho'}).waitFor();
     assert(await post.locator('.community-coffee b').textContent()==='1','Coffee did not persist');

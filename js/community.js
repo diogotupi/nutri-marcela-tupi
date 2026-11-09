@@ -6,7 +6,12 @@ const instances = new WeakMap();
 const dateFormat = new Intl.DateTimeFormat('pt-BR', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
 const paths = {
   camera: '<path d="m8 6 1.5-2h5L16 6h3a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/><circle cx="12" cy="12.5" r="3.3"/>',
-  coffee: '<g class="cup-steam"><path d="M8 6c-1-1.6 1.5-1.8.5-3.6m4 3.6c-1-1.6 1.5-1.8.5-3.6"/></g><g class="cup-body"><path d="M3.5 9h13v4.3a6.5 6.5 0 0 1-13 0zM16.7 10h1.5a2.8 2.8 0 0 1 0 5.6h-1.8"/><path d="M3 21h15"/></g>',
+  coffee: `<path class="cup-steam" d="M8 5.2C6.4 3.7 9 3.4 8 1.8m4.7 3.4c-1.6-1.5 1-1.8 0-3.4"/>
+    <path d="M16.2 9.8h2.1a2.8 2.8 0 0 1 0 5.6h-2.8" stroke-width="2.1"/>
+    <path class="cup-glaze" fill="#f3e5d2" d="M3.6 9h13.1l-.5 4.6c-.3 3-2.5 5-6 5s-5.6-2-6-5z"/>
+    <ellipse cx="10.15" cy="9" rx="6.55" ry="1.9" fill="#774b35"/>
+    <path d="M6.3 12.7c.1 1.2.6 2.1 1.4 2.7" stroke="#fff9ed" stroke-width="1.3"/>
+    <path d="M2.1 20.3h17.5c-.9 1.4-2.5 2-4.8 2H6.9c-2.3 0-3.9-.6-4.8-2Z" fill="currentColor" stroke="none"/>`,
   comment: '<path d="M20.5 11.4a8.4 8.4 0 0 1-8.6 8.4 9.3 9.3 0 0 1-3.5-.7l-4.9 1.2 1.2-4.4a8 8 0 0 1-1.2-4.5 8.5 8.5 0 0 1 17 0Z"/>',
   crown: '<path d="m2.5 7 5.2 3.5L12 4l4.3 6.5L21.5 7l-2.2 11H4.7z" fill="#f3c55f"/><path d="M6 20h12"/>',
   pride: '<path d="M12 2.2 21 5.4v6c0 5.5-4.6 8.6-9 10.7-4.4-2.1-9-5.2-9-10.7v-6z" fill="#416854" stroke="#b28a3c"/><path d="m12 6.4 1.7 3.2 3.6.5-2.6 2.5.6 3.6-3.3-1.7-3.3 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="#ffdd89" stroke="none"/>',
@@ -279,7 +284,9 @@ export function mountCommunity(root, profile) {
         coffee.disabled = false;
       }
     };
-    coffee.addEventListener('animationend',() => coffee.classList.remove('is-brewing'));
+    coffee.addEventListener('animationend', event => {
+      if (event.animationName === 'community-steam') coffee.classList.remove('is-brewing');
+    });
     const remove = article.querySelector('header button');
     if (remove) remove.onclick = async () => {
       if (!confirm('Excluir esta foto e os comentários dela?')) return;

@@ -1,6 +1,6 @@
 import {readHabits,groupHabits} from '../js/daily-habits.mjs?v=20261109-care';
 import {getLocalDateString, getSupabase, showToast} from '../js/app-core.js';
-import {createCommunityPhotoDraft} from '../js/community.js?v=20261109-mural-jpg';
+import {createCommunityPhotoDraft} from '../js/community.js?v=20261109-xicara';
 import {weeklyRange} from '../js/weekly-summary.mjs?v=20261109-care';
 import {loadPatientWeek, loadStoryWeight} from './weekly-data.js?v=20261109-care';
 import {drawWorkoutStory, loadStoryImage, prepareStoryPhoto, storyBadges, storyWeekLabel, weeklyStoryBadges} from './workout-story-art.mjs?v=20261108-club';
