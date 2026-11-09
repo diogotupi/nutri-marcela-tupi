@@ -1,6 +1,6 @@
-import {readHabits} from '../js/daily-habits.mjs?v=20261108-club';
+import {readHabits} from '../js/daily-habits.mjs?v=20261109-care';
 import {getSupabase} from '../js/app-core.js';
-import {weeklyRange, weeklySummary, weightChangeThrough} from '../js/weekly-summary.mjs?v=20261108-club';
+import {weeklyRange, weeklySummary, weightChangeThrough} from '../js/weekly-summary.mjs?v=20261109-care';
 
 async function collect(build, signal) {
   const all = [];

@@ -50,7 +50,8 @@ test('cardio uses recorded minutes; a free meal counts once per day and stays of
   const s=weeklySummary({today,habits:[{...habit('cardio'),cardio_minutes:25},habit('cardio',1,'2026-11-04'),
     {...habit('free_meal'),meal_description:'Refeição descrita em particular'}]});
   const badges=weeklyStoryBadges(s);
-  assert.equal(s.freeMealDays,1);assert.equal(s.points,3);
+  assert.equal(s.freeMealDays,1);assert.equal(s.points,2);
+  assert.match(weeklyMarkup(s),/1 refeição livre registrada/);
   assert.equal(badges.find(b=>b.key==='cardio').label,'25 min de cardio');
   assert.match(badges.find(b=>b.key==='cardio').note,/1 de 2 dias/);
   assert.doesNotMatch(JSON.stringify(badges),/particular|livre/i);

@@ -12,9 +12,9 @@
   <link rel="stylesheet" href="./patient.css?v=20261105-clinic">
   <link rel="stylesheet" href="/app/progress.css?v=20261106-visual">
   <link rel="stylesheet" href="./workout-story.css?v=20261108-club">
-  <link rel="stylesheet" href="./basiquito.css?v=20261108">
+  <link rel="stylesheet" href="./basiquito.css?v=20261109-care">
   <script src="../js/config.js"></script>
-<link rel="stylesheet" href="/app/fresh.css?v=20261030b"><link rel="stylesheet" href="/app/chat.css?v=20261030-chat"><link rel="stylesheet" href="/app/habits.css?v=20261108-club"><link rel="stylesheet" href="/app/materials.css"><link rel="stylesheet" href="/app/progress-visual.css?v=20261106-visual"></head>
+<link rel="stylesheet" href="/app/fresh.css?v=20261030b"><link rel="stylesheet" href="/app/chat.css?v=20261030-chat"><link rel="stylesheet" href="/app/habits.css?v=20261109-care"><link rel="stylesheet" href="/app/materials.css"><link rel="stylesheet" href="/app/progress-visual.css?v=20261106-visual"></head>
 <body class="app-body">
   <div class="app-shell" inert>
     <aside class="app-sidebar">
@@ -44,7 +44,7 @@
         <div class="app-topbar">
           <div>
             <h1>Olá, <span id="patient-greeting">paciente</span></h1>
-            <p>Um cuidado de cada vez. Como está seu dia?</p>
+            <p>Já fez o básico hoje?</p>
           </div>
         </div>
         <section class="app-card h2o-card" style="margin-bottom:1rem;padding:1.25rem">
@@ -71,6 +71,18 @@
         </section>
 
         <section id="patient-habits" class="app-card habit-board" aria-label="Checks do dia"></section>
+        <section class="app-card habit-board free-meal-entry" aria-labelledby="free-meal-heading">
+          <h2 id="free-meal-heading">Fez uma refeição livre hoje?</h2>
+          <form id="meal-note" class="app-form">
+            <label for="meal-description">O que você comeu?</label>
+            <textarea id="meal-description" name="description" rows="2" required maxlength="1000" placeholder="Conte como foi sua refeição livre."></textarea>
+            <div class="habit-detail-actions">
+              <button class="app-btn app-btn--primary" type="submit" disabled>Salvar relato</button>
+              <button class="app-btn app-btn--ghost" type="button" data-remove-meal hidden>Excluir relato</button>
+            </div>
+            <p class="habit-status" role="status"></p>
+          </form>
+        </section>
         <section id="patient-weekly-overview" class="weekly-overview" aria-label="Resumo da semana"></section>
         <section id="patient-weight" class="app-card weight-checkin" aria-label="Check-in de peso"></section>
         <section id="patient-training" class="app-card patient-training" aria-label="Seu treino de hoje"></section>
@@ -122,6 +134,6 @@
     </main>
   </div>
 
-  <script type="module" src="./dashboard.js?v=20261108-club"></script>
+  <script type="module" src="./dashboard.js?v=20261109-care"></script>
 </body>
 </html>

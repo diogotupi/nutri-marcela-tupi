@@ -1,12 +1,12 @@
-import {readHabits,groupHabits} from '../js/daily-habits.mjs?v=20261108-club';
-import {mountWeeklyOverview} from './weekly-overview.js?v=20261108-club';
+import {readHabits,groupHabits,saveCardioMinutes} from '../js/daily-habits.mjs?v=20261109-care';
+import {mountWeeklyOverview} from './weekly-overview.js?v=20261109-care';
 import { getSupabase, getLocalDateString, escapeHtml as esc } from '../js/app-core.js';
 import { addClinical, uploadAttachment, getSignedAttachment } from '../js/clinical.js';
 import { preparePhotoUpload } from '../js/media-upload.js';
 import {mountWeightCheckin} from './weight-checkin.js?v=20261106-visual';
 import {mountWorkoutProgress} from './workout-progress.js?v=20261108-habits';
 import {celebrateWorkout} from './workout-celebration.js?v=20261108-habits';
-import {openWorkoutStory} from './workout-story.js?v=20261108-club';
+import {openWorkoutStory} from './workout-story.js?v=20261109-care';
 import { intensityLabel } from './patient-model.mjs';
 
 const db=()=>getSupabase();
@@ -17,11 +17,11 @@ export function bearSvg(strong=false) {
   return `<svg viewBox="0 0 110 100" aria-hidden="true" class="intensity-bear"><g stroke="#76543c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${strong?'<path fill="#bc885d" d="M33 56Q19 34 11 48L6 65Q10 83 33 72M77 56Q91 32 100 48L105 65Q100 83 77 72"/><path d="M15 61q8-8 16 0m49 0q8-8 15 0" fill="none"/>':'<ellipse cx="31" cy="67" rx="11" ry="16" fill="#d9b38e"/><ellipse cx="79" cy="67" rx="11" ry="16" fill="#d9b38e"/>'}<ellipse cx="55" cy="70" rx="25" ry="25" fill="${strong?'#bc885d':'#dfbf9c'}"/><ellipse cx="55" cy="75" rx="15" ry="15" fill="#f4e1c9"/><circle cx="34" cy="24" r="11" fill="#d9b38e"/><circle cx="76" cy="24" r="11" fill="#d9b38e"/><circle cx="34" cy="24" r="5" fill="#edc9b5"/><circle cx="76" cy="24" r="5" fill="#edc9b5"/><ellipse cx="55" cy="39" rx="26" ry="24" fill="${strong?'#c59267':'#e4c5a3'}"/><ellipse cx="55" cy="48" rx="13" ry="10" fill="#f8ead8"/><circle cx="44" cy="37" r="2" fill="#3f332b"/><circle cx="66" cy="37" r="2" fill="#3f332b"/><path d="M51 44h8l-4 4z" fill="#6e4b37"/><path d="M55 48v4m-6 0q6 6 12 0" fill="none"/>${strong?'<path d="M39 31l9 3m14 0 9-3m-22 39h12m-12 7h12" fill="none"/><path d="M32 29h46v-7H32z" fill="#416e58"/>':'<path d="M47 65l8 4 8-4v10l-8-4-8 4z" fill="#719e83"/>'}</g></svg>`;
 }
 const badgeCatalog=[
-  {id:'steady21',title:'21 dias de cuidado',description:'Um check positivo em 21 dias seguidos.'},
+  {id:'steady21',title:'21 dias de cuidado',description:'Manteve atividades atualizadas por aqui por 21 dias.'},
   {id:'meals3',title:'Rotina no prato',description:'Marcou “Gabaritei a dieta” em três dias seguidos.'},
-  {id:'water3',title:'Hidratação em dia',description:'Sua meta individual atingida em 3 dias seguidos. Beber além dela não dá pontos extras.'},
-  {id:'training7',title:'Movimento presente',description:'7 dias seguidos com treino registrado. A intensidade não aumenta a conquista.'},
-  {id:'nutri_pride',title:'Orgulho da nutri',description:'Um reconhecimento concedido pela Marcela.'},
+  {id:'water3',title:'Hidratação em dia',description:'Atingiu sua meta de água em três dias seguidos.'},
+  {id:'training7',title:'Movimento presente',description:'Registrou treino 7 dias seguidos.'},
+  {id:'nutri_pride',title:'Orgulho da nutri',description:'Um reconhecimento da Marcela.'},
 ];
 function badgeSvg(id) {
   const art={steady21:'<text x="50" y="61" text-anchor="middle" fill="#fff8d7" font-size="29" font-weight="800" font-family="sans-serif">21</text>',meals3:'<circle cx="50" cy="47" r="17" fill="none" stroke="#fff6ce" stroke-width="4"/><path d="M43 50q0-19 20-17-1 20-20 17m-11-17v32m-5-32v13m10-13v13" fill="none" stroke="#fff6ce" stroke-width="3"/>',water3:'<path d="M50 25C44 37 34 46 34 56a16 16 0 0032 0c0-10-10-19-16-31z" fill="#d3f4ef"/><path d="M42 53q-3 10 7 12" fill="none" stroke="#529b98" stroke-width="3"/>',training7:'<path d="M29 38v23m8-28v33m26-33v33m8-28v23M37 49h26" fill="none" stroke="#fff3c5" stroke-width="7" stroke-linecap="round"/>',nutri_pride:'<path d="M50 25l8 16 18 3-13 13 3 18-16-9-16 9 3-18-13-13 18-3z" fill="#fff1a8"/><path d="M45 52l5 5 11-13" fill="none" stroke="#96803c" stroke-width="3"/>'}[id];
@@ -34,6 +34,30 @@ export async function initPatientExtras(profile) {
   const training=document.getElementById('patient-training');
   training.innerHTML=`<div class="training-heading"><div><p class="patient-eyebrow">MOVIMENTO DO SEU JEITO</p><h2>Como foi o treino?</h2><p>Registre sua experiência de hoje, ${new Date().toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit'})}.</p></div>${bearSvg()}</div><form id="training-form" class="app-form"><label>Quer registrar mais detalhes? Conte o que você fez<textarea name="description" rows="2" placeholder="Ex.: caminhada no parque, treino de pernas…" required minlength="3" maxlength="4000"></textarea></label><div class="training-scale"><div>${bearSvg()}<span>1 · FOFO</span></div><label>Intensidade percebida<output id="intensity-label" for="training-intensity">5 · Moderado</output><input id="training-intensity" name="intensity" type="range" min="1" max="10" step="1" value="5" aria-describedby="training-scale-hint"></label><div>${bearSvg(true)}<span>10 · Hiper pesado</span></div></div><p id="training-scale-hint">É como você sentiu o treino. Mais intenso não vale mais conquistas.</p><button class="app-btn app-btn--primary">Registrar treino de hoje</button><p role="status"></p></form>`;
   const trainingForm=training.querySelector('form');
+  const submit=trainingForm.querySelector('button'), status=trainingForm.querySelector('[role=status]');
+  submit.insertAdjacentHTML('beforebegin','<label>Minutos de aeróbico de hoje (opcional)<input id="cardio-minutes" name="cardio_minutes" type="number" inputmode="numeric" step="1" min="1" max="1440" placeholder="Ex.: 30"></label>');
+  const minutes=trainingForm.elements.cardio_minutes, trainingDay=getLocalDateString();
+  let durationEdited=false, durationRequest=0, savingWorkout=false;
+  function updateSubmit() {
+    const onlyMinutes=durationEdited&&!trainingForm.description.value.trim();
+    trainingForm.description.required=!onlyMinutes;
+    submit.textContent=onlyMinutes?'Salvar minutos de aeróbico':'Registrar treino de hoje';
+  }
+  async function loadDuration() {
+    const request=++durationRequest;
+    if (getLocalDateString()!==trainingDay) { location.reload(); return; }
+    try {
+      const day=groupHabits(await readHabits(db(),profile.id,trainingDay,trainingDay)).get(trainingDay);
+      if (request===durationRequest&&!durationEdited&&!savingWorkout) minutes.value=day?.cardioMinutes??'';
+    } catch {
+      if (request===durationRequest&&!durationEdited) status.textContent='Não consegui consultar os minutos de aeróbico de hoje.';
+    }
+  }
+  minutes.oninput=()=>{durationEdited=true;updateSubmit();};
+  trainingForm.description.addEventListener('input',updateSubmit);
+  addEventListener('patient:record-saved',e=>{if (e.detail?.habit==='cardio') loadDuration();});
+  addEventListener('focus',loadDuration);
+  loadDuration();
   const celebration=document.createElement('section');
   celebration.className='workout-celebration';
   celebration.hidden=true;
@@ -51,21 +75,39 @@ export async function initPatientExtras(profile) {
   training.querySelector('[data-create-workout-story]').onclick = () => openWorkoutStory(profile.id);
   trainingForm.intensity.addEventListener('input',()=>{const n=Number(trainingForm.intensity.value);document.getElementById('intensity-label').textContent=`${n} · ${intensityLabel(n)}`;});
   trainingForm.addEventListener('submit',async event=>{
-    event.preventDefault();const button=trainingForm.querySelector('button'),status=trainingForm.querySelector('[role=status]');button.disabled=true;status.textContent='Salvando seu treino…';
+    event.preventDefault();
+    if (savingWorkout) return;
+    if (getLocalDateString()!==trainingDay) { location.reload(); return; }
+    savingWorkout=true; ++durationRequest;
+    for (const el of trainingForm.elements) el.disabled=true;
+    status.textContent='Salvando…';
     try {
       const day=getLocalDateString(),payload={description:trainingForm.description.value.trim(),intensity:Number(trainingForm.intensity.value),date:day,reported_by:'patient'};
+      if (durationEdited) payload.cardio_minutes=minutes.value===''?null:minutes.valueAsNumber;
+      if (!payload.description&&durationEdited) {
+        await saveCardioMinutes(db(),profile.id,day,payload.cardio_minutes);
+        durationEdited=false;
+        status.textContent='Minutos de aeróbico atualizados.';
+        notifyPatientSaved({kind:'cardio_minutes'});
+        return;
+      }
       if(payload.description.length<3)throw Error('Descreva seu treino com pelo menos 3 caracteres.');
       intensityLabel(payload.intensity);
       await addClinical(profile.id,'exercise',payload,{id:operationFor(trainingForm,payload)});
       pendingClinical.delete(trainingForm);
-      trainingForm.reset();
+      const savedMinutes=minutes.value;
+      trainingForm.reset(); minutes.value=savedMinutes; durationEdited=false;
       document.getElementById('intensity-label').textContent='5 · Moderado';
       status.textContent='Treino de hoje registrado.';
       notifyPatientSaved({kind:'exercise'});
       try {const flags=groupHabits(await readHabits(db(),profile.id,day,day)).get(day);celebrateWorkout(celebration,{...payload,...flags});}
       catch {celebration.hidden=true;status.textContent+=' Orgulho da nutri!';}
     }
-    catch(error){status.textContent=`Não foi salvo: ${error.message}`;}finally{button.disabled=false;}
+    catch(error){status.textContent=`Não foi salvo: ${error.message}`;}finally{
+      savingWorkout=false;
+      for (const el of trainingForm.elements) el.disabled=false;
+      updateSubmit();
+    }
   });
   const avatarRoot=document.getElementById('patient-avatar');
   avatarRoot.innerHTML=`<div class="profile-photo-preview" id="profile-photo-preview"><span>${esc((profile.full_name||'P').split(' ').map(v=>v[0]).slice(0,2).join(''))}</span></div><div><h2>Sua foto de perfil</h2><p>Uma foto para deixar seu espaço com a sua cara.</p><form id="profile-photo-form" class="app-form"><div class="profile-photo-control"><input name="photo" type="file" accept="image/jpeg,image/png,image/webp" hidden><button type="button" class="app-btn app-btn--ghost profile-photo-select"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6l2-3h4l2 3h4a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V7a1 1 0 011-1z"/><circle cx="12" cy="12.5" r="3.5"/></svg>Escolher foto</button><span class="profile-photo-filename" aria-live="polite">Nenhuma foto selecionada</span></div><label class="photo-consent"><input name="consent" type="checkbox" required> Autorizo guardar esta foto com acesso privado para mim e para a equipe da Marcela.</label><button type="submit" class="app-btn app-btn--primary">Salvar foto</button><p role="status"></p></form></div>`;
@@ -86,7 +128,7 @@ export async function initPatientExtras(profile) {
   let badgeRequest=0;
   async function refreshBadges(){const request=++badgeRequest;const {data,error}=await db().rpc('evaluate_badges');if(request!==badgeRequest)return;if(error){document.getElementById('badge-description').textContent='Não foi possível atualizar as conquistas. Tente novamente mais tarde.';return;}const earned=new Map((data||[]).map(row=>[row.id,row]));document.getElementById('badge-count').textContent=`${badgeCatalog.filter(b=>earned.get(b.id)?.earned_at).length}/${badgeCatalog.length}`;
     document.getElementById('badge-list').innerHTML=badgeCatalog.map(b=>{const award=earned.get(b.id),unlocked=Boolean(award?.earned_at);return `<button class="patient-badge ${unlocked?'is-earned':'is-locked'}" type="button" data-badge="${b.id}" aria-label="${esc(b.title)}: ${unlocked?'conquistado':'a conquistar'}">${badgeSvg(b.id)}<span>${esc(b.title)}</span><small>${unlocked?'Conquistado':'A conquistar'}</small></button>`;}).join('');
-    badges.querySelectorAll('[data-badge]').forEach(button=>button.addEventListener('click',()=>{const b=badgeCatalog.find(v=>v.id===button.dataset.badge),award=earned.get(b.id);document.getElementById('badge-description').textContent=`${b.title}. ${award?.description || b.description}${award?.earned_at?` Conquistado em ${new Date(award.earned_at).toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo'})}.`:''}`;}));
+    badges.querySelectorAll('[data-badge]').forEach(button=>button.addEventListener('click',()=>{const b=badgeCatalog.find(v=>v.id===button.dataset.badge),award=earned.get(b.id);document.getElementById('badge-description').textContent=`${b.title}. ${b.description}${award?.earned_at?` Conquistado em ${new Date(award.earned_at).toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo'})}.`:''}`;}));
   }
   refreshBadges();
   let timer;addEventListener('patient:record-saved',()=>{clearTimeout(timer);timer=setTimeout(()=>refreshBadges(),200);});

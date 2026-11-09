@@ -1,5 +1,5 @@
-import {mountHabits} from './habits.js?v=20261108-club';
-import {mountBasiquito} from './basiquito.js?v=20261108';
+import {mountHabits} from './habits.js?v=20261109-care';
+import {mountBasiquito} from './basiquito.js?v=20261109-care';
 import {mountPatientChat} from '../js/patient-chat.js?v=20261030-team';
 import {
   escapeHtml,
@@ -15,8 +15,8 @@ import {
   signOut,
 } from '../js/auth.js?v=20261108-habits';
 import { initGuidesPanel } from './guides-panel.js?v=20261105-materials';
-import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js?v=20261108-habits';
-import { initPatientExtras, notifyPatientSaved } from './patient-extras.js?v=20261108-club';
+import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js?v=20261109-care';
+import { initPatientExtras, notifyPatientSaved } from './patient-extras.js?v=20261109-care';
 import { hydrationMeter } from './patient-model.mjs?v=20261030-water';
 
 import {checkTrackingAccess} from './access-state.mjs';
@@ -159,7 +159,7 @@ async function init() {
   document.getElementById('profile-label').textContent = `${profile.full_name} · ${profile.username}`;
 
   mountPatientChat(document.getElementById('patient-chat'),{patientId:profile.id}).catch(()=>{document.getElementById('patient-chat').textContent='Não foi possível abrir a conversa. Atualize a página.';});
-  mountBasiquito(profile.id,draft=>{
+  mountBasiquito(draft=>{
     switchTab('today');
     const chat=document.getElementById('patient-chat');
     chat.scrollIntoView({block:'center'});
@@ -171,7 +171,9 @@ async function init() {
   });
   switchTab('today');
   mountHabits(document.getElementById('patient-habits'),profile.id);
-  initPatientCare(profile).catch(error => { document.getElementById('patient-reminders').textContent = error.message; });
+  const refreshReminders=()=>initPatientCare(profile).catch(error=>{document.getElementById('patient-reminders').textContent=error.message;});
+  refreshReminders();
+  addEventListener('patient:record-saved',event=>{if (event.detail?.habit==='free_meal') refreshReminders();});
   initPatientExtras(profile).catch(error => { document.getElementById('patient-training').insertAdjacentHTML('beforeend',`<p role="status">${escapeHtml(error.message)}</p>`); });
 
   try {

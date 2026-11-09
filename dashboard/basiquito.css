@@ -27,8 +27,12 @@
 .basiquito-panel textarea { flex:1; min-width:0; resize:none; height:43px; border:1px solid #a4b19c; border-radius:13px; font:inherit; padding:9px 12px; }
 .basiquito-panel form button { background:#305c43; color:white; border:0; border-radius:14px; font-size:1.5rem; width:43px; height:43px; }
 .basiquito-status { font-size:.77rem; padding:0 13px; margin:3px 0 6px; } .basiquito-status:empty { display:none; }
+.basiquito-panel textarea { font-size:max(16px,1em); }
+.basiquito.is-thinking .basiquito-status::after { content:'…'; }
 @media (max-width:760px) { .basiquito-launcher { bottom:calc(84px + env(safe-area-inset-bottom)); right:13px; } .basiquito-panel { right:12px; bottom:calc(84px + env(safe-area-inset-bottom)); height:min(610px,calc(100dvh - 105px - env(safe-area-inset-bottom))); } }
 @media (prefers-reduced-motion:no-preference) {
+  .basiquito.is-thinking .basiquito-status::after { animation:coffee-dots 1s ease-in-out infinite alternate; }
+  @keyframes coffee-dots { from { opacity:.3; } to { opacity:1; } }
   .basiquito-avatar .cup-steam { animation:coffee-steam 3.1s ease-in-out infinite; }
   .basiquito-launcher:hover .basiquito-avatar,.basiquito-panel:not([hidden]) header .basiquito-avatar { animation:coffee-hello .65s ease-in-out; transform-origin:50% 90%; }
   .basiquito.is-thinking header .basiquito-avatar { animation:coffee-think 1.1s ease-in-out infinite alternate; }

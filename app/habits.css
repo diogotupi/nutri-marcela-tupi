@@ -13,14 +13,12 @@
 .habit-history{display:grid;gap:.55rem;padding:0;list-style:none}.habit-history li{border-bottom:1px solid #d6ded4;padding:.55rem 0}.habit-history p{margin:.25rem 0}.habit-line{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}.habit-line small{margin-left:auto}
 @media(max-width:480px){.habit-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.habit-tile{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.2rem;padding:.65rem}.habit-art{justify-self:start}.habit-copy{grid-column:1/-1;grid-row:2}.habit-tick{grid-column:2;grid-row:1}.habit-tile:last-child{grid-column:1/-1;display:flex}.habits-heading{align-items:flex-start}}
 @media(prefers-reduced-motion:reduce){.habit-tile{transition:none}}
-.habit-detail { display:grid; gap:.65rem; margin-top:.75rem; padding:1rem; max-width:36rem; background:#f1f5eb; border:1px solid #b2c3b3; border-radius:14px; }
-.habit-detail[hidden], .water-achievement[hidden] { display:none; }
-.habit-detail label { font-weight:700; }
+.free-meal-entry h2 { margin:0 0 .75rem; font-size:1.15rem; }
+.free-meal-entry .app-form { max-width:42rem; gap:.55rem; }
+.free-meal-entry textarea { width:100%; resize:vertical; }
+.free-meal-entry [hidden], .water-achievement[hidden] { display:none; }
 .habit-history p,.week-day-detail { overflow-wrap:anywhere; }
-.habit-detail small { font-size:.77rem; font-weight:400; }
-.habit-detail textarea { width:100%; resize:vertical; }
 .habit-detail-actions { display:flex; align-items:center; flex-wrap:wrap; gap:.6rem; }
-.habit-detail-actions input { width:8rem; }
 .water-achievement { display:inline-flex; gap:.5rem; align-items:center; margin:.45rem 0 .75rem; padding:.3rem .75rem .3rem .35rem; border-radius:2rem; background:#dcf3e8; color:#195744; font-weight:700; font-size:.88rem; }
 .water-medal { position:relative; display:grid; place-items:center; width:1.7rem; height:1.7rem; border-radius:50%; color:white; background:#267c66; }
 @media (prefers-reduced-motion:no-preference) {
@@ -29,4 +27,3 @@
   @keyframes water-rise { from { opacity:0; transform:translateY(6px); } 60% { transform:translateY(-2px); } to { opacity:1; transform:none; } }
   @keyframes water-splash { from { opacity:0; transform:scale(.4); } 25% { opacity:1; } to { opacity:0; transform:scale(1.8); } }
 }
-@media (max-width:480px) { .habit-grid .habit-tile:last-child { grid-column:auto; display:grid; } }

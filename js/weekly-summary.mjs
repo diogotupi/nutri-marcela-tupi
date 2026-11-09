@@ -1,4 +1,4 @@
-import {groupHabits,blankDay,scoreDay,dayRows,signedPoints,withHabitWorkouts} from './daily-habits.mjs?v=20261108-club';
+import {groupHabits,blankDay,scoreDay,dayRows,signedPoints,withHabitWorkouts} from './daily-habits.mjs?v=20261109-care';
 import {weekStart,progressSeries,progressNumber} from './progress-charts.mjs?v=20261106-visual';
 const dayMs=86400000;
 const addDays=(day,n)=>new Date(Date.parse(day+'T12:00:00Z')+n*dayMs).toISOString().slice(0,10);
@@ -75,12 +75,12 @@ export function weeklyMarkup(s,{past=false}={}) {
     <div class="week-stats">
       ${card(icon('movement'),'Movimento',progressNumber(s.workoutDays,0)+'<em>dias</em>',s.sessions?`Força em ${s.strengthDays} dia(s) · Cardio em ${s.cardioDays} dia(s)${s.intensity!==null?' · intensidade média '+format(s.intensity)+'/10':''}`:'Seu próximo treino conta por aqui.','green')}
       ${card(icon('water'),'Hidratação',progressNumber(s.water/1000)+'<em>L</em>',s.waterDays?`${s.waterDays} dia(s) registrados · ${s.hasWaterGoal?s.waterGoalDays+' com a meta alcançada':'sem meta definida'}`:'Registre a água que você beber.','aqua')}
-      ${card(icon('meals'),'Gabaritei a dieta',progressNumber(s.dietDays,0)+'<em>dias</em>','Dias em que você marcou o check da dieta.','peach')}
-      ${card(icon('care'),'Pontos da semana',progressNumber(s.points,0),`Banheiro em ${s.bowelDays} dia(s) · Álcool em ${s.alcoholDays} dia(s)`+(s.freeMealDays?` · Refeição livre em ${s.freeMealDays} ${s.freeMealDays===1?'dia':'dias'}`:''),'sand')}
+      ${card(icon('meals'),'Gabaritei a dieta',progressNumber(s.dietDays,0)+'<em>dias</em>',s.freeMealDays===1?'1 refeição livre registrada.':s.freeMealDays?`${s.freeMealDays} refeições livres registradas.`:'Dias em que você marcou o check da dieta.','peach')}
+      ${card(icon('care'),'Pontos da semana',progressNumber(s.points,0),`Banheiro em ${s.bowelDays} dia(s) · Álcool em ${s.alcoholDays} dia(s)`,'sand')}
     </div>
     <div class="week-days" aria-label="Registros por dia">${s.days.map((d,i)=>{
       const future=d.date>s.until,active=d.water!==null||d.workouts||dayRows(d.habits).length;
-      return `<button type="button" class="week-day ${future?'is-future':active?'has-records':''}" data-week-day="${i}" aria-pressed="false" ${future?'disabled':''} aria-label="${days[i]}, ${short(d.date)}${future?', ainda não chegou':''}"><span>${days[i]}</span><strong>${Number(d.date.slice(-2))}</strong><span class="week-day-dots" aria-hidden="true"><i class="${d.workouts?'workout':''}"></i><i class="${d.water!==null?'water':''}"></i><i class="${d.habits.diet?'meal':''}"></i></span></button>`;
+      return `<button type="button" class="week-day ${future?'is-future':active?'has-records':''}" data-week-day="${i}" aria-pressed="false" ${future?'disabled':''} aria-label="${days[i]}, ${short(d.date)}${future?', ainda não chegou':''}"><span>${days[i]}</span><strong>${Number(d.date.slice(-2))}</strong><span class="week-day-dots" aria-hidden="true"><i class="${d.workouts?'workout':''}"></i><i class="${d.water!==null?'water':''}"></i><i class="${d.habits.diet||d.habits.free_meal?'meal':''}"></i></span></button>`;
     }).join('')}</div>
     <p class="week-day-detail" role="status">Toque em um dia para ver seu resumo.</p>
     <p class="progress-caption">Este resumo considera o que você registrou. Dias em branco não significam metas não cumpridas.</p>

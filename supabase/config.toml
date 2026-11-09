@@ -9,9 +9,9 @@ verify_jwt = true
 [functions.patient-material]
 verify_jwt = true
 
-# Old mobile clients receive HTTP 410; no AI calls or patient data are processed.
 [functions.food-substitution-ai]
 verify_jwt = true
 
+# The old free-meal calorie estimator is retired.
 [functions.free-meal-ai]
 verify_jwt = true

@@ -18,6 +18,9 @@ async (existingPage) => {
   const profile={id:pid,user_id:uid,username:'demonstracao',full_name:'Paciente Demonstração',role:'patient'};
   let accessState='open',water=0,failNextWater=true,failClinical=false,noWaterGoal=false,failNextMessage=true;
   const applied=new Map(),habitRows=new Map(),retiredRequests=[];
+  const earlierMeals=[1,2,3].map(n=>shift(today,-n)).filter(day=>day>=monday).map(habit_date=>({patient_id:pid,habit_date,habit:'free_meal',level:1,meal_description:'Relato anterior'}));
+  let releaseFoodReply;
+  const foodReplyGate=new Promise(resolve=>{releaseFoodReply=resolve;});
   const waitFor=fn=>page.waitForFunction(fn,null,{polling:100});
   const assert = (condition,message) => {if(!condition) throw Error(message);};
   const apiData = async route => {
@@ -57,7 +60,11 @@ async (existingPage) => {
         Object.assign(habitRows.get('cardio'),body);
       }
       const bounds=url.searchParams.getAll('habit_date'),from=bounds.find(s=>s.startsWith('gte.'))?.slice(4),to=bounds.find(s=>s.startsWith('lte.'))?.slice(4);
-      data=method==='PATCH'?{cardio_minutes:body.cardio_minutes}:[...habitRows.values()].filter(r=>(!from||r.habit_date>=from)&&(!to||r.habit_date<=to));
+      data=method==='PATCH'?{cardio_minutes:body.cardio_minutes}:[...earlierMeals,...habitRows.values()].filter(r=>(!from||r.habit_date>=from)&&(!to||r.habit_date<=to));
+    }
+    if(table==='set_cardio_minutes'){
+      assert(body.p_patient===pid&&body.p_day===today,'Duration scoped to own day');
+      habitRows.set('cardio',{patient_id:pid,habit_date:today,habit:'cardio',level:1,cardio_minutes:body.p_minutes}); data=null;
     }
     if(table==='set_free_meal_note'){
       assert(body.p_patient===pid&&body.p_day===today,'Only own free meal can be written');
@@ -68,8 +75,9 @@ async (existingPage) => {
     if(table==='food-substitution-ai'){
       if(method==='GET')data={history:[]};
       else {
-        assert(body.action==='basiquito'&&body.conversation_id&&body.operation_id,'Use authenticated Basiquito conversation');
-        data={intent:'refer_nutri',source_name:'batata',target_name:'chocolate',reply:'A Marcela pode orientar essa troca.',choices:[]};
+        assert(body.action==='basiquito'&&body.context===null&&!body.conversation_id,'Start without saved conversation');
+        await foodReplyGate;
+        data={intent:'refer_nutri',context:'transient',source_name:'batata',target_name:'chocolate',reply:'A Marcela pode orientar essa troca.',choices:[]};
       }
     }
     if(table==='set_daily_habit'){
@@ -89,6 +97,7 @@ async (existingPage) => {
       if(method==='POST') {
         if(body.id && clinical.some(row=>row.id===body.id)) return route.fulfill({status:409,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({code:'23505',message:'duplicate demo operation'})});
         clinical.unshift({...body,id:body.id || 'record-'+clinical.length,created_at:new Date().toISOString()});
+        if(body.kind==='exercise'&&Object.hasOwn(body.payload,'cardio_minutes'))habitRows.set('cardio',{patient_id:pid,habit_date:today,habit:'cardio',level:1,cardio_minutes:body.payload.cardio_minutes});
       }
       data=method==='POST'?[clinical[0]]:clinical;
       if(url.searchParams.get('id')?.startsWith('eq.'))data=data.filter(row=>row.id===url.searchParams.get('id').slice(3));
@@ -122,6 +131,8 @@ async (existingPage) => {
     if(table==='set_profile_photo'){profile.photo_path=body.p_path;data=null;}
     if(table==='evaluate_badges')data=[{id:'water3',title:'Hidratação em dia',description:'DEMONSTRAÇÃO: meta atingida em três dias',earned_at:new Date().toISOString()}];
     if(table==='appointments'||table==='care_notifications'||table==='my_active_tournaments') data=[];
+    if(table==='care_notifications'&&earlierMeals.length===3&&habitRows.has('free_meal'))
+      data=[{id:'fixture-notice',title:'Como foram suas refeições livres?',body:'Você registrou 4 refeições livres nesta semana.',created_at:today}];
     if(req.headers().accept?.includes('application/vnd.pgrst.object+json')) data=Array.isArray(data)?data[0] || null:data;
     return route.fulfill({status:200,headers:{'access-control-allow-origin':'*','access-control-allow-headers':'*'},contentType:'application/json',body:JSON.stringify(data)});
   };
@@ -141,18 +152,31 @@ async (existingPage) => {
     await page.locator('#patient-weekly-overview').screenshot({path:'.playwright-mcp/weekly-in-patient-page.png'});
     assert(await page.locator('[data-care="anamnesis"]').count()===0,'Patient anamnesis form must be removed');
     await page.locator('.patient-badge.is-earned').waitFor();
+    assert((await page.locator('#panel-today .app-topbar p').innerText())==='Já fez o básico hoje?','Patient greeting');
+    for(const [key,caption] of [['training7','Registrou treino 7 dias seguidos.'],['steady21','Manteve atividades atualizadas por aqui por 21 dias.']]){
+      await page.locator('[data-badge='+key+']').click();assert((await page.locator('#badge-description').innerText()).includes(caption),'Badge caption');
+    }
     assert(await page.locator('#active-diet-card,#food-ai-launcher,#free-meal-panel,[data-tab=plan]').count()===0,'Retired features must not mount');
     const tile=key=>page.locator('[data-habit='+key+']'), score=page.locator('.daily-score');
     await score.filter({hasText:'0 pontos'}).waitFor();
     for(const key of ['bowel','strength','cardio','diet'])await tile(key).click();
     await score.filter({hasText:'+4 pontos'}).waitFor();
-    await page.getByLabel('Minutos de cardio').fill('35');await page.getByRole('button',{name:'Salvar duração'}).click();
-    await page.locator('.habit-status').filter({hasText:'Duração atualizada'}).waitFor();
-    await tile('free_meal').click();await page.getByLabel('O que você comeu na refeição livre?').fill('Relato da fixture');await page.getByRole('button',{name:'Salvar relato'}).click();
-    await score.filter({hasText:'+5 pontos'}).waitFor();
-    await tile('free_meal').click();await page.getByLabel('O que você comeu na refeição livre?').fill('Relato editado');await page.getByRole('button',{name:'Salvar relato'}).click();
-    await page.locator('#meal-note').waitFor({state:'hidden'});assert(habitRows.get('free_meal').meal_description==='Relato editado','Edit note in place');
-    await tile('free_meal').click();page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Excluir relato'}).click();await score.filter({hasText:'+4 pontos'}).waitFor();
+    assert(await tile('free_meal').count()===0&&await page.locator('.habit-grid button').count()===5,'Free meal outside the checks');
+    const cardioInput=page.locator('#training-form').getByLabel('Minutos de aeróbico');
+    await cardioInput.fill('31');await page.getByRole('button',{name:'Salvar minutos de aeróbico'}).click();
+    await page.locator('#training-form [role=status]').filter({hasText:'Minutos de aeróbico atualizados'}).waitFor();
+    await page.getByLabel('O que você comeu?').fill('Relato da fixture');await page.getByRole('button',{name:'Salvar relato'}).click();
+    await page.getByRole('button',{name:'Atualizar relato'}).waitFor();
+    assert((await score.innerText())==='+4 pontos','Free meal cannot add a point');
+    const counted=earlierMeals.length+1;
+    await page.locator('#patient-weekly-overview').getByText(counted===1?'1 refeição livre registrada.':counted+' refeições livres registradas.').waitFor();
+    if(counted===4)await page.locator('#patient-reminders').getByText('Como foram suas refeições livres?').waitFor();
+    await page.getByLabel('O que você comeu?').fill('Relato editado');await page.getByRole('button',{name:'Atualizar relato'}).click();
+    await page.reload();await page.getByRole('button',{name:'Atualizar relato'}).waitFor();
+    assert(await page.getByLabel('O que você comeu?').inputValue()==='Relato editado','Edit note in place');
+    assert(await cardioInput.inputValue()==='31','Daily minutes survived reload');
+    page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Excluir relato'}).click();await page.getByRole('button',{name:'Salvar relato'}).waitFor();
+    await page.locator('#patient-reminders').getByText('Como foram suas refeições livres?').waitFor({state:'hidden'});
     await tile('alcohol').click();await score.filter({hasText:'+3 pontos'}).waitFor();
     await page.locator('#habit-alcohol-level').fill('10');await page.waitForFunction(()=>document.querySelector('.alcohol-scale output').value==='10/10');
     await page.waitForFunction(()=>!document.querySelector('[data-habit=alcohol]').disabled);
@@ -180,8 +204,15 @@ async (existingPage) => {
     await page.reload();await page.locator('.water-achievement').waitFor();
     assert(!await page.locator('.water-achievement.is-celebrating').count(),'Reading a completed day must not replay celebration');
     const launcher=page.getByRole('button',{name:'Conversar com o Basiquito'});
-    await launcher.click();await page.getByLabel('Mensagem para o Basiquito').fill('Batata por chocolate');await page.getByRole('button',{name:'Enviar ao Basiquito'}).click();
+    await launcher.click();
+    const composer=page.getByLabel('Mensagem para o Basiquito');
+    assert(await composer.evaluate(el=>document.activeElement===el),'The mobile launcher must focus the composer');
+    assert(await page.locator('.basiquito-feed').innerText()==='Fala pra mim! O que você quer substituir hoje?','Exact welcome');
+    await composer.fill('Batata por chocolate');await composer.press('Enter');
+    assert(await composer.inputValue()===''&&await page.locator('.basiquito-line.patient').innerText()==='Batata por chocolate','Sent message moves immediately');
+    await composer.fill('Rascunho da próxima mensagem');releaseFoodReply();
     await page.getByRole('button',{name:'Conversar com a Marcela'}).waitFor();
+    assert(await composer.inputValue()==='Rascunho da próxima mensagem','An arriving reply must preserve the next draft');
     await page.locator('#basiquito-panel').screenshot({path:'.playwright-mcp/basiquito-mobile.png'});
     await page.getByRole('button',{name:'Conversar com a Marcela'}).click();
     const nutriComposer=page.locator('#patient-chat textarea[name=message]');
@@ -189,6 +220,7 @@ async (existingPage) => {
     await nutriComposer.fill('');
     await page.screenshot({path:'C:/Users/diogo/AppData/Local/Temp/patient-demo-mobile.png',fullPage:true,animations:'disabled'});
     await page.locator('#training-form [name=description]').fill('DEMONSTRAÇÃO: caminhada tranquila');
+    await cardioInput.fill('35');
     await page.locator('#training-intensity').fill('1');
     await page.locator('#training-intensity').dispatchEvent('input');
     assert((await page.locator('#intensity-label').textContent()).includes('FOFO'),'Low intensity label missing');
@@ -198,6 +230,7 @@ async (existingPage) => {
     await page.getByRole('button',{name:'Registrar treino de hoje'}).click();
     await page.locator('#training-form [role=status]').filter({hasText:'registrado'}).waitFor();
     assert(clinical[0].kind==='exercise' && clinical[0].payload.date===today && clinical[0].payload.intensity===10,'Training payload/date invalid');
+    assert(clinical[0].payload.cardio_minutes===35&&habitRows.get('cardio').cardio_minutes===35,'Optional duration saves with the workout');
     await page.locator('.workout-celebration img').waitFor();
     assert((await page.locator('.workout-celebration a[download]').getAttribute('href')).startsWith('data:image/png'),'Training sticker missing');
     await page.locator('#patient-workout-progress .progress-plot').first().waitFor();

@@ -1,10 +1,10 @@
 export const habits = Object.freeze([
-  {key:'bowel', label:'Fui ao banheiro', icon:'🏆'},
-  {key:'strength', label:'Exercício de força', icon:'🏋️'},
-  {key:'cardio', label:'Cardio', icon:'👟'},
-  {key:'diet', label:'Gabaritei a dieta', icon:'🍽️'},
-  {key:'alcohol', label:'Bebi álcool', icon:'🥂'},
-  {key:'free_meal', label:'Refeição livre', icon:'🍴'}
+  {key:'bowel', label:'Fui ao banheiro', icon:'🏆', points:1},
+  {key:'strength', label:'Exercício de força', icon:'🏋️', points:1},
+  {key:'cardio', label:'Cardio', icon:'👟', points:1},
+  {key:'diet', label:'Gabaritei a dieta', icon:'🍽️', points:1},
+  {key:'alcohol', label:'Bebi álcool', icon:'🥂', points:-1},
+  {key:'free_meal', label:'Refeição livre', points:0}
 ]);
 export const blankDay = () => ({bowel:0,strength:0,cardio:0,diet:0,alcohol:0,free_meal:0,cardioMinutes:null,mealDescription:''});
 export function groupHabits(rows=[]) {
@@ -18,7 +18,7 @@ export function groupHabits(rows=[]) {
   }
   return days;
 }
-export const scoreDay = day => habits.reduce((n,h)=>n+(day[h.key]?(h.key==='alcohol'?-1:1):0),0);
+export const scoreDay = day => habits.reduce((n,h)=>n+(day[h.key]?h.points:0),0);
 export const signedPoints = n => (n>0?'+':'')+n+' '+(Math.abs(n)===1?'ponto':'pontos');
 export function habitLabel(habit, day) {
   if (habit.key==='alcohol') return habit.label+' · '+day.alcohol+'/10';
@@ -41,8 +41,7 @@ export async function saveHabit(db,patientId,day,habit,level){
   if(error)throw error;
 }
 export async function saveCardioMinutes(db, patientId, day, minutes) {
-  const {error}=await db.from('patient_daily_habits').update({cardio_minutes:minutes})
-    .eq('patient_id',patientId).eq('habit_date',day).eq('habit','cardio').select('cardio_minutes').single();
+  const {error}=await db.rpc('set_cardio_minutes',{p_patient:patientId,p_day:day,p_minutes:minutes});
   if (error) throw error;
 }
 export async function saveFreeMeal(db, patientId, day, description) {
