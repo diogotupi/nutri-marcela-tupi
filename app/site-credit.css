@@ -1,0 +1,17 @@
+.site-credit {
+  margin: 1.5rem 0 0;
+  padding: .75rem 1rem;
+  color: #52665a;
+  text-align: center;
+  font-size: .75rem;
+  line-height: 1.6;
+}
+
+.site-credit-heart { color: #b26c69; }
+.site-credit a {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.site-credit a:hover { color: #29483f; }

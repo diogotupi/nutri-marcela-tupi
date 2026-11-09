@@ -15,7 +15,8 @@
 @media(prefers-reduced-motion:reduce){.habit-tile{transition:none}}
 .free-meal-entry h2 { margin:0 0 .75rem; font-size:1.15rem; }
 .free-meal-entry .app-form { max-width:42rem; gap:.55rem; }
-.free-meal-entry textarea { width:100%; resize:vertical; }
+.free-meal-entry textarea { width:100%; resize:vertical; padding:.75em 1em; font:inherit; line-height:1.5; }
+.free-meal-entry textarea:placeholder-shown { text-align:center; padding-block:1.5em 0; }
 .free-meal-entry [hidden], .water-achievement[hidden] { display:none; }
 .habit-history p,.week-day-detail { overflow-wrap:anywhere; }
 .habit-detail-actions { display:flex; align-items:center; flex-wrap:wrap; gap:.6rem; }
