@@ -140,10 +140,23 @@
 .story-choices input { width: 16px; height: 16px; margin: 0; accent-color: #345f48; }
 .story-position { display: grid; gap: 5px; margin-top: 12px; color: #536a57; font-size: .75rem; }
 .story-position input { width: 100%; min-height: 28px; margin: 0; accent-color: #345f48; }
-.story-footer { background: #fffdf8; border-top: 1px solid #d4dece; }
+.story-footer { background: #fffdf8; border-top: 1px solid #d4dece; max-height: 62dvh; overflow-y: auto; }
 .story-footer .story-feedback:not(:empty) { margin: 0 0 6px; }
+.story-wall { margin: 0 0 12px; padding-bottom: 12px; border-bottom: 1px solid #d4dece; }
+.story-wall-prompt { min-width: 0; margin: 0; padding: 0; border: 0; }
+.story-wall-prompt legend { float: left; padding: 0; margin: .55rem 1rem .4rem 0; font-weight: 700; font-size: .9rem; }
+.story-wall-prompt .story-choices { gap: 6px; }
+.story-wall-prompt label { min-height: 40px; }
+.story-wall-compose { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 12px; margin-top: 10px; }
+.story-wall-compose label { flex: 1 1 14rem; min-width: 0; font-size: .86rem; font-weight: 650; }
+.story-wall-compose small { font-weight: 400; }
+.story-wall-compose textarea { display: block; box-sizing: border-box; width: 100%; min-height: 46px; padding: 7px 10px; margin-top: 4px; font: inherit; font-size: 1rem; resize: vertical; }
+.story-wall-compose .app-btn { min-height: 42px; }
+.story-wall-result { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 12px; }
+.story-wall-result .story-feedback:not(:empty) { margin: 5px 0 0; font-weight: 600; }
 .story-export-actions { justify-content: flex-end; }
-.story-export-actions a { text-decoration: none; }
+.story-export-actions a { display: inline-flex; align-items: center; text-decoration: none; }
+.workout-story-dialog .app-btn--primary:hover, .workout-story-dialog .app-btn--primary:active { background: #345b4d; color: #fffdf8; }
 .story-export-actions a[aria-disabled=true] { opacity: .48; pointer-events: none; }
 .story-text-button { padding: 6px 0; border: 0; background: transparent; font: inherit; font-size: .78rem; text-decoration: underline; color: #315d47; cursor: pointer; }
 @media (max-width: 590px) {
@@ -152,6 +165,7 @@
   .story-source { order: -1; }
   .story-header, .story-footer { padding: 12px 16px; }
   .story-frame { align-self: center; width: min(205px, 70%); }
+  .story-wall-prompt legend { float: none; margin: 0 0 6px; }
   .story-source-actions .app-btn, .story-export-actions .app-btn { flex: 1; }
 }
 @media (max-height: 530px) and (min-width: 591px) {

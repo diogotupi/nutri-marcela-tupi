@@ -35,6 +35,27 @@ function trash(label) {
   return `<button type="button" class="community-icon-button" title="${label}" aria-label="${label}">${icon('trash')}</button>`;
 }
 
+export function createCommunityPhotoDraft(profileId, file, options) {
+  const db = getSupabase();
+  const id = crypto.randomUUID();
+  const path = profileId + '/' + id + '.webp';
+  let uploaded = false;
+
+  return {
+    async publish(caption, onUpload) {
+      if (!uploaded) {
+        const photo = await preparePhotoUpload(file, options);
+        onUpload?.();
+        const {error} = await db.storage.from(bucket).upload(path, photo, {upsert:false, contentType:'image/webp'});
+        // A retry can find its own file if Storage received it before the connection dropped.
+        if (error && String(error.statusCode) !== '409' && !/already exists|duplicate/i.test(error.message)) throw error;
+        uploaded = true;
+      }
+      unwrap(await db.rpc('community_publish', {p_id:id, p_caption:caption.trim()}));
+    }
+  };
+}
+
 export function mountCommunity(root, profile) {
   if (instances.has(root)) {
     // Keep any upload or comment draft when switching tabs.
@@ -99,18 +120,11 @@ export function mountCommunity(root, profile) {
     if (fields.disabled || !photo.files[0]) return;
     fields.disabled = compose.disabled = true;
     try {
-      if (!draft) draft = {id:crypto.randomUUID()};
-      const path = profile.id + '/' + draft.id + '.webp';
+      draft ??= createCommunityPhotoDraft(profile.id, photo.files[0]);
       status.textContent = 'Preparando sua foto…';
-      if (!draft.uploaded) {
-        const file = await preparePhotoUpload(photo.files[0]);
+      await draft.publish(form.elements.caption.value, () => {
         status.textContent = 'Enviando foto…';
-        const {error} = await storage.upload(path, file, {upsert:false, contentType:'image/webp'});
-        // A previous attempt can have reached Storage even if its response was lost.
-        if (error && String(error.statusCode) !== '409' && !/already exists|duplicate/i.test(error.message)) throw error;
-        draft.uploaded = true;
-      }
-      await rpc('community_publish', {p_id:draft.id,p_caption:form.elements.caption.value.trim()});
+      });
       form.reset();
       releasePreview();
       draft = null;
@@ -273,11 +287,19 @@ export function mountCommunity(root, profile) {
       const rows = await rpc('community_feed',{p_before:first ? null : before});
       const signed = rows.length ? unwrap(await storage.createSignedUrls(rows.map(row => row.photo_path),3600)) : [];
       const urls = new Map(signed.map(row => [row.path,row.signedUrl]));
-      if (first) { feed.replaceChildren(); posts.clear(); before = null; }
+      const hasDraft = first && Array.from(feed.querySelectorAll('.community-thread textarea'))
+        .some(input => input.value.trim() || input === document.activeElement);
+      if (first && !hasDraft) { feed.replaceChildren(); posts.clear(); before = null; }
       for (const row of rows) {
         if (posts.has(row.id)) continue;
+        // Keep open threads in place. A new Story (or a page between two loaded pages)
+        // can arrive ahead of older posts that still contain a comment draft.
+        const last = posts.get(feed.lastElementChild?.dataset.id);
+        const next = last && last.seq < row.seq
+          ? Array.from(feed.children).find(card => posts.get(card.dataset.id).seq < row.seq)
+          : null;
         posts.set(row.id,row);
-        feed.append(renderPost(row,urls.get(row.photo_path)));
+        feed.insertBefore(renderPost(row,urls.get(row.photo_path)),next);
       }
       if (rows.length) before = rows.at(-1).seq;
       if (!posts.size) feed.innerHTML = `<div class="community-empty">${icon('photos')}<h3>A primeira foto pode ser sua.</h3><p>Compartilhe um momento com a comunidade.</p></div>`;
@@ -296,11 +318,6 @@ export function mountCommunity(root, profile) {
     }
   }
   more.onclick = () => loadFeed(pageAction === 'refresh');
-  const revisit = () => {
-    // A comment in progress must survive a brief visit to the profile or today's checks.
-    if (!root.querySelector('.community-thread textarea:focus') &&
-        !Array.from(root.querySelectorAll('.community-thread textarea')).some(el => el.value.trim())) return loadFeed(true);
-  };
-  instances.set(root,revisit);
+  instances.set(root,() => loadFeed(true));
   return loadFeed(true);
 }

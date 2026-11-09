@@ -19,6 +19,8 @@ async (existingPage) => {
   const author={username:'marcela_demo',is_admin:true,has_pride:false};
   const photoPost={id:'44444444-4444-4444-8444-444444444444',seq:1,author,caption:'Uma foto de teste',photo_path:pid+'/teste.webp',created_at:new Date().toISOString(),coffees:0,comments:0,liked:false,can_delete:false};
   const socialComments=[];
+  const muralPhotos=new Map(), muralPosts=new Map(), publishAttempts=[];
+  let losePublishReceipt=true;
   let accessState='open',water=0,failNextWater=true,failClinical=false,noWaterGoal=false,failNextMessage=true;
   const applied=new Map(),habitRows=new Map(),retiredRequests=[];
   const earlierMeals=[1,2,3].map(n=>shift(today,-n)).filter(day=>day>=monday).map(habit_date=>({patient_id:pid,habit_date,habit:'free_meal',level:1,meal_description:'Relato anterior'}));
@@ -29,6 +31,14 @@ async (existingPage) => {
   const apiData = async route => {
     const req=route.request(),url=new URL(req.url()),table=url.pathname.split('/').at(-1),method=req.method();
     if(method==='OPTIONS') return route.fulfill({status:204,headers:{'access-control-allow-origin':'*','access-control-allow-headers':'*'}});
+    if(method==='POST' && url.pathname.includes('/storage/v1/object/community-photos/')) {
+      const path=url.pathname.split('/community-photos/')[1], bytes=req.postDataBuffer();
+      const start=bytes.indexOf(Buffer.from('RIFF'));
+      assert(path.startsWith(pid+'/') && start>=0 && bytes.toString('ascii',start+8,start+12)==='WEBP','Mural photo must use the patient folder and WebP');
+      assert(!muralPhotos.has(path),'Retry uploaded a second copy');
+      muralPhotos.set(path,bytes.subarray(start,start+8+bytes.readUInt32LE(start+4)));
+      return route.fulfill({json:{Key:'community-photos/'+path},headers:{'access-control-allow-origin':'*'}});
+    }
     if(url.pathname.includes('/storage/v1/object/') && !url.pathname.includes('/sign/')) {
       const bytes=req.postDataBuffer();uploads.push({bytes:bytes?.length || 0,webp:bytes?.includes(Buffer.from('WEBP'))});return route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({Key:'clinical-files/demo.webp'})});
     }
@@ -53,7 +63,21 @@ async (existingPage) => {
       profile.full_name=body.p_full_name;profile.username=body.p_username;
       data={full_name:profile.full_name,username:profile.username};
     }
-    if(table==='community_feed')data=[photoPost];
+    if(table==='community_publish') {
+      const path=pid+'/'+body.p_id+'.webp';
+      assert(muralPhotos.has(path),'A mural post needs its uploaded image');
+      publishAttempts.push(body.p_id);
+      if(!muralPosts.has(body.p_id)) muralPosts.set(body.p_id,{
+        ...photoPost,id:body.p_id,seq:2+muralPosts.size,created_at:new Date().toISOString(),caption:body.p_caption,
+        author:{username:profile.username,is_admin:false,has_pride:false},photo_path:path,can_delete:true,
+      });
+      if(losePublishReceipt) {
+        losePublishReceipt=false;
+        return route.fulfill({status:503,json:{message:'Test receipt lost'},headers:{'access-control-allow-origin':'*'}});
+      }
+      data=null;
+    }
+    if(table==='community_feed')data=[...Array.from(muralPosts.values()).reverse(),photoPost];
     if(table==='community_comments_page')data=socialComments;
     if(table==='community_set_coffee') {
       photoPost.liked=body.p_liked;photoPost.coffees=Number(body.p_liked);
@@ -270,6 +294,7 @@ async (existingPage) => {
       await open.click();
       await dialog.locator('[data-example-label]').waitFor();
       assert(!await dialog.locator('[data-download]').isVisible(), 'Example image cannot be exported as a personal Story');
+      assert(!await dialog.locator('[data-wall]').isVisible(),'Example image cannot be posted');
       assert(await dialog.locator('[name=camera]').getAttribute('capture') === 'user', 'Missing camera capture');
       await dialog.locator('[name=gallery]').setInputFiles({name:'broken.jpg', mimeType:'image/jpeg', buffer:Buffer.from('invalid image')});
       await dialog.locator('[data-photo-status]').filter({hasText:'Não foi possível abrir'}).waitFor();
@@ -320,12 +345,40 @@ async (existingPage) => {
         return result;
       });
       assert(output.join('/') === 'image/jpeg/1080/1920', 'Download must be a portrait Story JPEG');
+      const wall=dialog.locator('[data-wall]');
+      assert(!await wall.locator('textarea').isVisible(),'Caption requires a choice to publish');
+      await wall.getByLabel('Sim',{exact:true}).check();
+      await wall.locator('textarea').fill('Meu treino <3');
+      await wall.getByLabel('Não',{exact:true}).check();
+      assert(!await wall.locator('textarea').isVisible(),'Declining must collapse the caption');
       const downloadEvent = page.waitForEvent('download');
       await ready.click();
       const filename = (await downloadEvent).suggestedFilename();
       assert(filename === 'faz-o-basico-club-' + today + '.jpg', 'Download filename must identify the day');
       await dialog.getByRole('button',{name:'Compartilhar',exact:true}).click();
       assert(await page.evaluate(() => window.storyShared) === filename, 'Share must hand off the rendered file');
+      assert(!muralPhotos.size && !publishAttempts.length,'Previewing, declining, downloading and native sharing must stay private');
+      await wall.getByLabel('Sim',{exact:true}).check();
+      await wall.getByRole('button',{name:'Publicar no mural',exact:true}).click();
+      await wall.getByRole('button',{name:'Tentar publicar novamente'}).click();
+      await wall.getByRole('status').filter({hasText:'Story publicado no mural'}).waitFor();
+      assert(muralPosts.size===1 && muralPhotos.size===1 && publishAttempts.length===2 && new Set(publishAttempts).size===1,'A lost response must not duplicate the Story');
+      assert([...muralPosts.values()][0].caption==='Meu treino <3','Story caption should reach the mural');
+      const imageMatches=await dialog.locator('canvas').evaluate(async (canvas,encoded)=>{
+        const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));
+        const image=await createImageBitmap(new Blob([bytes],{type:'image/webp'}));
+        const sample=document.createElement('canvas');sample.width=54;sample.height=96;
+        const ctx=sample.getContext('2d',{willReadFrequently:true});
+        const pixels=source=>{ctx.drawImage(source,0,0,54,96);return ctx.getImageData(0,0,54,96).data;};
+        const art=pixels(canvas),posted=pixels(image);
+        const difference=art.reduce((sum,value,i)=>sum+Math.abs(value-posted[i]),0)/art.length;
+        const matches=image.width===canvas.width && image.height===canvas.height && difference<4;
+        image.close();return matches;
+      },[...muralPhotos.values()][0].toString('base64'));
+      assert(imageMatches,'The mural must receive the finished branded portrait with the selected metrics and framing');
+      const afterPost=page.waitForEvent('download');
+      await ready.click();await afterPost;
+      assert(publishAttempts.length===2,'Downloading an already published Story must not repost it');
       await page.evaluate(restore => restore(), mockSharing);
       await mockSharing.dispose();
       await dialog.screenshot({path:'.playwright-mcp/story-mobile.png'});
@@ -334,6 +387,7 @@ async (existingPage) => {
       const weeklyDownload = weekly.locator('[data-download][href]');
       await dialog.getByRole('radio',{name:'Esta semana',exact:true}).check();
       await weeklyDownload.waitFor();
+      assert(!await weekly.locator('[data-wall] [name=wall]:checked').count(),'A different Story needs its own choice');
       const weeklyWater = monday === today ? '2,05 L de água' : '3,3 L de água';
       assert(await weekly.getByRole('checkbox',{name:weeklyWater}).isChecked(),'Weekly volume uses only the chosen week and has its own selection');
       assert(await weekly.getByRole('checkbox',{name:'1 treino',exact:true}).isChecked() && !await weekly.getByRole('checkbox',{name:'1 dia de força'}).isChecked(),'Weekly totals and optional strength detail');
@@ -358,14 +412,32 @@ async (existingPage) => {
       await page.setViewportSize({width:1440,height:1000});
       await dialog.screenshot({path:'.playwright-mcp/story-desktop.png'});
       await dialog.getByRole('button',{name:'Fechar editor do Story'}).click();
+      await page.locator('[data-tab=community]').click();
+      const withDraft=page.locator('article[data-id="'+photoPost.id+'"]');
+      await withDraft.getByRole('button',{name:/Comentários/}).click();
+      await withDraft.locator('textarea').fill('Um rascunho para depois');
+      await page.locator('[data-tab=today]').click();
       const overview = page.locator('#patient-weekly-overview');
       await overview.locator('[data-week="-1"]').click();
       await overview.getByRole('button',{name:'Criar Story da semana'}).click();
       await weekly.getByRole('checkbox',{name:'3,75 L de água'}).waitFor();
       assert(await weekly.getByRole('radio',{name:'Semana passada'}).isChecked() && !await weekly.locator('[data-example]').isVisible(), 'Opening from the overview must use the selected week with real statistics');
       await weekly.screenshot({path:'.playwright-mcp/story-week-desktop.png'});
-      await weekly.press('Escape');
+      await weekly.locator('[name=gallery]').setInputFiles({name:'semana.jpg',mimeType:'image/jpeg',buffer:Buffer.from(horizontalImage,'base64')});
+      await weeklyDownload.waitFor();
+      await weekly.locator('[data-wall]').getByLabel('Sim',{exact:true}).check();
+      const combined=page.waitForEvent('download');
+      await weekly.getByRole('link',{name:'Baixar e publicar'}).click();
+      assert((await combined).suggestedFilename().includes('semana-'),'Combined action must download the selected week');
+      await weekly.getByRole('button',{name:'Ver no mural'}).click();
       await weekly.waitFor({state:'detached'});
+      const lastStory=[...muralPosts.values()].at(-1);
+      const inFeed=page.locator('article.community-post[data-id="'+lastStory.id+'"]');
+      await inFeed.waitFor();
+      assert(lastStory.caption==='' && muralPosts.size===2 && muralPhotos.size===2 && !await inFeed.locator('.community-caption').count(),'A weekly Story may be posted without a caption');
+      assert(await page.locator('article.community-post').first().getAttribute('data-id')===lastStory.id && await withDraft.locator('textarea').inputValue()==='Um rascunho para depois','A new Story should appear first without losing a comment draft');
+      await withDraft.locator('textarea').fill('');
+      await page.getByRole('button',{name:'Hoje',exact:true}).click();
       await overview.locator('[data-week="0"]').click();
       storyHistory = false;
       water = 0;
@@ -373,7 +445,7 @@ async (existingPage) => {
       failClinical = true;
       await open.click();
       await dialog.locator('[data-example-label]').waitFor();
-      assert(!await dialog.locator('[data-download]').isVisible() && uploads.length === 0 && clinical.length === priorRecords, 'Story must stay on the device and reopening must not log another workout');
+      assert(!await dialog.locator('[data-download]').isVisible() && !uploads.length && muralPosts.size===2 && clinical.length===priorRecords, 'Reopening must not post or log another workout');
       await dialog.locator('[name=camera]').setInputFiles({name:'treino.jpg', mimeType:'image/jpeg', buffer:Buffer.from(horizontalImage, 'base64')});
       await dialog.getByRole('button',{name:'Recarregar registros'}).waitFor();
       await ready.waitFor();
@@ -452,7 +524,7 @@ async (existingPage) => {
     await page.locator('#identity-form [role=status]').filter({hasText:'Perfil atualizado'}).waitFor();
     assert(await page.locator('#sidebar-user').textContent()==='clube_demo','Renamed profile must update navigation');
     await page.getByRole('button',{name:'Comunidade',exact:true}).click();
-    const post=page.locator('article.community-post');
+    const post=page.locator('article.community-post[data-id="'+photoPost.id+'"]');
     await post.getByRole('img',{name:'Marcela · Administradora'}).waitFor();
     await post.getByRole('button',{name:'Dar um cafezinho'}).click();
     await post.getByRole('button',{name:'Retirar cafezinho'}).waitFor();

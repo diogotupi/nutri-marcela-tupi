@@ -1,5 +1,6 @@
 import {readHabits,groupHabits} from '../js/daily-habits.mjs?v=20261109-care';
-import {getLocalDateString, getSupabase} from '../js/app-core.js';
+import {getLocalDateString, getSupabase, showToast} from '../js/app-core.js';
+import {createCommunityPhotoDraft} from '../js/community.js?v=20261109-story-mural';
 import {weeklyRange} from '../js/weekly-summary.mjs?v=20261109-care';
 import {loadPatientWeek, loadStoryWeight} from './weekly-data.js?v=20261109-care';
 import {drawWorkoutStory, loadStoryImage, prepareStoryPhoto, storyBadges, storyWeekLabel, weeklyStoryBadges} from './workout-story-art.mjs?v=20261108-club';
@@ -85,6 +86,23 @@ const editorMarkup = `
   <footer class="story-footer" hidden>
     <p class="story-feedback" data-export-status role="status"></p>
     <button type="button" class="story-text-button" data-retry-art hidden>Gerar imagem novamente</button>
+    <form class="story-wall" data-wall hidden>
+      <fieldset class="story-wall-prompt">
+        <legend>Deseja postar no mural da comunidade?</legend>
+        <div class="story-choices">
+          <label><input type="radio" name="wall" value="yes" aria-controls="story-wall-caption">Sim</label>
+          <label><input type="radio" name="wall" value="no" aria-controls="story-wall-caption">Não</label>
+        </div>
+      </fieldset>
+      <div class="story-wall-compose" id="story-wall-caption" hidden>
+        <label>Legenda <small>(opcional)</small><textarea name="caption" rows="2" maxlength="1000"></textarea></label>
+        <button type="submit" class="app-btn app-btn--primary">Publicar no mural</button>
+      </div>
+      <div class="story-wall-result">
+        <p class="story-feedback" data-wall-status role="status"></p>
+        <button type="button" class="story-text-button" data-view-wall hidden>Ver no mural</button>
+      </div>
+    </form>
     <div class="story-export-actions">
       <a class="app-btn app-btn--primary" data-download aria-disabled="true">Baixar imagem</a>
       <button type="button" class="app-btn app-btn--ghost" data-share hidden>Compartilhar</button>
@@ -105,6 +123,12 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
   const position = find('[name=position]');
   const photoStatus = find('[data-photo-status]');
   const exportStatus = find('[data-export-status]');
+  const wall = find('[data-wall]');
+  const wallPrompt = wall.querySelector('fieldset');
+  const wallCompose = find('.story-wall-compose');
+  const wallStatus = find('[data-wall-status]');
+  const publish = wall.querySelector('[type=submit]');
+  const viewWall = find('[data-view-wall]');
   const choices = {day: new Map(), week: new Map(), previous: new Map()};
   let period = initialPeriod;
   let week, badges = [];
@@ -112,11 +136,69 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
   let loadingPhoto = false;
   let statsRequest;
   let renderVersion = 0, photoVersion = 0, frame, encodeTimer;
+  let wallDraft, posting = false, posted = false;
 
   openEditor = dialog;
   document.body.append(dialog);
 
   find('[data-close]').onclick = () => dialog.close();
+
+  function showWallChoices() {
+    const optedIn = wall.elements.wall.value === 'yes';
+    wall.hidden = !file;
+    wallPrompt.hidden = posted;
+    wallPrompt.disabled = posting;
+    wallCompose.hidden = !optedIn || posted;
+    wall.elements.caption.readOnly = posting;
+    publish.disabled = posting || !file;
+    viewWall.hidden = !posted;
+    download.textContent = optedIn && !posting && !posted ? 'Baixar e publicar' : 'Baixar imagem';
+  }
+
+  function resetWall() {
+    wallDraft = null;
+    posted = false;
+    wall.reset();
+    wallStatus.textContent = '';
+    publish.textContent = 'Publicar no mural';
+    showWallChoices();
+  }
+
+  async function publishStory() {
+    if (!file || posted || posting || wall.elements.wall.value !== 'yes') return;
+    posting = true;
+    const workspace = find('.story-workspace');
+    workspace.inert = true;
+    showWallChoices();
+    wallStatus.textContent = 'Publicando seu Story…';
+    try {
+      wallDraft ??= createCommunityPhotoDraft(patientId, file, {maxEdge:1920});
+      await wallDraft.publish(wall.elements.caption.value);
+      posted = true;
+      wallStatus.textContent = 'Story publicado no mural da comunidade.';
+      if (!dialog.open) showToast(wallStatus.textContent);
+    } catch {
+      wallStatus.textContent = 'Não foi possível confirmar a publicação. Tente novamente.';
+      publish.textContent = 'Tentar publicar novamente';
+      if (!dialog.open) showToast(wallStatus.textContent, 'error');
+    } finally {
+      posting = false;
+      workspace.inert = false;
+      showWallChoices();
+    }
+  }
+
+  wallPrompt.onchange = () => { wallStatus.textContent = ''; showWallChoices(); };
+  wall.onsubmit = event => { event.preventDefault(); publishStory(); };
+  // Keep the native download inside the tap, even while the mural request is in flight.
+  download.onclick = event => { if (!file) event.preventDefault(); else publishStory(); };
+  viewWall.onclick = () => {
+    dialog.close();
+    const tab = document.querySelector('#dashboard-nav [data-tab=community]');
+    tab.click();
+    tab.focus({preventScroll:true});
+    document.getElementById('panel-community').scrollIntoView({block:'start'});
+  };
 
   function clearExport() {
     file = null;
@@ -125,6 +207,7 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
     share.disabled = true;
     if (url) URL.revokeObjectURL(url);
     url = null;
+    showWallChoices();
   }
 
   function artError() {
@@ -147,6 +230,7 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
         share.hidden = !(navigator.share && navigator.canShare?.({files: [file]}));
       } catch { share.hidden = true; }
       share.disabled = false;
+      showWallChoices();
     }, 'image/jpeg', .92);
   }
 
@@ -155,6 +239,7 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
     cancelAnimationFrame(frame);
     clearTimeout(encodeTimer);
     clearExport();
+    if (wallDraft) resetWall();
     find('[data-retry-art]').hidden = true;
     if (loadingPhoto || !dialog.open) return;
     const fit = find('[name=fit]:checked').value;
@@ -257,6 +342,7 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
       if (!dialog.open || version !== photoVersion) { prepared.width = 0; return; }
       if (photo) photo.width = 0;
       photo = prepared;
+      resetWall();
       position.value = '50';
       find('.story-settings').hidden = false;
       find('[data-crop]').hidden = false;
@@ -282,6 +368,7 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
     radio.checked = radio.value === period;
     radio.onchange = () => {
       period = radio.value;
+      resetWall();
       refreshStats();
     };
   });
@@ -311,5 +398,5 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
 
   dialog.showModal();
   refreshStats();
-  document.fonts?.ready.then(() => { if (dialog.open) redraw(); });
+  document.fonts?.ready.then(() => { if (dialog.open && !wallDraft) redraw(); });
 }
