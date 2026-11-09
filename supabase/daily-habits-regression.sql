@@ -25,6 +25,16 @@ begin
  perform public.set_daily_habit(pid,day,'alcohol',0);
  perform public.set_daily_habit(pid,day,'alcohol',0);
  if (select sum(points) from public.patient_daily_habits)<>2 then raise exception 'Undo failed'; end if;
+ perform public.set_free_meal_note(pid,day,'Relato de teste');
+ perform public.set_free_meal_note(pid,day,'Relato editado');
+ update public.patient_daily_habits set cardio_minutes=35 where patient_id=pid and habit='cardio' and habit_date=day;
+ if (select sum(points) from public.patient_daily_habits)<>3 or
+    (select meal_description from public.patient_daily_habits where habit='free_meal')<>'Relato editado' or
+    (select cardio_minutes from public.patient_daily_habits where habit='cardio')<>35 then raise exception 'Habit details incorrect'; end if;
+ begin perform public.set_free_meal_note(pid,day,' '); raise exception 'Blank note accepted'; exception when check_violation then null; end;
+ begin perform public.set_free_meal_note(other_id,day,'Fixture'); raise exception 'Cross patient note'; exception when insufficient_privilege then null; end;
+ perform public.set_free_meal_note(pid,day,null);
+ if (select sum(points) from public.patient_daily_habits)<>2 then raise exception 'Meal undo failed'; end if;
  begin perform public.set_daily_habit(other_id,day,'bowel',1);raise exception 'Cross-patient change allowed';exception when insufficient_privilege then null;end;
  begin perform public.set_daily_habit(pid,day-1,'diet',1);raise exception 'Backdated change allowed';exception when insufficient_privilege then null;end;
  select count(*) into n from public.evaluate_badges();

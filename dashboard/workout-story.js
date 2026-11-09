@@ -1,11 +1,11 @@
-import {readHabits,groupHabits} from '../js/daily-habits.mjs';
+import {readHabits,groupHabits} from '../js/daily-habits.mjs?v=20261108-club';
 import {getLocalDateString, getSupabase} from '../js/app-core.js';
-import {weeklyRange} from '../js/weekly-summary.mjs?v=20261108-habits';
-import {loadPatientWeek, loadStoryWeight} from './weekly-data.js?v=20261108-habits';
-import {drawWorkoutStory, loadStoryImage, prepareStoryPhoto, storyBadges, storyWeekLabel, weeklyStoryBadges} from './workout-story-art.mjs?v=20261108-habits';
+import {weeklyRange} from '../js/weekly-summary.mjs?v=20261108-club';
+import {loadPatientWeek, loadStoryWeight} from './weekly-data.js?v=20261108-club';
+import {drawWorkoutStory, loadStoryImage, prepareStoryPhoto, storyBadges, storyWeekLabel, weeklyStoryBadges} from './workout-story-art.mjs?v=20261108-club';
 
-const exampleUrl = '/assets/story-treino-exemplo.jpg';
-const logoUrl = '/assets/logo-horizontal.png';
+const exampleUrl = '/assets/story-fundo-exemplo.jpg';
+const logoUrl = '/assets/story-club.png';
 let openEditor;
 
 async function readDay(patientId, day, signal) {
@@ -38,9 +38,8 @@ const editorMarkup = `
   </header>
   <div class="story-workspace">
     <figure class="story-frame">
-      <img data-example alt="Exemplo de Story com a marca da Marcela e os selos do dia">
       <canvas data-preview hidden width="1080" height="1920" role="img" aria-label="Prévia do seu Story"></canvas>
-      <figcaption data-example-label>Exemplo</figcaption>
+      <figcaption data-example-label>Foto de exemplo</figcaption>
     </figure>
     <div class="story-source">
       <fieldset class="story-period">
@@ -61,10 +60,10 @@ const editorMarkup = `
       <p class="story-hint">Escolha uma foto para baixar ou compartilhar seu Story.</p>
       <p class="story-feedback" data-photo-status role="status"></p>
     </div>
-    <div class="story-settings" hidden>
+    <div class="story-settings">
       <fieldset>
-        <legend data-badge-title>Selos do dia</legend>
-        <p class="story-hint">Marque os selos que quer mostrar na foto.</p>
+        <legend>O que mostrar na foto?</legend>
+        <p class="story-hint">Marque os dados que quer incluir.</p>
         <div class="story-choices" data-badges></div>
         <p class="story-hint story-weight-note" data-weight-note></p>
         <p class="story-feedback" data-stats-status role="status"></p>
@@ -109,14 +108,14 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
   const choices = {day: new Map(), week: new Map(), previous: new Map()};
   let period = initialPeriod;
   let week, badges = [];
-  let photo, logo, file, url;
+  let photo, logo, examplePhoto, file, url;
   let loadingPhoto = false;
   let statsRequest;
   let renderVersion = 0, photoVersion = 0, frame, encodeTimer;
 
   openEditor = dialog;
   document.body.append(dialog);
-  find('[data-example]').src = exampleUrl;
+
   find('[data-close]').onclick = () => dialog.close();
 
   function clearExport() {
@@ -157,24 +156,24 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
     clearTimeout(encodeTimer);
     clearExport();
     find('[data-retry-art]').hidden = true;
-    if ((!photo && !week) || loadingPhoto || !dialog.open) return;
+    if (loadingPhoto || !dialog.open) return;
     const fit = find('[name=fit]:checked').value;
     const ratio = photo ? photo.width / photo.height : 9 / 16;
     find('[data-position-control]').hidden = fit === 'contain' || Math.abs(ratio - 9 / 16) < .005;
     find('[data-position-label]').textContent = ratio > 9 / 16 ? 'Posição horizontal' : 'Posição vertical';
-    exportStatus.textContent = 'Preparando imagem…';
+    exportStatus.textContent = photo?'Preparando imagem…':'';
     frame = requestAnimationFrame(async () => {
       try {
         logo ??= loadStoryImage(logoUrl).catch(error => { logo = null; throw error; });
-        const wordmark = await logo;
+        if (!photo) examplePhoto ??= loadStoryImage(exampleUrl).catch(error => { examplePhoto=null; throw error; });
+        const [wordmark,background] = await Promise.all([logo,photo||examplePhoto]);
         if (!dialog.open || renderVersion !== version) return;
         const included = badges.filter(badge => choices[period].get(badge.key) ?? badge.selected);
-        drawWorkoutStory(canvas, {photo, logo: wordmark, day, week, badges: included, fit, position: Number(position.value) / 100});
+        drawWorkoutStory(canvas, {photo:background, logo: wordmark, day, week, badges: included, fit, position: Number(position.value) / 100});
         const periodLabel = week ? 'Minha semana · ' + storyWeekLabel(week) : day;
         canvas.setAttribute('aria-label', ['Prévia do Story Faz o Básico Club', periodLabel, ...included.map(badge => [badge.label, badge.note].filter(Boolean).join(' · '))].join(' · '));
         canvas.hidden = false;
-        find('[data-example]').hidden = true;
-        find('[data-example-label]').hidden = true;
+        find('[data-example-label]').hidden = Boolean(photo);
         // Coalesce fast changes to the crop slider before encoding the exact preview.
         if (photo && !statsRequest) encodeTimer = setTimeout(() => prepareExport(version), 100);
       } catch {
@@ -210,10 +209,8 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
     badges = week ? [] : storyBadges({});
     renderChoices();
     find('#workout-story-title').textContent = week ? 'Story da semana' : 'Story do treino';
-    find('[data-badge-title]').textContent = week ? 'Selos da semana' : 'Selos do dia';
-    find('.story-settings').hidden = !week && !photo;
     find('[data-weight-note]').textContent = '';
-    find('[data-example]').hidden = find('[data-example-label]').hidden = Boolean(photo || week);
+    find('[data-example-label]').hidden = Boolean(photo);
     canvas.hidden = true;
     const status = find('[data-stats-status]');
     status.textContent = week ? 'Buscando os registros da semana…' : 'Buscando seus registros de hoje…';
@@ -242,7 +239,7 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
     if (nextBadges) badges = nextBadges;
     renderChoices();
     find('[data-weight-note]').textContent = weightNote;
-    status.textContent = incomplete ? 'Alguns registros não carregaram.' : !badges.length ? 'Registre o treino ou a água para incluir selos neste período.' : '';
+    status.textContent = incomplete ? 'Alguns registros não carregaram.' : !badges.length ? 'Ainda não há dados para mostrar neste período.' : '';
     find('[data-retry-stats]').hidden = !incomplete;
     redraw();
   }
@@ -314,5 +311,5 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
 
   dialog.showModal();
   refreshStats();
-  document.fonts?.ready.then(() => { if (dialog.open && (photo || week)) redraw(); });
+  document.fonts?.ready.then(() => { if (dialog.open) redraw(); });
 }

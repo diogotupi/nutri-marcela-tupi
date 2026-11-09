@@ -52,15 +52,32 @@ async (existingPage) => {
     }
     if(table==='patient_daily_habits'){
       assert(url.searchParams.get('patient_id')==='eq.'+pid,'Habits must be scoped to the patient');
+      if(method==='PATCH'){
+        assert(url.searchParams.get('habit')==='eq.cardio'&&url.searchParams.get('habit_date')==='eq.'+today,'Only update the recorded cardio day');
+        Object.assign(habitRows.get('cardio'),body);
+      }
       const bounds=url.searchParams.getAll('habit_date'),from=bounds.find(s=>s.startsWith('gte.'))?.slice(4),to=bounds.find(s=>s.startsWith('lte.'))?.slice(4);
-      data=[...habitRows.values()].filter(r=>(!from||r.habit_date>=from)&&(!to||r.habit_date<=to));
+      data=method==='PATCH'?{cardio_minutes:body.cardio_minutes}:[...habitRows.values()].filter(r=>(!from||r.habit_date>=from)&&(!to||r.habit_date<=to));
+    }
+    if(table==='set_free_meal_note'){
+      assert(body.p_patient===pid&&body.p_day===today,'Only own free meal can be written');
+      if(body.p_description===null)habitRows.delete('free_meal');
+      else habitRows.set('free_meal',{patient_id:pid,habit_date:today,habit:'free_meal',level:1,meal_description:body.p_description});
+      data=null;
+    }
+    if(table==='food-substitution-ai'){
+      if(method==='GET')data={history:[]};
+      else {
+        assert(body.action==='basiquito'&&body.conversation_id&&body.operation_id,'Use authenticated Basiquito conversation');
+        data={intent:'refer_nutri',source_name:'batata',target_name:'chocolate',reply:'A Marcela pode orientar essa troca.',choices:[]};
+      }
     }
     if(table==='set_daily_habit'){
       assert(body.p_patient===pid&&body.p_day===today,'Habit write must use own profile and clinic date');
       if(body.p_level)habitRows.set(body.p_habit,{patient_id:pid,habit_date:today,habit:body.p_habit,level:body.p_level});
       else habitRows.delete(body.p_habit);data=null;
     }
-    if(/^(diets|diet_meals|diet_items|meal_reports|patient_meal_checks|patient_item_checks|patient_.*substitutions|.*meal-ai|food-substitution-ai)$/.test(table))retiredRequests.push(table);
+    if(/^(diets|diet_meals|diet_items|meal_reports|patient_meal_checks|patient_item_checks|patient_.*substitutions|.*meal-ai)$/.test(table))retiredRequests.push(table);
     if(table==='record_water') {
       operations.push(body);
       if(!applied.has(body.p_operation)) {water=Math.max(0,water+body.p_delta);applied.set(body.p_operation,water);}
@@ -129,6 +146,13 @@ async (existingPage) => {
     await score.filter({hasText:'0 pontos'}).waitFor();
     for(const key of ['bowel','strength','cardio','diet'])await tile(key).click();
     await score.filter({hasText:'+4 pontos'}).waitFor();
+    await page.getByLabel('Minutos de cardio').fill('35');await page.getByRole('button',{name:'Salvar duração'}).click();
+    await page.locator('.habit-status').filter({hasText:'Duração atualizada'}).waitFor();
+    await tile('free_meal').click();await page.getByLabel('O que você comeu na refeição livre?').fill('Relato da fixture');await page.getByRole('button',{name:'Salvar relato'}).click();
+    await score.filter({hasText:'+5 pontos'}).waitFor();
+    await tile('free_meal').click();await page.getByLabel('O que você comeu na refeição livre?').fill('Relato editado');await page.getByRole('button',{name:'Salvar relato'}).click();
+    await page.locator('#meal-note').waitFor({state:'hidden'});assert(habitRows.get('free_meal').meal_description==='Relato editado','Edit note in place');
+    await tile('free_meal').click();page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Excluir relato'}).click();await score.filter({hasText:'+4 pontos'}).waitFor();
     await tile('alcohol').click();await score.filter({hasText:'+3 pontos'}).waitFor();
     await page.locator('#habit-alcohol-level').fill('10');await page.waitForFunction(()=>document.querySelector('.alcohol-scale output').value==='10/10');
     await page.waitForFunction(()=>!document.querySelector('[data-habit=alcohol]').disabled);
@@ -150,6 +174,19 @@ async (existingPage) => {
     await page.getByRole('button',{name:'Desfazer último registro'}).click();
     await page.locator('#water-status').filter({hasText:'desfeito'}).waitFor();
     assert(water===0,'Undo must compensate volume');
+    assert(await page.locator('#panel-today > section').first().evaluate(el=>el.classList.contains('h2o-card')),'Hydration must be the first card');
+    water=1600;await page.reload();await page.locator('#h2o-amount').filter({hasText:'1600'}).waitFor();
+    await page.locator('[data-water="200"]').click();await page.locator('.water-achievement.is-celebrating').waitFor();
+    await page.reload();await page.locator('.water-achievement').waitFor();
+    assert(!await page.locator('.water-achievement.is-celebrating').count(),'Reading a completed day must not replay celebration');
+    const launcher=page.getByRole('button',{name:'Conversar com o Basiquito'});
+    await launcher.click();await page.getByLabel('Mensagem para o Basiquito').fill('Batata por chocolate');await page.getByRole('button',{name:'Enviar ao Basiquito'}).click();
+    await page.getByRole('button',{name:'Conversar com a Marcela'}).waitFor();
+    await page.locator('#basiquito-panel').screenshot({path:'.playwright-mcp/basiquito-mobile.png'});
+    await page.getByRole('button',{name:'Conversar com a Marcela'}).click();
+    const nutriComposer=page.locator('#patient-chat textarea[name=message]');
+    assert((await nutriComposer.inputValue()).includes('batata por chocolate') && !messages.length,'Refer to the private chat with an unsent draft');
+    await nutriComposer.fill('');
     await page.screenshot({path:'C:/Users/diogo/AppData/Local/Temp/patient-demo-mobile.png',fullPage:true,animations:'disabled'});
     await page.locator('#training-form [name=description]').fill('DEMONSTRAÇÃO: caminhada tranquila');
     await page.locator('#training-intensity').fill('1');
@@ -219,7 +256,7 @@ async (existingPage) => {
       await ready.waitFor();
       assert(!await dialog.locator('[name=position]').isVisible(), 'Full-photo fit should not crop');
       const description = await dialog.locator('canvas').getAttribute('aria-label');
-      assert(description.includes('Treino de força') && description.includes('Cardio') && !description.includes('água'), 'Stamp selections must reach the preview');
+      assert(description.includes('Treino de força') && description.includes('35 min de cardio') && !description.includes('água'), 'Selected measurements must reach the preview');
       const output = await ready.evaluate(async anchor => {
         const blob = await (await fetch(anchor.href)).blob();
         const bitmap = await createImageBitmap(blob);
@@ -244,8 +281,8 @@ async (existingPage) => {
       await weeklyDownload.waitFor();
       const weeklyWater = monday === today ? '2,05 L de água' : '3,3 L de água';
       assert(await weekly.getByRole('checkbox',{name:weeklyWater}).isChecked(),'Weekly volume uses only the chosen week and has its own selection');
-      assert(await weekly.getByRole('checkbox',{name:'Força · 1 dia'}).isChecked(),'Weekly workout frequency must use distinct days');
-      assert(await weekly.getByRole('checkbox',{name:'Gabaritei a dieta · 1 dia'}).isChecked(),'Weekly meals must use the weekly recap definition');
+      assert(await weekly.getByRole('checkbox',{name:'1 treino',exact:true}).isChecked() && !await weekly.getByRole('checkbox',{name:'1 dia de força'}).isChecked(),'Weekly totals and optional strength detail');
+      assert(await weekly.getByRole('checkbox',{name:'1 dia de dieta'}).isChecked(),'Weekly meals must use the weekly recap definition');
       const weightBadge = weekly.getByRole('checkbox',{name:'5% abaixo do peso inicial'});
       assert(!await weightBadge.isChecked() && !(await weekly.locator('canvas').getAttribute('aria-label')).includes('peso inicial'), 'Weight must be opt-in');
       await weightBadge.check();
@@ -254,6 +291,9 @@ async (existingPage) => {
       assert(artLabel.includes('5% abaixo do peso inicial') && artLabel.includes('Pesagens de') && !artLabel.includes(' kg'), 'Personal Story must carry the percentage and the measurement dates');
       assert(await weeklyDownload.getAttribute('download') === 'faz-o-basico-club-semana-' + monday + '_' + today + '.jpg', 'Weekly download must identify its actual interval');
       await weekly.screenshot({path:'.playwright-mcp/story-week-mobile.png'});
+      for(const checkbox of await weekly.locator('[data-badges] input').all())await checkbox.uncheck();
+      await weeklyDownload.waitFor();
+      assert(!(await weekly.locator('canvas').getAttribute('aria-label')).includes('peso inicial'),'All data may be removed from the export');
       await weekly.getByRole('radio',{name:'Semana passada'}).check();
       await weeklyDownload.waitFor();
       assert(await weekly.getByRole('checkbox',{name:'3,75 L de água'}).isChecked() && !await weekly.getByRole('checkbox',{name:'2,5% abaixo do peso inicial'}).isChecked(), 'Past weeks must not inherit later measurements or consent');

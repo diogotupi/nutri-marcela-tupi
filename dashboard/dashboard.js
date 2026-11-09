@@ -1,4 +1,5 @@
-import {mountHabits} from './habits.js?v=20261108';
+import {mountHabits} from './habits.js?v=20261108-club';
+import {mountBasiquito} from './basiquito.js?v=20261108';
 import {mountPatientChat} from '../js/patient-chat.js?v=20261030-team';
 import {
   escapeHtml,
@@ -15,7 +16,7 @@ import {
 } from '../js/auth.js?v=20261108-habits';
 import { initGuidesPanel } from './guides-panel.js?v=20261105-materials';
 import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js?v=20261108-habits';
-import { initPatientExtras, notifyPatientSaved } from './patient-extras.js?v=20261108-habits';
+import { initPatientExtras, notifyPatientSaved } from './patient-extras.js?v=20261108-club';
 import { hydrationMeter } from './patient-model.mjs?v=20261030-water';
 
 import {checkTrackingAccess} from './access-state.mjs';
@@ -57,6 +58,9 @@ function renderWater() {
     ? `Meta definida pela Nutri: ${meter.target} ml · ${Math.round(meter.percent)}%`
     : 'Volume registrado hoje. A Marcela ainda não definiu sua meta individual.';
   h2oFill.style.width = `${meter.percent}%`;
+  const achievement=document.querySelector('.water-achievement');
+  achievement.hidden=!(meter.target && meter.volume>=meter.target);
+  if (achievement.hidden) achievement.classList.remove('is-celebrating');
   const axis = document.getElementById('h2o-scale');
   axis.textContent = `0 ml → ${meter.scale} ml${meter.target ? ' · meta individual' : ' · escala de volume, sem meta definida'}`;
   h2oAmount.setAttribute('aria-label', `${meter.volume} mililitros registrados hoje`);
@@ -82,18 +86,24 @@ document.querySelectorAll('.dashboard-tab').forEach((tab) => {
 });
 
 document.querySelectorAll('[data-water]').forEach((button) => {
+  button.disabled=true;
   button.addEventListener('click', async () => {
+    if (getLocalDateString()!==today) { location.reload(); return; }
     const delta = Number(button.dataset.water);
     const buttons = document.querySelectorAll('[data-water], #water-undo');
     buttons.forEach(item => item.disabled = true);
     document.getElementById('water-status').textContent = 'Salvando…';
     try {
       if (!pendingWater || pendingWater.delta !== delta) pendingWater = {delta,id:crypto.randomUUID()};
+      const before=Number(tracking.water.amount_ml)||0;
       tracking.water = await addWaterIntake(today, delta, pendingWater.id);
       pendingWater = null;
       renderWater();
       lastWater = delta;
-      document.getElementById('water-status').textContent = 'Salvo no seu acompanhamento.';
+      const target=Number(validatedWaterGoal?.water_ml);
+      const crossed=target>0 && before<target && Number(tracking.water.amount_ml)>=target;
+      if (crossed) document.querySelector('.water-achievement').classList.add('is-celebrating');
+      document.getElementById('water-status').textContent = crossed?'Você atingiu sua meta de água de hoje!':'Salvo no seu acompanhamento.';
       showToast(delta > 0 ? `+${delta} ml registrados` : 'Ajuste feito');
       notifyPatientSaved();
     } catch (error) {
@@ -149,6 +159,16 @@ async function init() {
   document.getElementById('profile-label').textContent = `${profile.full_name} · ${profile.username}`;
 
   mountPatientChat(document.getElementById('patient-chat'),{patientId:profile.id}).catch(()=>{document.getElementById('patient-chat').textContent='Não foi possível abrir a conversa. Atualize a página.';});
+  mountBasiquito(profile.id,draft=>{
+    switchTab('today');
+    const chat=document.getElementById('patient-chat');
+    chat.scrollIntoView({block:'center'});
+    const composer=chat.querySelector('textarea[name=message]');
+    if (composer) {
+      if (!composer.value.trim()) { composer.value=draft; composer.dispatchEvent(new Event('input',{bubbles:true})); }
+      composer.focus({preventScroll:true});
+    }
+  });
   switchTab('today');
   mountHabits(document.getElementById('patient-habits'),profile.id);
   initPatientCare(profile).catch(error => { document.getElementById('patient-reminders').textContent = error.message; });
@@ -158,6 +178,8 @@ async function init() {
     await loadDashboard(auth.profile);
   } catch (error) {
     document.getElementById('water-status').textContent = 'Não foi possível carregar a hidratação: '+error.message;
+  } finally {
+    document.querySelectorAll('[data-water]').forEach(button=>{button.disabled=false;});
   }
 }
 
@@ -165,9 +187,12 @@ init();
 
 document.getElementById('water-undo').addEventListener('click', async () => {
   if (!lastWater) return;
+  if (getLocalDateString()!==today) { location.reload(); return; }
   const button = document.getElementById('water-undo'); button.disabled = true;
+  document.querySelectorAll('[data-water]').forEach(item=>{item.disabled=true;});
   try { pendingUndo ||= crypto.randomUUID(); tracking.water = await addWaterIntake(today, -lastWater, pendingUndo); pendingUndo = null; lastWater = null; renderWater(); document.getElementById('water-status').textContent = 'Último incremento desfeito.'; notifyPatientSaved(); }
   catch (error) { showToast(error.message, 'error'); button.disabled = false; }
+  finally { document.querySelectorAll('[data-water]').forEach(item=>{item.disabled=false;}); }
 });
 document.getElementById('export-patient-data').addEventListener('click', () => exportPatientData(profile));
 document.getElementById('evolution-range').addEventListener('change', () => loadEvolution(profile.id).catch(error => { document.getElementById('evolution-content').textContent = error.message; }));

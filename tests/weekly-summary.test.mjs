@@ -42,8 +42,18 @@ test('empty days make no claims, and private habits never appear in the public S
   const s=weeklySummary({today});assert.equal(s.activeDays,0);assert.equal(s.dietDays,0);
   assert.match(weeklyMarkup(s),/Dias em branco/);assert.doesNotMatch(weeklyMarkup(s),/refeições|chutei o balde/i);
   assert.deepEqual(storyBadges({bowel:1,alcohol:10}),[]);
-  assert.deepEqual(storyBadges({strength:1,cardio:1,diet:1}).map(b=>b.key),['strength','cardio','diet']);
+  assert.deepEqual(storyBadges({strength:1,cardio:1,diet:1}).map(b=>b.key),['strength','diet','cardio']);
   assert.deepEqual(storyBadges({cardio:1}).map(b=>b.key),['cardio']);
+});
+
+test('cardio uses recorded minutes; a free meal counts once per day and stays off the Story',()=>{
+  const s=weeklySummary({today,habits:[{...habit('cardio'),cardio_minutes:25},habit('cardio',1,'2026-11-04'),
+    {...habit('free_meal'),meal_description:'Refeição descrita em particular'}]});
+  const badges=weeklyStoryBadges(s);
+  assert.equal(s.freeMealDays,1);assert.equal(s.points,3);
+  assert.equal(badges.find(b=>b.key==='cardio').label,'25 min de cardio');
+  assert.match(badges.find(b=>b.key==='cardio').note,/1 de 2 dias/);
+  assert.doesNotMatch(JSON.stringify(badges),/particular|livre/i);
 });
 
 test('charts expose exact values, keep empty days off the table, and escape interactive labels',()=>{
@@ -53,16 +63,16 @@ test('charts expose exact values, keep empty days off the table, and escape inte
   assert.doesNotMatch(progressPlot([{day:'2026-11-02',value:5}],{label:'<script>',unit:'" onfocus="bad',min:0,max:10}),/<script>|unit=".*onfocus=/);
 });
 
-test('weekly Story uses recorded Monday-to-date totals and counts a day with two workouts once', () => {
+test('weekly Story uses recorded Monday-to-date totals and accurately labels sessions and days', () => {
   const summary = weeklySummary({today, records:[exercise('2026-11-02'),exercise('2026-11-02'),exercise('2026-11-05')],
     water:[{log_date:'2026-11-02',amount_ml:2050},{log_date:today,amount_ml:1500},{log_date:'2026-11-08',amount_ml:3000}],
     goals:[{valid_from:'2026-10-01',water_ml:2000}], habits:[habit('strength'),habit('cardio'),habit('diet') ]});
   const badges = weeklyStoryBadges(summary);
-  assert.deepEqual(badges.filter(b => b.selected).map(b => b.label), ['3,55 L de água','Força · 1 dia','Cardio · 1 dia','Gabaritei a dieta · 1 dia']);
+  assert.deepEqual(badges.filter(b => b.selected).map(b => b.label), ['4 treinos','1 dia de dieta','3,55 L de água','1 dia de cardio']);
   assert.equal(badges.find(b => b.key === 'goal').label,'Meta de água em 1 dia');
   assert.deepEqual(weeklyStoryBadges(weeklySummary({today})), []);
-  assert.equal(storyWeekLabel(weeklyRange('2027-01-01')), '28/12/2026 – 01/01/2027');
-  assert.equal(storyWeekLabel(weeklyRange('2026-11-02')), '02/11/2026');
+  assert.equal(storyWeekLabel(weeklyRange('2027-01-01')), '28 dez 2026 — 01 jan 2027');
+  assert.equal(storyWeekLabel(weeklyRange('2026-11-02')), '02 nov');
 });
 
 test('cumulative weight uses the first valid measurement and the latest as of that week, in São Paulo', () => {

@@ -1,4 +1,4 @@
-import {groupHabits,blankDay,scoreDay,dayRows,signedPoints,withHabitWorkouts} from './daily-habits.mjs';
+import {groupHabits,blankDay,scoreDay,dayRows,signedPoints,withHabitWorkouts} from './daily-habits.mjs?v=20261108-club';
 import {weekStart,progressSeries,progressNumber} from './progress-charts.mjs?v=20261106-visual';
 const dayMs=86400000;
 const addDays=(day,n)=>new Date(Date.parse(day+'T12:00:00Z')+n*dayMs).toISOString().slice(0,10);
@@ -58,6 +58,9 @@ export function weeklySummary({today,offset=0,records=[],water=[],goals=[],habit
     waterGoalDays:days.filter(d=>d.water!==null&&d.goal>0&&d.water>=d.goal).length,
     hasWaterGoal:days.some(d=>d.water!==null&&d.goal>0),
     strengthDays:days.filter(d=>d.habits.strength).length,cardioDays:days.filter(d=>d.habits.cardio).length,
+    cardioMinutes:days.reduce((sum,d)=>sum+(d.habits.cardioMinutes||0),0),
+    cardioTimedDays:days.filter(d=>d.habits.cardioMinutes).length,
+    freeMealDays:days.filter(d=>d.habits.free_meal).length,
     dietDays:days.filter(d=>d.habits.diet).length,bowelDays:days.filter(d=>d.habits.bowel).length,
     alcoholDays:days.filter(d=>d.habits.alcohol).length,points:days.reduce((n,d)=>n+scoreDay(d.habits),0)};
 }
@@ -73,7 +76,7 @@ export function weeklyMarkup(s,{past=false}={}) {
       ${card(icon('movement'),'Movimento',progressNumber(s.workoutDays,0)+'<em>dias</em>',s.sessions?`Força em ${s.strengthDays} dia(s) · Cardio em ${s.cardioDays} dia(s)${s.intensity!==null?' · intensidade média '+format(s.intensity)+'/10':''}`:'Seu próximo treino conta por aqui.','green')}
       ${card(icon('water'),'Hidratação',progressNumber(s.water/1000)+'<em>L</em>',s.waterDays?`${s.waterDays} dia(s) registrados · ${s.hasWaterGoal?s.waterGoalDays+' com a meta alcançada':'sem meta definida'}`:'Registre a água que você beber.','aqua')}
       ${card(icon('meals'),'Gabaritei a dieta',progressNumber(s.dietDays,0)+'<em>dias</em>','Dias em que você marcou o check da dieta.','peach')}
-      ${card(icon('care'),'Pontos da semana',progressNumber(s.points,0),`Banheiro em ${s.bowelDays} dia(s) · Álcool em ${s.alcoholDays} dia(s)`,'sand')}
+      ${card(icon('care'),'Pontos da semana',progressNumber(s.points,0),`Banheiro em ${s.bowelDays} dia(s) · Álcool em ${s.alcoholDays} dia(s)`+(s.freeMealDays?` · Refeição livre em ${s.freeMealDays} ${s.freeMealDays===1?'dia':'dias'}`:''),'sand')}
     </div>
     <div class="week-days" aria-label="Registros por dia">${s.days.map((d,i)=>{
       const future=d.date>s.until,active=d.water!==null||d.workouts||dayRows(d.habits).length;

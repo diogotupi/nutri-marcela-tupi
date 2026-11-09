@@ -1,0 +1,41 @@
+.basiquito { --coffee:#344b3b; --latte:#f5e6cf; color:#244438; font-family:inherit; }
+.basiquito [hidden] { display:none!important; }
+.basiquito button { cursor:pointer; font:inherit; color:inherit; }
+.basiquito button:disabled { opacity:.55; cursor:default; }
+.basiquito-avatar { width:48px; aspect-ratio:1; display:block; position:relative; flex:none; }
+.basiquito-avatar img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+.cup-body { clip-path:inset(28.7% 0 0); }
+.cup-steam { clip-path:inset(0 0 71.3%); transform-origin:52% 30%; }
+.basiquito .cup-thinking,.basiquito.is-thinking .cup-body,.basiquito.is-thinking .cup-steam { visibility:hidden; }
+.basiquito.is-thinking .cup-thinking { visibility:visible; }
+.basiquito-launcher { position:fixed; z-index:48; right:max(18px,env(safe-area-inset-right)); bottom:20px; display:grid; justify-items:center; gap:1px; min-width:68px; padding:4px 7px 5px; border:1px solid #808968; border-radius:22px; background:#fcf4df; box-shadow:3px 4px 0 #daac95,0 5px 18px #29413330; }
+.basiquito-launcher > span:last-child { font-size:11px; font-weight:750; }
+.basiquito-panel { position:fixed; z-index:51; right:20px; bottom:106px; display:flex; flex-direction:column; width:min(390px,calc(100vw - 28px)); height:min(590px,calc(100dvh - 132px)); overflow:hidden; border:1px solid #788a74; border-radius:23px; background:#fffaf3; box-shadow:5px 6px 0 #e5b7a3,0 15px 48px #20382533; }
+.basiquito-panel header { display:flex; gap:12px; align-items:center; padding:12px 17px; border-bottom:1px solid #d6d9c8; background:linear-gradient(110deg,#f5e6cf,#edf0df); }
+.basiquito-panel h2 { font-family:inherit; font-weight:700; font-size:1.35rem; line-height:1.3; margin:0; }
+.basiquito-panel header small { color:#516456; }
+.basiquito-panel header button { margin-left:auto; border:1px solid #a7b19f; background:#fffcf5; border-radius:50%; width:38px; height:38px; font-size:20px; }
+.basiquito-feed { flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; padding:16px 14px; }
+.basiquito-line { display:flex; flex-wrap:wrap; gap:5px; margin:0 0 12px; max-width:93%; }
+.basiquito-line p { margin:0; width:100%; background:#edf1e6; padding:11px 14px; border:1px solid #d2d9cb; border-radius:16px 16px 16px 4px; color:#294638; line-height:1.5; font-size:.88rem; white-space:pre-wrap; overflow-wrap:anywhere; }
+.basiquito-line.patient { width:fit-content; margin-left:auto; }
+.basiquito-line.patient p { background:#f5ddcf; border-color:#e3bfae; border-radius:16px 16px 4px 16px; }
+.basiquito-tools { display:flex; gap:7px; padding:7px 12px; border-top:1px solid #e0dfce; }
+.basiquito-tools button,.basiquito-feed button { background:#fffcf5; border:1px solid #aeBAa6; padding:7px 12px; border-radius:16px; font-size:.79rem; }
+.basiquito-feed button { background:#e4efdd; font-weight:650; }
+.basiquito-panel form { display:flex; align-items:center; gap:7px; padding:4px 12px 12px; }
+.basiquito-panel textarea { flex:1; min-width:0; resize:none; height:43px; border:1px solid #a4b19c; border-radius:13px; font:inherit; padding:9px 12px; }
+.basiquito-panel form button { background:#305c43; color:white; border:0; border-radius:14px; font-size:1.5rem; width:43px; height:43px; }
+.basiquito-status { font-size:.77rem; padding:0 13px; margin:3px 0 6px; } .basiquito-status:empty { display:none; }
+@media (max-width:760px) { .basiquito-launcher { bottom:calc(84px + env(safe-area-inset-bottom)); right:13px; } .basiquito-panel { right:12px; bottom:calc(84px + env(safe-area-inset-bottom)); height:min(610px,calc(100dvh - 105px - env(safe-area-inset-bottom))); } }
+@media (prefers-reduced-motion:no-preference) {
+  .basiquito-avatar .cup-steam { animation:coffee-steam 3.1s ease-in-out infinite; }
+  .basiquito-launcher:hover .basiquito-avatar,.basiquito-panel:not([hidden]) header .basiquito-avatar { animation:coffee-hello .65s ease-in-out; transform-origin:50% 90%; }
+  .basiquito.is-thinking header .basiquito-avatar { animation:coffee-think 1.1s ease-in-out infinite alternate; }
+  .basiquito-line { animation:coffee-message .2s ease-out; }
+  @keyframes coffee-steam { 50% { transform:translateY(-1.5px) rotate(5deg) scale(.93,1.045); opacity:.8; } }
+  @keyframes coffee-hello { 25% { transform:rotate(-9deg); } 65% { transform:rotate(6deg); } }
+  @keyframes coffee-think { to { transform:rotate(-5deg) translateY(-1px); } }
+  @keyframes coffee-message { from { opacity:0; transform:translateY(5px); } }
+}
+@media print { .basiquito { display:none!important; } }

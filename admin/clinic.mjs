@@ -1,4 +1,4 @@
-import {habits,groupHabits,readHabits,saveHabit,scoreDay,signedPoints,withHabitWorkouts} from '../js/daily-habits.mjs';
+import {habits,groupHabits,readHabits,saveHabit,saveCardioMinutes,saveFreeMeal,habitLabel,scoreDay,signedPoints,withHabitWorkouts} from '../js/daily-habits.mjs?v=20261108-club';
 import {enhanceProgress} from '../js/progress-motion.mjs?v=20261106-visual';
 import {waterTimeline} from '../dashboard/patient-model.mjs';
 import {progressSeries,workoutChart,weightChart,hydrationChart} from '../js/progress-charts.mjs?v=20261106-visual';
@@ -8,7 +8,7 @@ import {listClinical,addClinical,getSignedAttachment} from '../js/clinical.js';
 import {mountPatientChat} from '../js/patient-chat.js';
 import {dateKey,subtractDays,datesInRange,isPatientInactive,patientState,stateNames,categoryNames,calendarRange,contactState,auditSentence} from './clinic-model.mjs?v=20261108-habits';
 
-import {mountActivityCenter,pendingActivities} from './activity-center.mjs';
+import {mountActivityCenter,pendingActivities} from './activity-center.mjs?v=20261108-club';
 import {mountMaterialLibrary} from '../js/material-library.mjs';
 
 const db=getSupabase(),$=s=>document.querySelector(s),view=$('#clinic-view'),dialog=$('#clinic-dialog'),form=$('#clinic-form');
@@ -157,13 +157,21 @@ function accessForm(){const p=detail.profile;modal(p.user_id?'Alterar senha do p
 function deletePatient(){const p=detail.profile,active=detail.crm.enrollments.some(e=>e.status==='active'&&e.ends_on>dateKey());modal('Excluir paciente',`<p>Tem certeza de que deseja excluir <strong>${esc(p.full_name)}</strong>? Serão removidos o acesso, os acompanhamentos, os checks, as mensagens, os registros e os arquivos.</p>${active?'<div class="notice expired"><strong>Este paciente tem acompanhamento ativo ou agendado.</strong><label class="check-field"><input type="checkbox" name="active_ack" required>Entendo que esse acompanhamento também será excluído.</label>'+field('confirmation','Digite EXCLUIR para confirmar','text','','required pattern="EXCLUIR"')+'</div>':''}<label class="check-field"><input type="checkbox" name="confirmed" required>Tenho certeza de que desejo excluir este paciente.</label>`,async fd=>{const r=await edge('delete-client',{patient_id:p.id,name:p.full_name,confirmed:fd.has('confirmed'),active_ack:fd.has('active_ack'),confirmation:fd.get('confirmation')||''});if(!r.deleted)throw Error('A exclusão não foi confirmada.');if(r.cleanup_pending){sessionStorage.setItem('clinic-delete-job',r.job_id);toast('Cadastro removido. A limpeza de arquivos será retomada automaticamente.');}await loadPatients();await calendar();},{button:'Excluir definitivamente'});}
 function habitHistory(){
  const entries=[...groupHabits(detail.habitRows)].filter(([d])=>d>=detail.start).reverse();
- return entries.length?'<ul class="habit-history">'+entries.map(([day,h])=>`<li><div class="habit-line"><strong>${fmt(day)}</strong><small>${signedPoints(scoreDay(h))}</small></div><p>${habits.filter(item=>h[item.key]).map(item=>`<button class="secondary" type="button" data-edit-habit="${item.key}" data-habit-date="${day}">${item.label}${item.key==='alcohol'?' · '+h.alcohol+'/10':''}</button>`).join(' ')}</p></li>`).join('')+'</ul>':empty('Ainda não há checks neste período.');
+ return entries.length?'<ul class="habit-history">'+entries.map(([day,h])=>`<li><div class="habit-line"><strong>${fmt(day)}</strong><small>${signedPoints(scoreDay(h))}</small></div><p>${habits.filter(item=>h[item.key]).map(item=>`<button class="secondary" type="button" data-edit-habit="${item.key}" data-habit-date="${day}">${habitLabel(item,h)}</button>`).join(' ')}</p>${h.mealDescription?`<p><strong>Refeição livre</strong> · ${esc(h.mealDescription)}</p>`:''}</li>`).join('')+'</ul>':empty('Ainda não há checks neste período.');
 }
 function editHabit(day,key){
  const item=habits.find(h=>h.key===key),row=detail.habitRows.find(r=>r.habit_date===day&&r.habit===key),pid=selected;
  if(!row||!item)return;
  const choices=[['0','Desmarcar este check'],...(key==='alcohol'?Array.from({length:10},(_,i)=>[String(i+1),String(i+1)+'/10']):[['1','Marcado']])];
- modal(item.label,`<p>Registro de ${fmt(day)}</p>`+select('level',key==='alcohol'?'Intensidade':'Check',choices,String(row.level)),async fd=>{await saveHabit(db,pid,day,key,Number(fd.get('level')));await refreshPatient();});
+ const extra=key==='free_meal'?area('description','O que o paciente comeu',row.meal_description):
+   key==='cardio'?field('minutes','Minutos de cardio (opcional)','number',row.cardio_minutes??'','min="1" max="1440" step="1"'):'';
+ modal(item.label,`<p>Registro de ${fmt(day)}</p>`+select('level',key==='alcohol'?'Intensidade':'Check',choices,String(row.level))+extra,async fd=>{
+   const level=Number(fd.get('level'));
+   if (key==='free_meal') await saveFreeMeal(db,pid,day,level?fd.get('description').trim():null);
+   else if (key==='cardio' && level) await saveCardioMinutes(db,pid,day,fd.get('minutes')?Number(fd.get('minutes')):null);
+   else await saveHabit(db,pid,day,key,level);
+   await refreshPatient();
+ });
 }
 function editRecord(id){const r=detail.records.find(r=>r.id===id);if(r.kind==='assessment')return assessmentForm(r);if(r.kind==='checkin'&&r.payload.category==='weight_checkin'){
   return modal('Editar peso registrado',field('weight_kg','Peso (kg)','number',r.payload.weight_kg,'required min="1" max="700" step="0.01"'),async fd=>{

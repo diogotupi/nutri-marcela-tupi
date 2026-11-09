@@ -11,9 +11,10 @@
   <link rel="stylesheet" href="../app/app.css">
   <link rel="stylesheet" href="./patient.css?v=20261105-clinic">
   <link rel="stylesheet" href="/app/progress.css?v=20261106-visual">
-  <link rel="stylesheet" href="./workout-story.css?v=20261108-week-story">
+  <link rel="stylesheet" href="./workout-story.css?v=20261108-club">
+  <link rel="stylesheet" href="./basiquito.css?v=20261108">
   <script src="../js/config.js"></script>
-<link rel="stylesheet" href="/app/fresh.css?v=20261030b"><link rel="stylesheet" href="/app/chat.css?v=20261030-chat"><link rel="stylesheet" href="/app/habits.css?v=20261108"><link rel="stylesheet" href="/app/materials.css"><link rel="stylesheet" href="/app/progress-visual.css?v=20261106-visual"></head>
+<link rel="stylesheet" href="/app/fresh.css?v=20261030b"><link rel="stylesheet" href="/app/chat.css?v=20261030-chat"><link rel="stylesheet" href="/app/habits.css?v=20261108-club"><link rel="stylesheet" href="/app/materials.css"><link rel="stylesheet" href="/app/progress-visual.css?v=20261106-visual"></head>
 <body class="app-body">
   <div class="app-shell" inert>
     <aside class="app-sidebar">
@@ -46,12 +47,6 @@
             <p>Um cuidado de cada vez. Como está seu dia?</p>
           </div>
         </div>
-        <section id="patient-habits" class="app-card habit-board" aria-label="Checks do dia"></section>
-        <section id="patient-weekly-overview" class="weekly-overview" aria-label="Resumo da semana"></section>
-        <section id="patient-weight" class="app-card weight-checkin" aria-label="Check-in de peso"></section>
-        <section id="patient-training" class="app-card patient-training" aria-label="Seu treino de hoje"></section>
-        <section id="patient-workout-progress" class="app-card patient-chart" aria-label="Frequência e intensidade do treino"></section>
-
         <section class="app-card h2o-card" style="margin-bottom:1rem;padding:1.25rem">
           <div class="h2o-card__head">
             <div>
@@ -65,6 +60,7 @@
           </div>
           <p id="h2o-scale" class="h2o-card__scale"></p>
           <p class="h2o-card__goal" id="h2o-goal">Carregando sua meta…</p>
+          <div class="water-achievement" hidden><span class="water-medal" aria-hidden="true">✓</span> Meta diária atingida!</div>
           <div class="h2o-actions">
             <button type="button" class="app-btn app-btn--ghost h2o-btn" data-water="250">+250 ml</button>
             <button type="button" class="app-btn app-btn--ghost h2o-btn" data-water="500">+500 ml</button>
@@ -74,6 +70,11 @@
           <p id="water-status" class="patient-status" role="status"></p>
         </section>
 
+        <section id="patient-habits" class="app-card habit-board" aria-label="Checks do dia"></section>
+        <section id="patient-weekly-overview" class="weekly-overview" aria-label="Resumo da semana"></section>
+        <section id="patient-weight" class="app-card weight-checkin" aria-label="Check-in de peso"></section>
+        <section id="patient-training" class="app-card patient-training" aria-label="Seu treino de hoje"></section>
+        <section id="patient-workout-progress" class="app-card patient-chart" aria-label="Frequência e intensidade do treino"></section>
         <section id="patient-reminders" class="patient-reminders" aria-live="polite"></section>
         <section id="patient-chat" class="app-card" aria-label="Chat com a nutri"></section>
       </div>
@@ -121,6 +122,6 @@
     </main>
   </div>
 
-  <script type="module" src="./dashboard.js?v=20261108-habits"></script>
+  <script type="module" src="./dashboard.js?v=20261108-club"></script>
 </body>
 </html>

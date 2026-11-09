@@ -8,7 +8,11 @@
   border-radius: 19px;
   background: linear-gradient(115deg, #e5eede, #fffaf0 70%, #f9e6db);
 }
-.workout-story-invite img {
+.story-invite-cover {
+  display:flex;
+  align-items:flex-end;
+  padding:7px;
+  background:linear-gradient(transparent 48%, #1c1919a8), url('/assets/story-fundo-exemplo.jpg') center/cover;
   flex: none;
   width: clamp(58px, 13vw, 78px);
   height: auto;
@@ -18,6 +22,7 @@
   box-shadow: 3px 4px 0 #dcb29d;
   transform: rotate(-4deg);
 }
+.story-invite-cover img { width:62%; height:auto; }
 .workout-story-invite h3 { margin: 0; font-size: 1.2rem; letter-spacing: -.04em; }
 .workout-story-invite p { margin: 5px 0 12px; color: #516657; font-size: .82rem; line-height: 1.5; }
 .workout-story-invite .app-btn { min-height: 40px; gap: 9px; }

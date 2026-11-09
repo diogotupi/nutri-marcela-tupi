@@ -1,12 +1,12 @@
-import {readHabits,groupHabits} from '../js/daily-habits.mjs';
-import {mountWeeklyOverview} from './weekly-overview.js?v=20261108-habits';
+import {readHabits,groupHabits} from '../js/daily-habits.mjs?v=20261108-club';
+import {mountWeeklyOverview} from './weekly-overview.js?v=20261108-club';
 import { getSupabase, getLocalDateString, escapeHtml as esc } from '../js/app-core.js';
 import { addClinical, uploadAttachment, getSignedAttachment } from '../js/clinical.js';
 import { preparePhotoUpload } from '../js/media-upload.js';
 import {mountWeightCheckin} from './weight-checkin.js?v=20261106-visual';
 import {mountWorkoutProgress} from './workout-progress.js?v=20261108-habits';
 import {celebrateWorkout} from './workout-celebration.js?v=20261108-habits';
-import {openWorkoutStory} from './workout-story.js?v=20261108-habits';
+import {openWorkoutStory} from './workout-story.js?v=20261108-club';
 import { intensityLabel } from './patient-model.mjs';
 
 const db=()=>getSupabase();
@@ -41,7 +41,7 @@ export async function initPatientExtras(profile) {
   trainingForm.after(celebration);
   trainingForm.insertAdjacentHTML('afterend', `
     <section class="workout-story-invite" aria-labelledby="story-invite-title">
-      <img src="/assets/story-treino-exemplo.jpg" alt="" loading="lazy" width="81" height="144">
+      <span class="story-invite-cover"><img src="/assets/story-club.png" alt="" loading="lazy" width="568" height="390"></span>
       <div>
         <h3 id="story-invite-title">Faz o Básico Club</h3>
         <p>Sua foto do treino com os registros do dia ou da semana.</p>
