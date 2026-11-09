@@ -1,7 +1,6 @@
 import {
   getSupabase,
   isConfigured,
-  usernameToEmail,
 } from './app-core.js';
 
 export async function getSession() {
@@ -65,8 +64,21 @@ export async function requireAuth({ role } = {}) {
 export async function signIn(username, password) {
   const supabase = getSupabase();
   const value = String(username).trim().toLowerCase();
-  const email = value.includes('@') ? value : usernameToEmail(value);
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const handle = value.replace(/@app\.nutrimarcelatupi\.com$/, '');
+  if (!handle.includes('@')) {
+    const config = window.APP_CONFIG;
+    const response = await fetch(config.supabaseUrl + '/functions/v1/sign-in-with-username', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: config.supabaseAnonKey, Authorization: 'Bearer ' + config.supabaseAnonKey },
+      body: JSON.stringify({ username: handle, password }),
+    });
+    const tokens = await response.json();
+    if (!response.ok) throw new Error(tokens.error || 'Não foi possível entrar agora.');
+    const session = await supabase.auth.setSession(tokens);
+    if (session.error) throw session.error;
+    return session.data;
+  }
+  const { data, error } = await supabase.auth.signInWithPassword({ email: value, password });
   if (error) throw error;
   return data;
 }

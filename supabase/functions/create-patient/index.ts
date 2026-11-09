@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
     }
 
     const { data: permitted, error: permissionError } = await userClient.rpc('is_admin')
-    if (permissionError || permitted !== true) return json({ error: 'Acesso administrativo e verifica��o em dois fatores necess�rios.' }, 403)
+    if (permissionError || permitted !== true) return json({ error: 'Acesso administrativo e verificação em dois fatores necessários.' }, 403)
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey)
     const { data: adminProfile, error: adminError } = await adminClient
@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
       return json({ error: 'Informe o nome do paciente.' }, 400)
     }
 
-    const email = `${username}@${EMAIL_DOMAIN}`
+    const email = `${crypto.randomUUID()}@${EMAIL_DOMAIN}`
 
     const { data: createdUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
@@ -107,6 +107,7 @@ Deno.serve(async (req) => {
 
     if (profileError) {
       await adminClient.auth.admin.deleteUser(createdUser.user.id)
+      if (profileError.code === '23505') return json({ error: 'Este nome de usuário já está em uso.' }, 409)
       return json({ error: profileError.message }, 400)
     }
 

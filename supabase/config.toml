@@ -6,6 +6,9 @@ enabled = true
 [functions.create-patient]
 verify_jwt = true
 
+[functions.sign-in-with-username]
+verify_jwt = true
+
 [functions.patient-material]
 verify_jwt = true
 

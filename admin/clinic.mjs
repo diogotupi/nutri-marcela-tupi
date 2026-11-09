@@ -6,10 +6,11 @@ import {getSupabase,escapeHtml as esc} from '../js/app-core.js';
 import {requireAuth,signOut} from '../js/auth.js?v=20261108-habits';
 import {listClinical,addClinical,getSignedAttachment} from '../js/clinical.js';
 import {mountPatientChat} from '../js/patient-chat.js';
-import {dateKey,subtractDays,datesInRange,isPatientInactive,patientState,stateNames,categoryNames,calendarRange,contactState,auditSentence} from './clinic-model.mjs?v=20261108-habits';
+import {dateKey,subtractDays,datesInRange,isPatientInactive,patientState,stateNames,categoryNames,calendarRange,contactState,auditSentence} from './clinic-model.mjs?v=20261109-community';
 
 import {mountActivityCenter,pendingActivities} from './activity-center.mjs?v=20261108-club';
 import {mountMaterialLibrary} from '../js/material-library.mjs';
+import {mountCommunity} from '../js/community.js?v=20261109-community';
 
 const db=getSupabase(),$=s=>document.querySelector(s),view=$('#clinic-view'),dialog=$('#clinic-dialog'),form=$('#clinic-form');
 let disposeProgressMotion=()=>{};
@@ -184,6 +185,11 @@ async function logs(append=false){if(actor.role!=='admin')return;const offset=ap
  const events=await query(q);$('#audit-list').insertAdjacentHTML('beforeend',events.map(r=>`<article class="audit-row"><strong>${esc(auditSentence(r))}</strong><time>${stamp(r.created_at)}</time>${r.before_data||r.after_data?`<details><summary>Ver alteração registrada</summary><pre>${esc(JSON.stringify({antes:r.before_data,depois:r.after_data},null,2))}</pre></details>`:''}</article>`).join('')||(!append?empty('As ações das secretárias aparecerão aqui a partir de agora.') :''));$('#audit-list').dataset.offset=offset+events.length;$('[data-action=more-logs]').hidden=events.length<50;
 }
 async function action(name){
+ if(name==='community'){
+   leavePatient();++epoch;renderRail();history.replaceState({},'',location.pathname);
+   view.innerHTML='<section class="calendar-page community-page"><header class="page-heading"><h1>Comunidade</h1><button class="secondary" data-action="calendar">← Calendário</button></header><div data-community></div></section>';
+   return mountCommunity(view.querySelector('[data-community]'),actor);
+ }
  if(name==='activities'){++epoch;leavePatient();renderRail();history.replaceState({},'',location.pathname);return mountActivityCenter(view,db,{openPatient,onResolve:()=>updatePending().catch(fail)});}
  if(name==='tracking-mode')return trackingDialog();
  if(name==='team-notes')return teamNotesDialog();

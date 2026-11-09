@@ -1,4 +1,5 @@
 import {mountHabits} from './habits.js?v=20261109-care';
+import {mountCommunity} from '../js/community.js?v=20261109-community';
 import {mountBasiquito} from './basiquito.js?v=20261109-care';
 import {mountPatientChat} from '../js/patient-chat.js?v=20261030-team';
 import {
@@ -40,6 +41,7 @@ let validatedWaterGoal = null;
 const panels = {
   today: document.getElementById('panel-today'),
   guides: document.getElementById('panel-guides'),
+  community: document.getElementById('panel-community'),
   account: document.getElementById('panel-account'),
   evolution: document.getElementById('panel-evolution'),
 };
@@ -73,6 +75,7 @@ function switchTab(tabId) {
     tab.setAttribute('aria-current', tab.dataset.tab === tabId ? 'page' : 'false');
   });
   if (tabId === 'guides' && profile) initGuidesPanel();
+  if (tabId === 'community' && profile) mountCommunity(document.getElementById('patient-community'),profile);
   if (tabId === 'evolution' && profile) loadEvolution(profile.id).catch(error => { document.getElementById('evolution-content').textContent = error.message; });
 
   Object.entries(panels).forEach(([id, panel]) => {
@@ -127,6 +130,41 @@ async function loadDashboard(profile) {
 
 }
 
+const identityForm = document.getElementById('identity-form');
+function displayIdentity() {
+  greeting.textContent = profile.full_name.split(' ')[0];
+  sidebarUser.textContent = profile.username;
+  document.getElementById('profile-label').textContent = profile.full_name + ' · @' + profile.username;
+  identityForm.elements.full_name.value = profile.full_name;
+  identityForm.elements.username.value = profile.username;
+  const initials = document.querySelector('#profile-photo-preview span');
+  if (initials) initials.textContent = profile.full_name.split(' ').slice(0,2).map(word => word[0]).join('');
+}
+identityForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  const button = identityForm.querySelector('button');
+  const status = identityForm.querySelector('[role=status]');
+  const username = identityForm.elements.username.value.trim().toLowerCase();
+  if (!/^[a-z0-9._-]{3,32}$/.test(username)) {
+    status.textContent = 'O nome de usuário precisa ter de 3 a 32 caracteres válidos.';
+    identityForm.elements.username.focus();
+    return;
+  }
+  button.disabled = true;
+  status.textContent = 'Salvando…';
+  try {
+    const {data,error} = await getSupabase().rpc('update_my_patient_profile', {
+      p_full_name: identityForm.elements.full_name.value, p_username: username
+    });
+    if (error) throw error;
+    Object.assign(profile,data);
+    displayIdentity();
+    status.textContent = 'Perfil atualizado. Seu usuário para entrar é ' + profile.username + '.';
+  } catch (error) {
+    status.textContent = error.message || 'Não foi possível salvar. Tente novamente.';
+  } finally { button.disabled = false; }
+});
+
 passwordForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   passwordError.textContent = '';
@@ -156,7 +194,7 @@ async function init() {
   const access=await checkTrackingAccess(getSupabase(),profile.id);
   document.querySelector('.app-shell').inert=false;
   if(!access){sidebarUser.textContent=profile.full_name;return;}
-  document.getElementById('profile-label').textContent = `${profile.full_name} · ${profile.username}`;
+  displayIdentity();
 
   mountPatientChat(document.getElementById('patient-chat'),{patientId:profile.id}).catch(()=>{document.getElementById('patient-chat').textContent='Não foi possível abrir a conversa. Atualize a página.';});
   mountBasiquito(draft=>{

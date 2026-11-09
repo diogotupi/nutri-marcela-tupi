@@ -1,5 +1,5 @@
 import { getSupabase, isConfigured } from '../js/app-core.js';
-import { getProfile, signIn, signOut, changePassword } from '../js/auth.js';
+import { getProfile, signIn, signOut, changePassword } from '../js/auth.js?v=20261109-community';
 const $ = id => document.getElementById(id);
 const admin = document.body.dataset.accessRole === 'admin';
 const loginPath = admin ? '/admin/login/' : '/login/';

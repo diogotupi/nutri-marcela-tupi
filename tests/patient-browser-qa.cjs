@@ -16,6 +16,9 @@ async (existingPage) => {
   const lastSunday = shift(monday, -1);
   let storyHistory = false;
   const profile={id:pid,user_id:uid,username:'demonstracao',full_name:'Paciente Demonstração',role:'patient'};
+  const author={username:'marcela_demo',is_admin:true,has_pride:false};
+  const photoPost={id:'44444444-4444-4444-8444-444444444444',seq:1,author,caption:'Uma foto de teste',photo_path:pid+'/teste.webp',created_at:new Date().toISOString(),coffees:0,comments:0,liked:false,can_delete:false};
+  const socialComments=[];
   let accessState='open',water=0,failNextWater=true,failClinical=false,noWaterGoal=false,failNextMessage=true;
   const applied=new Map(),habitRows=new Map(),retiredRequests=[];
   const earlierMeals=[1,2,3].map(n=>shift(today,-n)).filter(day=>day>=monday).map(habit_date=>({patient_id:pid,habit_date,habit:'free_meal',level:1,meal_description:'Relato anterior'}));
@@ -30,6 +33,10 @@ async (existingPage) => {
       const bytes=req.postDataBuffer();uploads.push({bytes:bytes?.length || 0,webp:bytes?.includes(Buffer.from('WEBP'))});return route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({Key:'clinical-files/demo.webp'})});
     }
     if(url.pathname.includes('/storage/v1/object/sign/')) {
+      if(method==='POST' && url.pathname.endsWith('/community-photos')) {
+        const results=req.postDataJSON().paths.map(path=>({path,signedURL:'/object/sign/community-photos/'+path+'?token=DEMO'}));
+        return route.fulfill({json:results,headers:{'access-control-allow-origin':'*'}});
+      }
       if(method==='POST')return route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({signedURL:'/object/sign/clinical-files/demo.webp?token=DEMO'})});
       return route.fulfill({status:200,contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j6v8AAAAASUVORK5CYII=','base64'),headers:{'access-control-allow-origin':'*'}});
     }
@@ -42,6 +49,21 @@ async (existingPage) => {
     }
 
     if(table==='profiles') data=[profile];
+    if(table==='update_my_patient_profile') {
+      profile.full_name=body.p_full_name;profile.username=body.p_username;
+      data={full_name:profile.full_name,username:profile.username};
+    }
+    if(table==='community_feed')data=[photoPost];
+    if(table==='community_comments_page')data=socialComments;
+    if(table==='community_set_coffee') {
+      photoPost.liked=body.p_liked;photoPost.coffees=Number(body.p_liked);
+      data={liked:photoPost.liked,coffees:photoPost.coffees};
+    }
+    if(table==='community_add_comment') {
+      data={id:body.p_id,seq:1,created_at:new Date().toISOString(),body:body.p_body,can_delete:true,
+        author:{username:profile.username,is_admin:false,has_pride:true}};
+      socialComments.push(data);photoPost.comments=socialComments.length;
+    }
     if(table==='patient_goals') data=noWaterGoal?[]:[{id:'g1',patient_id:pid,water_ml:1800,valid_from:'2020-01-01'}];
     if(table==='patient_water_logs') data=water?[{id:'water1',patient_id:pid,log_date:today,amount_ml:water,goal_ml:1800}]:[];
     if (table === 'patient_water_logs' && storyHistory && url.searchParams.get('select') === 'log_date,amount_ml') {
@@ -424,6 +446,24 @@ async (existingPage) => {
     assert(Boolean(profile.photo_path)&&uploads.length===2&&uploads[1].webp,'Profile avatar not stored/linked');
     await page.getByRole('button',{name:'Exportar meus registros',exact:true}).click();
     await page.locator('#export-status').filter({hasText:'Registros exportados'}).waitFor();
+    await page.locator('#profile-name').fill('Paciente Comunidade');
+    await page.locator('#profile-username').fill('CLUBE_DEMO');
+    await page.locator('#identity-form button').click();
+    await page.locator('#identity-form [role=status]').filter({hasText:'Perfil atualizado'}).waitFor();
+    assert(await page.locator('#sidebar-user').textContent()==='clube_demo','Renamed profile must update navigation');
+    await page.getByRole('button',{name:'Comunidade',exact:true}).click();
+    const post=page.locator('article.community-post');
+    await post.getByRole('img',{name:'Marcela · Administradora'}).waitFor();
+    await post.getByRole('button',{name:'Dar um cafezinho'}).click();
+    await post.getByRole('button',{name:'Retirar cafezinho'}).waitFor();
+    assert(await post.locator('.community-coffee b').textContent()==='1','Coffee did not persist');
+    await post.getByRole('button',{name:/Comentários/}).click();
+    await post.locator('textarea').fill('Que legal <3');
+    await post.getByRole('button',{name:'Comentar',exact:true}).click();
+    await post.locator('li').getByRole('img',{name:'Orgulho da nutri'}).waitFor();
+    assert(await post.locator('li p').textContent()==='Que legal <3','Comment must be plain text');
+    assert(await post.locator('li .community-handle').textContent()==='@clube_demo','Comment handle must follow profile rename');
+    assert(!await post.locator('li').getByRole('img',{name:'Marcela · Administradora'}).count(),'Patient comment cannot display the crown');
     await page.getByRole('button',{name:'Hoje',exact:true}).click();
     await page.setViewportSize({width:1440,height:1000});
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Desktop horizontal overflow');
@@ -450,7 +490,7 @@ async (existingPage) => {
       assert(await page.locator('#training-form,#swap-food-search,#patient-chat textarea,#free-meal-panel textarea').count()===0,'Tracking features must not mount while locked');
       assert(await banner.locator('fieldset:disabled button:disabled').count()===2,'Locked features missing disabled affordance');
       assert(await page.locator('#logout-btn').isEnabled(),'Patient must stay signed in and be able to sign out');
-      assert((await page.locator('#sidebar-user').textContent()).includes('Paciente Demonstração'),'Patient identity should survive lock');
+      assert((await page.locator('#sidebar-user').textContent())===profile.full_name,'Patient identity should survive lock');
       const link=await banner.locator('a').getAttribute('href');
       assert(state==='unavailable' ? link.startsWith(page.url().split('?')[0]) : link.startsWith('https://wa.me/'),'Renew/retry link incorrect');
     }

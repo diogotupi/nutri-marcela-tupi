@@ -14,10 +14,10 @@ Deno.serve(async req=>{
  const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});
  const {data:profile,error:profileError}=await admin.from('profiles').select('id,user_id,full_name').eq('id',patient).eq('role','patient').single();
  if(profileError||!profile)return json({error:'Cliente não encontrado.'},404);if(profile.user_id)return json({error:'Este cliente já possui login. Use a redefinição de senha.'},409);
- const {data:created,error:createError}=await admin.auth.admin.createUser({email:`${username}@app.nutrimarcelatupi.com`,password,email_confirm:true,user_metadata:{username,full_name:profile.full_name}});
+ const {data:created,error:createError}=await admin.auth.admin.createUser({email:`${crypto.randomUUID()}@app.nutrimarcelatupi.com`,password,email_confirm:true,user_metadata:{username,full_name:profile.full_name}});
  if(createError||!created.user)return json({error:'Não foi possível criar o acesso. Verifique se o usuário já existe e os requisitos da senha.'},400);
  const {error:linkError}=await caller.rpc('crm_link_login',{p_patient:patient,p_user:created.user.id,p_username:username});
- if(linkError){await admin.auth.admin.deleteUser(created.user.id);return json({error:'Não foi possível vincular o acesso. Atualize o cadastro e tente novamente.'},409);}
+ if(linkError){await admin.auth.admin.deleteUser(created.user.id);return json({error:linkError.code==='23505'?'Este nome de usuário já está em uso.':'Não foi possível vincular o acesso. Atualize o cadastro e tente novamente.'},409);}
  return json({success:true});
  }catch{return json({error:'Não foi possível liberar o acesso.'},500);}
 });

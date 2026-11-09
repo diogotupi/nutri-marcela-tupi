@@ -27,6 +27,13 @@ export function auditSentence(r){
  const verb={insert:'cadastrou',update:'alterou',delete:'apagou',opened:'abriu a ficha de',login:'entrou no sistema'};
  const noun={patient_daily_habits:'um check de hábito',profiles:'o cadastro',crm_enrollments:'o acompanhamento',crm_contacts:'o contato de acompanhamento',clinical_records:'um registro clínico',patient_goals:'a meta de água',patient_messages:'uma mensagem no chat',patient_chat_reads:'a leitura do chat',staff_permissions:'o acesso da equipe',staff_tasks:'uma tarefa',appointments:'uma consulta',patient_badges:'uma conquista',patient_water_logs:'a hidratação',};
  if(r.action==='login')return `${r.actor_name} entrou no sistema`;
+ const communityActions={
+  community_posts:{insert:'publicou uma foto',delete:'excluiu uma foto'},
+  community_comments:{insert:'comentou em uma foto',delete:'excluiu um comentário'},
+  community_coffees:{insert:'deu um cafezinho',delete:'retirou um cafezinho'}
+ };
+ const communityAction=communityActions[r.source]?.[r.action];
+ if(communityAction)return `${r.actor_name} ${communityAction} na comunidade`;
  if(r.source==='patient_messages'&&r.action==='insert')return `${r.actor_name} respondeu no chat${r.patient_name?' de '+r.patient_name:''}`;
  if(r.source==='crm_contacts'&&r.after_data?.status==='completed')return `${r.actor_name} concluiu o contato${r.patient_name?' com '+r.patient_name:''} previsto para ${r.after_data.due_on}`;
  return `${r.actor_name} ${verb[r.action]||r.action} ${r.action==='opened'?'':noun[r.source]||r.source}${r.patient_name?' · '+r.patient_name:''}`;

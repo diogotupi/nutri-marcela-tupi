@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="/app/progress.css?v=20261106-visual">
   <link rel="stylesheet" href="./workout-story.css?v=20261108-club">
   <link rel="stylesheet" href="./basiquito.css?v=20261109-care">
+  <link rel="stylesheet" href="/app/community.css?v=20261109-community">
   <script src="../js/config.js"></script>
 <link rel="stylesheet" href="/app/fresh.css?v=20261030b"><link rel="stylesheet" href="/app/chat.css?v=20261030-chat"><link rel="stylesheet" href="/app/habits.css?v=20261109-care"><link rel="stylesheet" href="/app/materials.css"><link rel="stylesheet" href="/app/progress-visual.css?v=20261106-visual"></head>
 <body class="app-body">
@@ -28,6 +29,7 @@
         <button type="button" class="dashboard-tab is-active" data-tab="today">Hoje</button>
         <button type="button" class="dashboard-tab" data-tab="guides">Materiais</button>
         <button type="button" class="dashboard-tab" data-tab="evolution">Evolução</button>
+        <button type="button" class="dashboard-tab" data-tab="community">Comunidade</button>
         <button type="button" class="dashboard-tab" data-tab="account">Perfil</button>
       </nav>
       <div class="app-sidebar-footer">
@@ -106,6 +108,11 @@
         <div id="guides-grid"></div>
       </div>
 
+      <div class="dashboard-panel" id="panel-community" hidden>
+        <div class="app-topbar"><h1>Comunidade</h1></div>
+        <div id="patient-community"></div>
+      </div>
+
       <!-- CONTA -->
       <div class="dashboard-panel" id="panel-account" hidden>
         <div class="app-topbar">
@@ -115,6 +122,22 @@
           </div>
         </div>
         <section id="patient-avatar" class="app-card patient-avatar"></section>
+        <section class="app-card account-identity">
+          <h2>Dados do perfil</h2>
+          <form id="identity-form" class="app-form">
+            <div class="app-field">
+              <label for="profile-name">Nome</label>
+              <input id="profile-name" name="full_name" autocomplete="name" minlength="2" maxlength="150" required>
+            </div>
+            <div class="app-field">
+              <label for="profile-username">Nome de usuário</label>
+              <input id="profile-username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" minlength="3" maxlength="32" required aria-describedby="handle-help">
+              <small id="handle-help">É seu login e o @ que aparece na comunidade. Use letras sem acento, números, ponto, traço ou sublinhado.</small>
+            </div>
+            <button type="submit" class="app-btn app-btn--primary">Salvar alterações</button>
+            <p role="status"></p>
+          </form>
+        </section>
         <section class="app-card patient-privacy"><h2>Seus dados, seu cuidado</h2><p>Seus registros ficam disponíveis para você e para a equipe autorizada da Marcela. Esta área precisa de conexão para salvar; não mantém prontuários disponíveis offline.</p><button id="export-patient-data" class="app-btn app-btn--ghost">Exportar meus registros</button><p id="export-status" role="status"></p></section>
         <section class="app-card" style="padding:1.2rem">
           <form id="password-form" class="app-form" style="max-width:420px">
@@ -134,6 +157,6 @@
     </main>
   </div>
 
-  <script type="module" src="./dashboard.js?v=20261109-care"></script>
+  <script type="module" src="./dashboard.js?v=20261109-community"></script>
 </body>
 </html>

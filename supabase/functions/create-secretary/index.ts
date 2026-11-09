@@ -16,11 +16,11 @@ Deno.serve(async req=>{
  const permissions=Object.fromEntries(permissionKeys.map(k=>[k,supplied[k]??(k==='view_tasks'||k==='enabled')]));
  const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});
  const {data:actor,error:actorError}=await admin.from('profiles').select('id,full_name,role').eq('user_id',auth.user.id).in('role',['admin','secretary']).single();if(actorError||!actor)return json({error:'Administradora não encontrada.'},403);
- const {data:created,error:createError}=await admin.auth.admin.createUser({email:`${username}@app.nutrimarcelatupi.com`,password,email_confirm:true,user_metadata:{username,full_name:fullName}});
+ const {data:created,error:createError}=await admin.auth.admin.createUser({email:`${crypto.randomUUID()}@app.nutrimarcelatupi.com`,password,email_confirm:true,user_metadata:{username,full_name:fullName}});
  if(createError||!created.user)return json({error:createError?.message?.toLowerCase().includes('already')?'Este usuário já existe.':'Não foi possível cadastrar. Confira os requisitos da senha e tente novamente.'},400);
  const userId=created.user.id;
  const {data:profile,error:profileError}=await admin.from('profiles').insert({user_id:userId,username,full_name:fullName,role:'secretary',created_by:actor.id}).select('id,username,full_name,role').single();
- if(profileError||!profile){await admin.auth.admin.deleteUser(userId);return json({error:'Não foi possível criar o perfil da secretária.'},500);}
+ if(profileError||!profile){await admin.auth.admin.deleteUser(userId);if(profileError?.code==='23505')return json({error:'Este nome de usuário já está em uso.'},409);return json({error:'Não foi possível criar o perfil da secretária.'},500);}
  const {error:permissionError}=await admin.from('staff_permissions').insert({user_id:userId,...permissions});
  if(permissionError){await admin.from('profiles').delete().eq('id',profile.id);await admin.auth.admin.deleteUser(userId);return json({error:'Não foi possível salvar as permissões. Cadastro desfeito.'},500);}
  const {error:auditError}=await admin.from('clinic_audit').insert({actor_id:actor.id,actor_name:actor.full_name,actor_role:actor.role,source:'team',action:'secretary_created',record_id:profile.id,after_data:{full_name:fullName,username}});
