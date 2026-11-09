@@ -1,5 +1,5 @@
 import {escapeHtml as esc, getSupabase} from './app-core.js';
-import {preparePhotoUpload} from './media-upload.js';
+import {preparePhotoUpload} from './media-upload.js?v=20261109-mural-jpg';
 
 const bucket = 'community-photos';
 const instances = new WeakMap();
@@ -35,23 +35,42 @@ function trash(label) {
   return `<button type="button" class="community-icon-button" title="${label}" aria-label="${label}">${icon('trash')}</button>`;
 }
 
-export function createCommunityPhotoDraft(profileId, file, options) {
+function publicationError(error, message) {
+  const status = Number(error?.statusCode || error?.status);
+  if (status === 401 || error?.code === 'PGRST301') return Error('Entre novamente na sua conta para publicar.');
+  if (status === 403 || error?.code === '42501') return Error('Sua conta está sem acesso para publicar no mural.');
+  if (status === 413) return Error('A imagem ultrapassou o limite de 1 MB do mural.');
+  return Error(message);
+}
+
+export function createCommunityPhotoDraft(profileId, file, {renderedStory=false}={}) {
   const db = getSupabase();
   const id = crypto.randomUUID();
-  const path = profileId + '/' + id + '.webp';
+  let photo;
   let uploaded = false;
 
   return {
     async publish(caption, onUpload) {
       if (!uploaded) {
-        const photo = await preparePhotoUpload(file, options);
+        // The editor has already baked the photo, branding and stats into a metadata-free JPEG.
+        if (renderedStory && file.type === 'image/jpeg' && file.size > 0 && file.size <= 1024*1024) photo = file;
+        photo ??= await preparePhotoUpload(file, renderedStory ? {format:'jpeg', maxEdge:1920} : {format:'auto'});
+        const path = profileId + '/' + id + (photo.type === 'image/jpeg' ? '.jpg' : '.webp');
         onUpload?.();
-        const {error} = await db.storage.from(bucket).upload(path, photo, {upsert:false, contentType:'image/webp'});
-        // A retry can find its own file if Storage received it before the connection dropped.
-        if (error && String(error.statusCode) !== '409' && !/already exists|duplicate/i.test(error.message)) throw error;
+        try {
+          const {error} = await db.storage.from(bucket).upload(path, photo, {upsert:false, contentType:photo.type});
+          // A retry can find its own file if Storage received it before the connection dropped.
+          if (error && Number(error.statusCode || error.status) !== 409 && !/already exists|duplicate/i.test(error.message)) throw error;
+        } catch (error) {
+          throw publicationError(error, 'Não foi possível enviar a imagem. Confira sua conexão e tente novamente.');
+        }
         uploaded = true;
       }
-      unwrap(await db.rpc('community_publish', {p_id:id, p_caption:caption.trim()}));
+      try {
+        unwrap(await db.rpc('community_publish', {p_id:id, p_caption:caption.trim()}));
+      } catch (error) {
+        throw publicationError(error, 'A imagem foi enviada, mas a confirmação do mural falhou. Tente novamente.');
+      }
     }
   };
 }

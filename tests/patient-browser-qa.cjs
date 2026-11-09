@@ -33,10 +33,20 @@ async (existingPage) => {
     if(method==='OPTIONS') return route.fulfill({status:204,headers:{'access-control-allow-origin':'*','access-control-allow-headers':'*'}});
     if(method==='POST' && url.pathname.includes('/storage/v1/object/community-photos/')) {
       const path=url.pathname.split('/community-photos/')[1], bytes=req.postDataBuffer();
-      const start=bytes.indexOf(Buffer.from('RIFF'));
-      assert(path.startsWith(pid+'/') && start>=0 && bytes.toString('ascii',start+8,start+12)==='WEBP','Mural photo must use the patient folder and WebP');
+      assert(path.startsWith(pid+'/'),'Mural photo must use the patient folder');
+      let image;
+      if (path.endsWith('.jpg')) {
+        const start=bytes.indexOf(Buffer.from([0xff,0xd8,0xff])), end=bytes.lastIndexOf(Buffer.from([0xff,0xd9]));
+        assert(start>=0 && end>start && bytes.subarray(0,start).includes(Buffer.from('image/jpeg')),'JPEG bytes, MIME type and filename must agree');
+        image=bytes.subarray(start,end+2);
+      } else {
+        const start=bytes.indexOf(Buffer.from('RIFF'));
+        assert(path.endsWith('.webp') && start>=0 && bytes.toString('ascii',start+8,start+12)==='WEBP','Invalid WebP upload');
+        image=bytes.subarray(start,start+8+bytes.readUInt32LE(start+4));
+      }
+      assert(image.length<=1024*1024,'Image exceeds the real bucket limit');
       assert(!muralPhotos.has(path),'Retry uploaded a second copy');
-      muralPhotos.set(path,bytes.subarray(start,start+8+bytes.readUInt32LE(start+4)));
+      muralPhotos.set(path,image);
       return route.fulfill({json:{Key:'community-photos/'+path},headers:{'access-control-allow-origin':'*'}});
     }
     if(url.pathname.includes('/storage/v1/object/') && !url.pathname.includes('/sign/')) {
@@ -64,7 +74,7 @@ async (existingPage) => {
       data={full_name:profile.full_name,username:profile.username};
     }
     if(table==='community_publish') {
-      const path=pid+'/'+body.p_id+'.webp';
+      const path=[pid+'/'+body.p_id+'.jpg',pid+'/'+body.p_id+'.webp'].find(key=>muralPhotos.has(key));
       assert(muralPhotos.has(path),'A mural post needs its uploaded image');
       publishAttempts.push(body.p_id);
       if(!muralPosts.has(body.p_id)) muralPosts.set(body.p_id,{
@@ -358,24 +368,25 @@ async (existingPage) => {
       await dialog.getByRole('button',{name:'Compartilhar',exact:true}).click();
       assert(await page.evaluate(() => window.storyShared) === filename, 'Share must hand off the rendered file');
       assert(!muralPhotos.size && !publishAttempts.length,'Previewing, declining, downloading and native sharing must stay private');
+      // Canvas implementations may silently export PNG for unsupported WebP requests.
+      const restoreEncoder=await page.evaluateHandle(()=>{
+        const original=HTMLCanvasElement.prototype.toBlob;
+        HTMLCanvasElement.prototype.toBlob=function(callback,type,quality){
+          return original.call(this,callback,type==='image/webp'?'image/png':type,quality);
+        };
+        return ()=>{HTMLCanvasElement.prototype.toBlob=original;};
+      });
       await wall.getByLabel('Sim',{exact:true}).check();
       await wall.getByRole('button',{name:'Publicar no mural',exact:true}).click();
+      await wall.getByRole('status').filter({hasText:'A imagem foi enviada'}).waitFor();
       await wall.getByRole('button',{name:'Tentar publicar novamente'}).click();
       await wall.getByRole('status').filter({hasText:'Story publicado no mural'}).waitFor();
       assert(muralPosts.size===1 && muralPhotos.size===1 && publishAttempts.length===2 && new Set(publishAttempts).size===1,'A lost response must not duplicate the Story');
       assert([...muralPosts.values()][0].caption==='Meu treino <3','Story caption should reach the mural');
-      const imageMatches=await dialog.locator('canvas').evaluate(async (canvas,encoded)=>{
-        const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));
-        const image=await createImageBitmap(new Blob([bytes],{type:'image/webp'}));
-        const sample=document.createElement('canvas');sample.width=54;sample.height=96;
-        const ctx=sample.getContext('2d',{willReadFrequently:true});
-        const pixels=source=>{ctx.drawImage(source,0,0,54,96);return ctx.getImageData(0,0,54,96).data;};
-        const art=pixels(canvas),posted=pixels(image);
-        const difference=art.reduce((sum,value,i)=>sum+Math.abs(value-posted[i]),0)/art.length;
-        const matches=image.width===canvas.width && image.height===canvas.height && difference<4;
-        image.close();return matches;
-      },[...muralPhotos.values()][0].toString('base64'));
-      assert(imageMatches,'The mural must receive the finished branded portrait with the selected metrics and framing');
+      const downloaded=await ready.evaluate(async anchor=>Array.from(new Uint8Array(await (await fetch(anchor.href)).arrayBuffer())));
+      assert([...muralPhotos.keys()][0].endsWith('.jpg') && Buffer.from(downloaded).equals([...muralPhotos.values()][0]),'The finished Story must reach the mural byte-for-byte');
+      await page.evaluate(restore=>restore(),restoreEncoder);
+      await restoreEncoder.dispose();
       const afterPost=page.waitForEvent('download');
       await ready.click();await afterPost;
       assert(publishAttempts.length===2,'Downloading an already published Story must not repost it');

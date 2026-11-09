@@ -1,6 +1,6 @@
 import {readHabits,groupHabits} from '../js/daily-habits.mjs?v=20261109-care';
 import {getLocalDateString, getSupabase, showToast} from '../js/app-core.js';
-import {createCommunityPhotoDraft} from '../js/community.js?v=20261109-story-mural';
+import {createCommunityPhotoDraft} from '../js/community.js?v=20261109-mural-jpg';
 import {weeklyRange} from '../js/weekly-summary.mjs?v=20261109-care';
 import {loadPatientWeek, loadStoryWeight} from './weekly-data.js?v=20261109-care';
 import {drawWorkoutStory, loadStoryImage, prepareStoryPhoto, storyBadges, storyWeekLabel, weeklyStoryBadges} from './workout-story-art.mjs?v=20261108-club';
@@ -172,13 +172,15 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
     showWallChoices();
     wallStatus.textContent = 'Publicando seu Story…';
     try {
-      wallDraft ??= createCommunityPhotoDraft(patientId, file, {maxEdge:1920});
-      await wallDraft.publish(wall.elements.caption.value);
+      wallDraft ??= createCommunityPhotoDraft(patientId, file, {renderedStory:true});
+      await wallDraft.publish(wall.elements.caption.value, () => {
+        wallStatus.textContent = 'Enviando a imagem ao mural…';
+      });
       posted = true;
       wallStatus.textContent = 'Story publicado no mural da comunidade.';
       if (!dialog.open) showToast(wallStatus.textContent);
-    } catch {
-      wallStatus.textContent = 'Não foi possível confirmar a publicação. Tente novamente.';
+    } catch (error) {
+      wallStatus.textContent = error.message || 'Não foi possível preparar a publicação. Tente novamente.';
       publish.textContent = 'Tentar publicar novamente';
       if (!dialog.open) showToast(wallStatus.textContent, 'error');
     } finally {
