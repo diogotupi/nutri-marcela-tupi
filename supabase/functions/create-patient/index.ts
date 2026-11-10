@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
+import {patientPasswordError} from '../_shared/password-error.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -68,8 +69,8 @@ Deno.serve(async (req) => {
       }, 400)
     }
 
-    if (password.length < 12) {
-      return json({ error: 'A senha deve ter pelo menos 12 caracteres.' }, 400)
+    if (!password) {
+      return json({ error: 'Informe a senha do paciente.' }, 400)
     }
 
     if (!fullName) {
@@ -89,7 +90,7 @@ Deno.serve(async (req) => {
       if (createError.message.toLowerCase().includes('already')) {
         return json({ error: 'Este nome de usuário já está em uso.' }, 409)
       }
-      return json({ error: createError.message }, 400)
+      return json({ error: patientPasswordError(createError, 'Não foi possível criar o acesso do paciente. Tente novamente.') }, 400)
     }
 
     const { data: profile, error: profileError } = await adminClient
