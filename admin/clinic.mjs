@@ -13,6 +13,16 @@ import {mountMaterialLibrary} from '../js/material-library.mjs';
 import {mountCommunity} from '../js/community.js?v=20261109-xicara';
 
 const db=getSupabase(),$=s=>document.querySelector(s),view=$('#clinic-view'),dialog=$('#clinic-dialog'),form=$('#clinic-form');
+const patientFilterMenu = $('#patient-filter-menu');
+document.addEventListener('click', event => {
+ if (!patientFilterMenu.contains(event.target)) patientFilterMenu.open = false;
+});
+document.addEventListener('keydown', event => {
+ if (event.key === 'Escape' && patientFilterMenu.open) {
+  patientFilterMenu.open = false;
+  patientFilterMenu.querySelector('summary').focus();
+ }
+});
 let disposeProgressMotion=()=>{};
 let actor,patients=[],selected=null,detail=null,tab='summary',filter='all',colorFilter='all',days=7,anchor=dateKey(),mode='week',epoch=0,disposeChat=null,dirty=false,saving=false;
 const fmt=d=>d?new Date(d.slice(0,10)+'T12:00:00Z').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'UTC'}):'—';
@@ -47,6 +57,8 @@ function matchesFilter(p,k) {
 }
 function railState(patient){return isPatientInactive(patient)?'expired':patientState(patient);}
 function renderRail(){
+ const activeFilters = Number(filter !== 'all') + Number(colorFilter !== 'all');
+ $('#patient-filter-label').textContent = activeFilters ? `Filtros (${activeFilters})` : 'Filtros';
  $('#patient-count').textContent=`${patients.length} paciente${patients.length===1?'':'s'} · ${patients.filter(p=>p.enrollment_status==='active'&&p.starts_on<=dateKey()&&p.ends_on>dateKey()).length} em acompanhamento`;
  $('#patient-filters').innerHTML=[['all','Todos'],...Object.entries(categoryNames),['nanny','Modo Babá'],['overdue','Contato atrasado'],['inactive','Inativos']].map(([k,v])=>`<button type="button" data-filter="${k}" class="${filter===k?'selected':''}" aria-pressed="${filter===k}">${v} (${patients.filter(p=>matchesFilter(p,k)).length})</button>`).join('');
  const search=$('#patient-search').value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();

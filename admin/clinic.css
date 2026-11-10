@@ -14,6 +14,16 @@
 .color-filters { padding:0 0 12px; }
 .color-filters button { display:inline-flex; align-items:center; gap:5px; min-height:30px; }
 .color-filters .dot { margin:0; }
+.rail-filter-menu { position:relative; flex:none; margin:12px 0; border:1px solid #c4d0c8; border-radius:12px; background:#fffdf9; }
+.rail-filter-menu > summary { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:11px 12px; cursor:pointer; list-style:none; font-size:12px; font-weight:600; border-radius:11px; }
+.rail-filter-menu > summary::-webkit-details-marker { display:none; }
+.rail-filter-menu > summary::after { content:""; flex:none; width:7px; height:7px; margin:0 2px 3px; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; transform:rotate(45deg); }
+.rail-filter-menu[open] > summary { background:#edf2ec; }
+.rail-filter-menu[open] > summary::after { transform:rotate(225deg); margin-block:3px 0; }
+.rail-filter-options { position:absolute; z-index:25; inset-inline:-1px; top:calc(100% + 6px); display:grid; gap:14px; max-height:min(24rem,45dvh); padding:12px; overflow-y:auto; overscroll-behavior:contain; border:1px solid #b7c5ba; border-radius:12px; background:#fffdf9; box-shadow:3px 4px 0 #e8baaa; }
+.rail-filter-options fieldset { min-width:0; margin:0; padding:0; border:0; }
+.rail-filter-options legend { margin-bottom:8px; padding:0; color:#53695c; font-size:11px; font-weight:600; }
+.rail-filter-options .rail-filters { padding:0; }
 .clinic-activities { max-width: 60rem; margin: auto; }
 .activity-row { padding: 1rem 0; border-top: 1px solid #d7dfd5; }
 .activity-row header { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: space-between; }
