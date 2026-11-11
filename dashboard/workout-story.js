@@ -1,9 +1,9 @@
 import {readHabits,groupHabits} from '../js/daily-habits.mjs?v=20261109-care';
 import {getLocalDateString, getSupabase, showToast} from '../js/app-core.js';
-import {createCommunityPhotoDraft} from '../js/community.js?v=20261109-xicara';
-import {weeklyRange} from '../js/weekly-summary.mjs?v=20261109-care';
-import {loadPatientWeek, loadStoryWeight} from './weekly-data.js?v=20261109-care';
-import {drawWorkoutStory, loadStoryImage, prepareStoryPhoto, storyBadges, storyWeekLabel, weeklyStoryBadges} from './workout-story-art.mjs?v=20261108-club';
+import {createCommunityPhotoDraft} from '../js/community.js?v=20261111-cardio';
+import {weeklyRange} from '../js/weekly-summary.mjs?v=20261111-cardio';
+import {loadPatientWeek, loadStoryWeight} from './weekly-data.js?v=20261111-cardio';
+import {drawWorkoutStory, loadStoryImage, prepareStoryPhoto, storyBadges, storyWeekLabel, weeklyStoryBadges} from './workout-story-art.mjs?v=20261111-cardio';
 
 const exampleUrl = '/assets/story-fundo-exemplo.jpg';
 const logoUrl = '/assets/story-club.png';
@@ -310,7 +310,7 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
           loadPatientWeek(patientId, day, offset, request.signal), loadStoryWeight(patientId, week.until, request.signal)
         ]);
         incomplete = totals.status === 'rejected' || weight.status === 'rejected';
-        nextBadges = weeklyStoryBadges(totals.value, weight.value);
+        nextBadges = weeklyStoryBadges(totals.value, weight.value, {past:period==='previous'});
         if (weight.status === 'fulfilled') {
           weightNote = nextBadges.find(b => b.key === 'weight')?.note || 'O percentual de peso aparece com pesagens em dois dias diferentes.';
         }

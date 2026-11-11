@@ -16,7 +16,7 @@ async (existingPage) => {
   const lastSunday = shift(monday, -1);
   let storyHistory = false;
   const profile={id:pid,user_id:uid,username:'demonstracao',full_name:'Paciente Demonstração',role:'patient'};
-  const author={username:'marcela_demo',is_admin:true,has_pride:false};
+  const author={username:'marcela_demo',is_marcela:true,is_admin:true,has_pride:false};
   const photoPost={id:'44444444-4444-4444-8444-444444444444',seq:1,author,caption:'Uma foto de teste',photo_path:pid+'/teste.webp',created_at:new Date().toISOString(),coffees:0,comments:0,liked:false,can_delete:false};
   const socialComments=[];
   const muralPhotos=new Map(), muralPosts=new Map(), publishAttempts=[];
@@ -403,6 +403,13 @@ async (existingPage) => {
       assert(await weekly.getByRole('checkbox',{name:weeklyWater}).isChecked(),'Weekly volume uses only the chosen week and has its own selection');
       assert(await weekly.getByRole('checkbox',{name:'1 treino',exact:true}).isChecked() && !await weekly.getByRole('checkbox',{name:'1 dia de força'}).isChecked(),'Weekly totals and optional strength detail');
       assert(await weekly.getByRole('checkbox',{name:'1 dia de dieta'}).isChecked(),'Weekly meals must use the weekly recap definition');
+      const weeklyCardio = weekly.getByRole('checkbox',{name:'Fiz 35 minutos de cardio essa semana'});
+      assert(await weeklyCardio.isChecked(),'The Story should offer the recorded weekly cardio total');
+      await weeklyCardio.uncheck();
+      await weeklyDownload.waitFor();
+      assert(!(await weekly.locator('canvas').getAttribute('aria-label')).includes('minutos de cardio'),'Cardio can be left off the photo');
+      await weeklyCardio.check();
+      await weeklyDownload.waitFor();
       const weightBadge = weekly.getByRole('checkbox',{name:'5% abaixo do peso inicial'});
       assert(!await weightBadge.isChecked() && !(await weekly.locator('canvas').getAttribute('aria-label')).includes('peso inicial'), 'Weight must be opt-in');
       await weightBadge.check();

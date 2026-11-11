@@ -1,8 +1,8 @@
-import {readHabits,withHabitWorkouts} from '../js/daily-habits.mjs';
+import {readHabits} from '../js/daily-habits.mjs';
 import {enhanceProgress} from '../js/progress-motion.mjs?v=20261106-visual';
 import { getSupabase, escapeHtml as esc, getLocalDateString } from '../js/app-core.js';
 import { listClinical, listAppointments, getSignedAttachment } from '../js/clinical.js';
-import {progressSeries, workoutChart, weightChart, hydrationChart, progressPlot} from '../js/progress-charts.mjs?v=20261106-visual';
+import {progressSeries, workoutChart, weightChart, hydrationChart, progressPlot} from '../js/progress-charts.mjs?v=20261111-cardio';
 import { waterTimeline, civilRange } from './patient-model.mjs';
 import { fetchMyActiveTournaments } from '../js/tournaments.js';
 const date = value => new Date(value.length === 10 ? `${value}T12:00:00-03:00` : value).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
@@ -44,7 +44,7 @@ export async function loadEvolution(patientId) {
   const assessments=records.filter(r=>r.kind==='assessment' && getLocalDateString(new Date(r.occurred_at))>=from && getLocalDateString(new Date(r.occurred_at))<=today).reverse();
   const hydration=waterError?`<section class="app-card patient-chart"><h2>Hidratação diária</h2><p role="status">Não foi possível carregar sua hidratação. Use Atualizar registros para tentar novamente.</p></section>`:waterChartMarkup(timeline,goalsError);
   if(clinicalResult.status==='rejected') {root.innerHTML=`${hydration}<section class="app-card patient-chart"><h2>Avaliações e relatos</h2><p role="status">Não foi possível atualizar as avaliações e relatos. Tente atualizar novamente.</p></section>`;disposeEvolutionMotion=enhanceProgress(root);return;}
-  const progress=progressSeries(withHabitWorkouts(records,habitResult.status==='fulfilled'?habitResult.value:[]),from,today);
+  const progress=progressSeries(records,from,today,habitResult.status==='fulfilled'?habitResult.value:[]);
   root.innerHTML = `${hydration}
   <section class="app-card patient-chart"><h2>Frequência e intensidade do treino</h2>${habitResult.status==='rejected'?'<p role="status">Não foi possível carregar os checks de treino.</p>':''}${workoutChart(progress)}</section>
   <section class="app-card patient-chart"><h2>Evolução do peso</h2>${weightChart(progress)}</section>

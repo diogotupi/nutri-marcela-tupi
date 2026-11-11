@@ -20,13 +20,13 @@ export function storyWeekLabel({start,until}) {
   return stampDate(start,newYear)+' — '+stampDate(until,newYear);
 }
 
-export function weeklyStoryBadges(summary, weight) {
+export function weeklyStoryBadges(summary, weight, {past=false}={}) {
   const badges=[];
   const metric=(key,label,selected=true,note)=>badges.push({key,label,selected,...(note?{note}:{})});
   if (summary?.sessions) metric('workouts',summary.sessions+(summary.sessions===1?' treino':' treinos'));
   if (summary?.dietDays) metric('diet',summary.dietDays+(summary.dietDays===1?' dia':' dias')+' de dieta');
   if (summary?.water) metric('water',waterLabel(summary.water));
-  if (summary?.cardioMinutes) metric('cardio',summary.cardioMinutes+' min de cardio',true,
+  if (summary?.cardioMinutes) metric('cardio',`Fiz ${number.format(summary.cardioMinutes)} ${summary.cardioMinutes===1?'minuto':'minutos'} de cardio ${past?'na semana passada':'essa semana'}`,true,
     summary.cardioTimedDays<summary.cardioDays?'Duração informada em '+summary.cardioTimedDays+' de '+summary.cardioDays+' dias de cardio':null);
   else if (summary?.cardioDays) metric('cardio',summary.cardioDays+(summary.cardioDays===1?' dia':' dias')+' de cardio');
   if (summary?.strengthDays) metric('strength',summary.strengthDays+(summary.strengthDays===1?' dia':' dias')+' de força',false);
@@ -112,12 +112,13 @@ function paintPhoto(context, photo, fit, position) {
 
 // Each number is drawn in bold while the unit keeps its regular weight.
 function measureMetric(ctx,label) {
-  const parts=/^(<?[0-9][0-9.,]*%?)( .+)$/.exec(label);
-  const value=parts?parts[1]:'', caption=parts?parts[2]:label;
+  const parts=/^(Fiz )?(<?[0-9][0-9.,]*%?)( .+)$/.exec(label);
+  const prefix=parts?.[1]||'', value=parts?.[2]||'', caption=parts?.[3]||label;
   ctx.font='700 29px '+FONT;
   const valueWidth=ctx.measureText(value).width;
   ctx.font='400 29px '+FONT;
-  return {value,caption,valueWidth,width:valueWidth+ctx.measureText(caption).width};
+  const prefixWidth=ctx.measureText(prefix).width;
+  return {prefix,value,caption,prefixWidth,valueWidth,width:prefixWidth+valueWidth+ctx.measureText(caption).width};
 }
 
 export function drawWorkoutStory(canvas,{photo,logo,day,week,badges,fit='cover',position=.5}) {
@@ -134,23 +135,30 @@ export function drawWorkoutStory(canvas,{photo,logo,day,week,badges,fit='cover',
   shade.addColorStop(1,'rgba(14,12,11,.48)');
   ctx.fillStyle=shade; ctx.fillRect(0,0,WIDTH,HEIGHT);
 
-  const metrics=badges.map(b=>measureMetric(ctx,b.label));
+  const padding=27, gap=42, maxWidth=WIDTH-2*MARGIN;
+  const maxColumn=(maxWidth-2*padding-gap)/2;
+  const compact=[], full=[];
+  for (const badge of badges) {
+    const metric=measureMetric(ctx,badge.label);
+    if (metric.width>maxColumn) full.push(metric);
+    else compact.push(metric);
+  }
   const notes=badges.flatMap(b=>b.note?[b.note]:[]);
-  const rows=Math.ceil(metrics.length/2);
+  const compactRows=Math.ceil(compact.length/2), rows=compactRows+full.length;
   const height=rows?128+rows*49+notes.length*29:0;
   const top=bottom-height;
   const logoWidth=232, logoHeight=logoWidth*logo.naturalHeight/logo.naturalWidth;
   ctx.drawImage(logo,MARGIN,top-logoHeight-(rows?20:0),logoWidth,logoHeight);
   if (rows) {
-    const columns=[0,0], padding=27, gap=42;
-    metrics.forEach((m,i)=>{columns[i%2]=Math.max(columns[i%2],m.width);});
+    const columns=[0,0];
+    compact.forEach((m,i)=>{columns[i%2]=Math.max(columns[i%2],m.width);});
     const stamp=week?storyWeekLabel(week):stampDate(day,true);
     const heading=week?'Resumo da semana':'Resumo do dia';
     ctx.font='500 34px '+FONT;
     const titleWidth=ctx.measureText(heading).width;
     ctx.font='400 21px '+FONT;
     const notesWidth=Math.max(0,...notes.map(note=>ctx.measureText(note).width));
-    const w=Math.min(WIDTH-2*MARGIN,2*padding+Math.max(titleWidth,notesWidth,columns[0]+(columns[1]?gap+columns[1]:0)));
+    const w=Math.min(maxWidth,2*padding+Math.max(titleWidth,notesWidth,...full.map(m=>m.width),columns[0]+(columns[1]?gap+columns[1]:0)));
     ctx.beginPath(); ctx.roundRect(MARGIN,top,w,height,29);
     ctx.fillStyle='rgba(23,21,19,.67)'; ctx.fill();
     ctx.lineWidth=1.4; ctx.strokeStyle='rgba(255,246,225,.20)'; ctx.stroke();
@@ -158,16 +166,19 @@ export function drawWorkoutStory(canvas,{photo,logo,day,week,badges,fit='cover',
     ctx.fillStyle=PAPER; ctx.textBaseline='alphabetic';
     ctx.font='500 34px '+FONT; ctx.fillText(heading,x,top+51);
     ctx.font='400 25px '+FONT; ctx.fillText(stamp,x,top+85);
-    metrics.forEach((m,i)=>{
-      const col=i%2, y=top+145+49*Math.floor(i/2);
-      const inner=w-2*padding;
-      const available=columns[1]?(inner-gap)*columns[col]/(columns[0]+columns[1]):inner;
-      const left=col?x+inner-available:x;
-      ctx.save(); ctx.translate(left,y); ctx.scale(Math.min(1,available/m.width),1);
-      ctx.font='700 29px '+FONT; ctx.fillText(m.value,0,0);
-      ctx.font='400 29px '+FONT; ctx.fillText(m.caption,m.valueWidth,0);
+    const inner=w-2*padding;
+    function paintMetric(m,left,row,available) {
+      ctx.save(); ctx.translate(left,top+145+49*row); ctx.scale(Math.min(1,available/m.width),1);
+      ctx.font='400 29px '+FONT; ctx.fillText(m.prefix,0,0);
+      ctx.font='700 29px '+FONT; ctx.fillText(m.value,m.prefixWidth,0);
+      ctx.font='400 29px '+FONT; ctx.fillText(m.caption,m.prefixWidth+m.valueWidth,0);
       ctx.restore();
+    }
+    compact.forEach((m,i)=>{
+      const col=i%2, available=columns[1]?(inner-gap)*columns[col]/(columns[0]+columns[1]):inner;
+      paintMetric(m,col?x+inner-available:x,Math.floor(i/2),available);
     });
+    full.forEach((m,i)=>paintMetric(m,x,compactRows+i,inner));
     ctx.font='400 21px '+FONT;
     notes.forEach((note,i)=>ctx.fillText(note,x,top+128+rows*49+i*29,w-2*padding));
   }

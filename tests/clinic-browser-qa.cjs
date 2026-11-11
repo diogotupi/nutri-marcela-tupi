@@ -21,6 +21,8 @@ async (existingPage)=>{
  await page.getByRole('heading',{name:'Frequência e intensidade do treino',exact:true}).waitFor();
  const workoutPanel=page.getByRole('heading',{name:'Frequência e intensidade do treino',exact:true}).locator('..');
  assert(await workoutPanel.locator('.progress-plot').count()===2,'team sees workout frequency and intensity graphs');
+ const cardioMetric=workoutPanel.locator('.progress-metric').filter({hasText:'Tempo de cardio'});
+ assert(await cardioMetric.locator('[data-progress-number]').getAttribute('data-progress-number')==='35','Report uses the logged daily cardio duration');
  const weightPanel=page.getByRole('heading',{name:'Evolução do peso',exact:true}).locator('..');
  assert(await weightPanel.locator('.progress-plot').count()===1,'team sees weight trend');
  assert((await weightPanel.locator('.progress-plot title').allTextContents()).join(' ').includes('65 kg'),'team weight data uses clinical record');
@@ -35,7 +37,35 @@ await page.locator('#fixed-chat textarea').fill('Rascunho preservado');
  await page.getByRole('button',{name:'Bebi álcool · 8/10'}).click();await page.locator('select[name=level]').selectOption('0');await page.locator('#dialog-save').click();await page.waitForFunction(()=>window.__ops.some(o=>o.name==='set_daily_habit'&&o.args.p_level===0));await page.locator('#clinic-dialog').waitFor({state:'hidden'});await page.locator('[data-tab=information]').click();assert(await page.locator('#fixed-chat textarea').inputValue()==='Rascunho preservado','chat draft lost across tabs');
  await page.locator('[data-tab=information]').click();assert((await page.locator('#patient-panel').innerText()).includes('22.5'),'BMI');await page.locator('[data-tab=summary]').click();await page.locator('[data-action=team-notes]').waitFor();await page.screenshot({path:'.playwright-mcp/clinic-patient-desktop.png'});
  await page.locator('.patient-row[data-patient=p4]').click();await page.getByRole('button',{name:'＋ Criar acompanhamento',exact:true}).click();await page.locator('[name=category]').selectOption('legacy');assert(!await page.locator('[name=objective],[data-add-meal]').count(),'intake should not require anamnese/diet');await page.locator('#dialog-save').click();await page.waitForFunction(()=>window.__ops.some(o=>o.name==='clinic_start_care'));const saved=await page.evaluate(()=>window.__ops.find(o=>o.name==='clinic_start_care'));assert(saved.args.p_payload.water===null&&!saved.args.p_payload.diet&&!saved.args.p_payload.anamnesis,'optional clinical data');await page.locator('#clinic-dialog').waitFor({state:'hidden'});
- await page.locator('[data-action=community]').click();await page.getByRole('heading',{name:'Comunidade',exact:true}).waitFor();await page.locator('[data-compose]').click();await page.getByRole('button',{name:'Publicar',exact:true}).waitFor();await page.locator('.community-page [data-action=calendar]').click();await page.locator('.calendar-grid').waitFor();await page.locator('.patient-row[data-patient=p4]').click();await page.locator('#patient-panel').waitFor();
+ await page.evaluate(async()=>{
+   const db=(await import('/js/app-core.js')).getSupabase(), fallback=db.rpc;
+   const post={id:'photo-demo',seq:1,author:{username:'paciente_demo'},caption:'Treino de hoje',photo_path:'p1/treino.jpg',
+     created_at:new Date().toISOString(),coffees:0,comments:0,liked:false,marcela_liked:false};
+   const comments=[];
+   db.storage.from=()=>({createSignedUrls:async()=>({data:[{path:post.photo_path,signedUrl:'/assets/story-fundo-exemplo.jpg'}]})});
+   db.rpc=async(name,args)=>{
+     if(name==='community_feed')return {data:[post]};
+     if(name==='community_comments_page')return {data:comments};
+     if(name==='community_set_coffee') {
+       const state={liked:args.p_liked,coffees:Number(args.p_liked),marcela_liked:args.p_liked};
+       Object.assign(post,state);return {data:state};
+     }
+     if(name==='community_add_comment'){
+       const entry={id:args.p_id,seq:1,body:args.p_body,created_at:new Date().toISOString(),
+         author:{username:'marcela_demo',is_marcela:true},can_delete:true};
+       comments.push(entry);return {data:entry};
+     }
+     return fallback(name,args);
+   };
+ });
+ await page.locator('[data-action=community]').click();await page.getByRole('heading',{name:'Comunidade',exact:true}).waitFor();
+ const post=page.locator('.community-post'), hostCoffee=post.getByText('Marcela deu um cafezinho');
+ await post.getByRole('button',{name:'Dar um cafezinho'}).click();await hostCoffee.waitFor();
+ await post.getByRole('button',{name:/Comentários/}).click();await post.getByLabel('Seu comentário').fill('Mandou bem!');
+ await post.getByRole('button',{name:'Comentar',exact:true}).click();
+ await post.locator('li').getByRole('img',{name:'Marcela · Administradora'}).waitFor();
+ await post.getByRole('button',{name:'Retirar cafezinho'}).click();await hostCoffee.waitFor({state:'hidden'});
+ await page.locator('[data-compose]').click();await page.getByRole('button',{name:'Publicar',exact:true}).waitFor();await page.locator('.community-page [data-action=calendar]').click();await page.locator('.calendar-grid').waitFor();await page.locator('.patient-row[data-patient=p4]').click();await page.locator('#patient-panel').waitFor();
  await page.locator('#add-patient').click();assert(!await page.locator('[name=email]').evaluate(el=>el.required),'email optional');assert(await page.locator('#clinic-form input[name]').count()===4,'signup must have exactly 4 fields');await page.locator('[data-close-dialog]').first().click();
  await page.setViewportSize({width:390,height:844});assert(!await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),'mobile overflow');await page.screenshot({path:'.playwright-mcp/clinic-patient-mobile.png'});await page.locator('[data-action=chat]').click();assert(await page.locator('.chat-rail').isVisible(),'mobile chat');await page.locator('[data-action=close-chat]').click();
  await page.goto('http://127.0.0.1:8877/secretaria/');await page.locator('.calendar-grid').waitFor();assert(!await page.locator('#open-audit').isVisible(),'secretary sees logs');await page.locator('#toggle-patients').click();await page.locator('.patient-row[data-patient=p1]').click();await page.getByRole('heading',{name:'Checks de hábitos'}).waitFor();assert(!await page.locator('[data-tab=anamnesis]').count(),'secretary should see the same habit panel');

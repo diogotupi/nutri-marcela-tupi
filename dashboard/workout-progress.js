@@ -1,10 +1,10 @@
 import {getSupabase} from '../js/app-core.js';
-import {readHabits,withHabitWorkouts} from '../js/daily-habits.mjs';
+import {readHabits} from '../js/daily-habits.mjs';
 import {enhanceProgress} from '../js/progress-motion.mjs?v=20261106-visual';
 import {getLocalDateString} from '../js/app-core.js';
 import {listClinical} from '../js/clinical.js';
 import {civilRange} from './patient-model.mjs';
-import {progressSeries,workoutChart} from '../js/progress-charts.mjs?v=20261106-visual';
+import {progressSeries,workoutChart} from '../js/progress-charts.mjs?v=20261111-cardio';
 
 export function mountWorkoutProgress(root,patientId) {
   root.innerHTML='<div class="workout-progress-heading"><h3>Frequência e intensidade do treino</h3>'
@@ -19,10 +19,9 @@ export function mountWorkoutProgress(root,patientId) {
     try {
       const today=getLocalDateString(), start=civilRange(today,Number(select.value))[0];
       const [clinical,habits]=await Promise.all([listClinical(patientId),readHabits(getSupabase(),patientId,start.slice(0,7)+'-01',today)]);
-      const records=withHabitWorkouts(clinical,habits);
       if(current!==request||!root.isConnected)return;
       disposeMotion();
-      charts.innerHTML=workoutChart(progressSeries(records,start,today));
+      charts.innerHTML=workoutChart(progressSeries(clinical,start,today,habits));
       disposeMotion=enhanceProgress(charts);
       status.textContent='';
     } catch {
@@ -30,7 +29,7 @@ export function mountWorkoutProgress(root,patientId) {
     } finally {if(current===request)button.disabled=false;}
   }
   select.onchange=refresh;button.onclick=refresh;
-  addEventListener('patient:record-saved',event=>{if(['exercise','habit'].includes(event.detail?.kind))refresh();});
+  addEventListener('patient:record-saved',event=>{if(['exercise','habit','cardio_minutes'].includes(event.detail?.kind))refresh();});
   addEventListener('focus',()=>{if(root.offsetParent!==null)refresh();});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&root.offsetParent!==null)refresh();});
   refresh();

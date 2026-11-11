@@ -1,7 +1,7 @@
-import {habits,groupHabits,readHabits,saveHabit,saveCardioMinutes,saveFreeMeal,habitLabel,scoreDay,signedPoints,withHabitWorkouts} from '../js/daily-habits.mjs?v=20261109-care';
+import {habits,groupHabits,readHabits,saveHabit,saveCardioMinutes,saveFreeMeal,habitLabel,scoreDay,signedPoints} from '../js/daily-habits.mjs?v=20261109-care';
 import {enhanceProgress} from '../js/progress-motion.mjs?v=20261106-visual';
 import {waterTimeline} from '../dashboard/patient-model.mjs';
-import {progressSeries,workoutChart,weightChart,hydrationChart} from '../js/progress-charts.mjs?v=20261106-visual';
+import {progressSeries,workoutChart,weightChart,hydrationChart} from '../js/progress-charts.mjs?v=20261111-cardio';
 import {getSupabase,escapeHtml as esc} from '../js/app-core.js';
 import {requireAuth,signOut} from '../js/auth.js?v=20261108-habits';
 import {listClinical,addClinical,getSignedAttachment} from '../js/clinical.js';
@@ -10,7 +10,7 @@ import {dateKey,subtractDays,datesInRange,isPatientInactive,patientState,stateNa
 
 import {mountActivityCenter,pendingActivities} from './activity-center.mjs?v=20261108-club';
 import {mountMaterialLibrary} from '../js/material-library.mjs';
-import {mountCommunity} from '../js/community.js?v=20261109-xicara';
+import {mountCommunity} from '../js/community.js?v=20261111-cardio';
 
 const db=getSupabase(),$=s=>document.querySelector(s),view=$('#clinic-view'),dialog=$('#clinic-dialog'),form=$('#clinic-form');
 const patientFilterMenu = $('#patient-filter-menu');
@@ -109,7 +109,7 @@ function renderPanel(){disposeProgressMotion();const panel=$('#patient-panel');i
  document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('selected',b.dataset.tab===tab));
  if(tab==='information'){renderInformation(panel);return;}
  const row=patients.find(x=>x.id===selected)||{},state=patientState(row),a=d.visit;
- const progress=progressSeries(withHabitWorkouts(d.records,d.habitRows),d.start,d.end);
+ const progress=progressSeries(d.records,d.start,d.end,d.habitRows);
  panel.innerHTML=`${!e?`<section class="card">${empty('Este paciente ainda não tem acompanhamento.')}<div style="text-align:center"><button data-action="start-care">＋ Criar acompanhamento</button></div></section>`:`<div class="notice ${state}"><strong>${stateNames[state]}</strong> · ${fmt(e.starts_on)} a ${fmt(e.ends_on)}${['due','late'].includes(state)?'<button class="text-button" data-action="complete-contact">✓ Marcar contato concluído</button>':''}${e.ends_on>dateKey()&&e.ends_on<=subtractDays(dateKey(),-3)?'<br>Atenção: o acompanhamento vence em até 3 dias.':''}</div>`}
  ${e&&e.starts_on<=dateKey()&&(!a?.last_access_at||dateKey(new Date(a.last_access_at))<dateKey())?`<p class="notice">${a?.last_access_at?'Último acesso em '+stamp(a.last_access_at):'Ainda não há acesso registrado deste paciente.'}</p>`:''}${e?.status==='active'&&e.ends_on>dateKey()&&[e.starts_on,'2026-11-08',d.latestHabit?.habit_date||''].sort().at(-1)<=subtractDays(dateKey(),3)?'<p class="notice late">Há pelo menos 3 dias sem checks de hábitos.</p>':''}
  ${e?.nanny_enabled?`<section class="card"><div class="card-heading"><h2>Modo Babá · Observações da equipe</h2><button class="secondary" data-action="team-notes">Abrir / editar</button></div><p class="muted">Privadas da equipe deste paciente.</p></section>`:''}

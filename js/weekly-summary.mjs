@@ -1,5 +1,5 @@
-import {groupHabits,blankDay,scoreDay,dayRows,signedPoints,withHabitWorkouts} from './daily-habits.mjs?v=20261109-care';
-import {weekStart,progressSeries,progressNumber} from './progress-charts.mjs?v=20261106-visual';
+import {groupHabits,blankDay,scoreDay,dayRows,signedPoints} from './daily-habits.mjs?v=20261109-care';
+import {weekStart,progressSeries,progressNumber} from './progress-charts.mjs?v=20261111-cardio';
 const dayMs=86400000;
 const addDays=(day,n)=>new Date(Date.parse(day+'T12:00:00Z')+n*dayMs).toISOString().slice(0,10);
 const short=day=>day.slice(8,10)+'/'+day.slice(5,7);
@@ -47,7 +47,7 @@ export function weeklySummary({today,offset=0,records=[],water=[],goals=[],habit
     const d=map.get(row.log_date);d.water=n;
   }
   for(const [day,h] of groupHabits(habits))if(inside(day))map.get(day).habits=h;
-  const progress=progressSeries(withHabitWorkouts(records,habits),start,until);
+  const progress=progressSeries(records,start,until,habits);
   for(const s of progress.sessions)if(map.has(s.day))map.get(s.day).workouts++;
   const intensities=progress.sessions.filter(s=>s.value!==null);
   return {start,end,until,days,elapsed:days.filter(d=>d.date<=until).length,
@@ -57,9 +57,8 @@ export function weeklySummary({today,offset=0,records=[],water=[],goals=[],habit
     water:days.reduce((n,d)=>n+(d.water||0),0),waterDays:days.filter(d=>d.water!==null).length,
     waterGoalDays:days.filter(d=>d.water!==null&&d.goal>0&&d.water>=d.goal).length,
     hasWaterGoal:days.some(d=>d.water!==null&&d.goal>0),
-    strengthDays:days.filter(d=>d.habits.strength).length,cardioDays:days.filter(d=>d.habits.cardio).length,
-    cardioMinutes:days.reduce((sum,d)=>sum+(d.habits.cardioMinutes||0),0),
-    cardioTimedDays:days.filter(d=>d.habits.cardioMinutes).length,
+    strengthDays:days.filter(d=>d.habits.strength).length,cardioDays:progress.cardioDays,
+    cardioMinutes:progress.cardioMinutes,cardioTimedDays:progress.cardioTimedDays,
     freeMealDays:days.filter(d=>d.habits.free_meal).length,
     dietDays:days.filter(d=>d.habits.diet).length,bowelDays:days.filter(d=>d.habits.bowel).length,
     alcoholDays:days.filter(d=>d.habits.alcohol).length,points:days.reduce((n,d)=>n+scoreDay(d.habits),0)};
@@ -68,12 +67,20 @@ export function weeklySummary({today,offset=0,records=[],water=[],goals=[],habit
 export function weeklyMarkup(s,{past=false}={}) {
   const days=['SEG','TER','QUA','QUI','SEX','SÁB','DOM'];
   const ring=s.elapsed?s.activeDays/s.elapsed*100:0;
+  const movement=[];
+  if(s.strengthDays) movement.push(`Força em ${s.strengthDays} ${s.strengthDays===1?'dia':'dias'}`);
+  if(s.cardioDays) {
+    const frequency=s.cardioDays+(s.cardioDays===1?' dia':' dias');
+    const timed=s.cardioTimedDays===s.cardioDays?frequency:s.cardioTimedDays+' de '+frequency;
+    movement.push(s.cardioMinutes?`${format(s.cardioMinutes)} min de cardio em ${timed}`:'Cardio em '+frequency);
+  }
+  if(s.intensity!==null) movement.push('Intensidade média '+format(s.intensity)+'/10');
   const card=(icon,label,value,note,tone)=>`<article class="week-stat ${tone}"><span class="week-stat-icon" aria-hidden="true">${icon}</span><span>${label}</span><strong>${value}</strong><small>${note}</small></article>`;
   return `<div class="week-story" data-progress-reveal>
     <div class="week-intro"><div><span class="progress-label">${past?'SUA SEMANA PASSADA':'SUA SEMANA ATÉ AQUI'}</span><h2>${s.activeDays?'Olha o que você já fez.':'Sua semana começa aqui.'}</h2><p>${short(s.start)} a ${short(s.end)} · ${past?'Semana completa':'Atualiza com seus registros'}</p></div>
       <div class="week-orbit" aria-label="${s.activeDays} de ${s.elapsed} dias decorridos com registros"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="week-orbit-track" cx="50" cy="50" r="42"/><circle class="week-orbit-value" cx="50" cy="50" r="42" pathLength="100" stroke-dasharray="${ring} 100"/></svg><strong>${progressNumber(s.activeDays,0)}<small>/${s.elapsed}</small></strong><span>dias com registros</span></div></div>
     <div class="week-stats">
-      ${card(icon('movement'),'Movimento',progressNumber(s.workoutDays,0)+'<em>dias</em>',s.sessions?`Força em ${s.strengthDays} dia(s) · Cardio em ${s.cardioDays} dia(s)${s.intensity!==null?' · intensidade média '+format(s.intensity)+'/10':''}`:'Seu próximo treino conta por aqui.','green')}
+      ${card(icon('movement'),'Movimento',progressNumber(s.workoutDays,0)+'<em>'+(s.workoutDays===1?'dia':'dias')+'</em>',movement.join(' · ')||(s.sessions?'Treino registrado.':'Seu próximo treino conta por aqui.'),'green')}
       ${card(icon('water'),'Hidratação',progressNumber(s.water/1000)+'<em>L</em>',s.waterDays?`${s.waterDays} dia(s) registrados · ${s.hasWaterGoal?s.waterGoalDays+' com a meta alcançada':'sem meta definida'}`:'Registre a água que você beber.','aqua')}
       ${card(icon('meals'),'Gabaritei a dieta',progressNumber(s.dietDays,0)+'<em>dias</em>',s.freeMealDays===1?'1 refeição livre registrada.':s.freeMealDays?`${s.freeMealDays} refeições livres registradas.`:'Dias em que você marcou o check da dieta.','peach')}
       ${card(icon('care'),'Pontos da semana',progressNumber(s.points,0),`Banheiro em ${s.bowelDays} dia(s) · Álcool em ${s.alcoholDays} dia(s)`,'sand')}

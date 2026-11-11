@@ -13,7 +13,7 @@ const paths = {
     <path d="M6.3 12.7c.1 1.2.6 2.1 1.4 2.7" stroke="#fff9ed" stroke-width="1.3"/>
     <path d="M2.1 20.3h17.5c-.9 1.4-2.5 2-4.8 2H6.9c-2.3 0-3.9-.6-4.8-2Z" fill="currentColor" stroke="none"/>`,
   comment: '<path d="M20.5 11.4a8.4 8.4 0 0 1-8.6 8.4 9.3 9.3 0 0 1-3.5-.7l-4.9 1.2 1.2-4.4a8 8 0 0 1-1.2-4.5 8.5 8.5 0 0 1 17 0Z"/>',
-  crown: '<path d="m2.5 7 5.2 3.5L12 4l4.3 6.5L21.5 7l-2.2 11H4.7z" fill="#f3c55f"/><path d="M6 20h12"/>',
+  crown: '<path d="m2.5 7 5.2 3.5L12 4l4.3 6.5L21.5 7l-2.2 11H4.7z" fill="#f3c55f"/><path d="M5.2 16.3h13.6M6 20h12"/><path d="m12 10.3 1.8 2.3-1.8 2.2-1.8-2.2z" fill="#fff2bb" stroke="none"/>',
   pride: '<path d="M12 2.2 21 5.4v6c0 5.5-4.6 8.6-9 10.7-4.4-2.1-9-5.2-9-10.7v-6z" fill="#416854" stroke="#b28a3c"/><path d="m12 6.4 1.7 3.2 3.6.5-2.6 2.5.6 3.6-3.3-1.7-3.3 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="#ffdd89" stroke="none"/>',
   trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v6m4-6v6"/>',
   photos: '<rect x="5.5" y="4" width="15.5" height="16" rx="2.5"/><path d="m6 16 4.2-4 3.2 2.8 2-1.9 5 4.6M3 8v11a3.5 3.5 0 0 0 3.5 3.5H16"/><circle cx="15.8" cy="8.7" r="1.4"/>',
@@ -23,7 +23,7 @@ function icon(name) {
 }
 function byline(author) {
   const mark = (kind, label) => `<span class="community-seal" role="img" aria-label="${label}" title="${label}">${icon(kind)}</span>`;
-  return `<span class="community-handle">@${esc(author.username)}</span>${author.has_pride ? mark('pride','Orgulho da nutri') : ''}${author.is_admin ? mark('crown','Marcela · Administradora') : ''}`;
+  return `<span class="community-handle">@${esc(author.username)}</span>${author.is_marcela ? mark('crown','Marcela · Administradora') : ''}${author.has_pride ? mark('pride','Orgulho da nutri') : ''}`;
 }
 function timestamp(iso) {
   return `<time datetime="${esc(iso)}">${esc(dateFormat.format(new Date(iso)))}</time>`;
@@ -250,6 +250,7 @@ export function mountCommunity(root, profile) {
         <button type="button" class="community-coffee" aria-pressed="${state.liked}" aria-label="${coffeeLabel()}">${icon('coffee')}<span>Cafezinho</span> <b>${Number(state.coffees)}</b></button>
         <button type="button" data-discuss aria-expanded="false">${icon('comment')} Comentários <b data-count></b></button>
       </div>
+      <p class="community-host-coffee" ${state.marcela_liked ? '' : 'hidden'}>${icon('crown')} Marcela deu um cafezinho</p>
       <div class="community-thread" hidden>
         <button type="button" data-older hidden>Ver comentários anteriores</button><ul></ul>
         <form><label>Seu comentário<textarea required maxlength="600" rows="2" placeholder="Escreva um comentário…"></textarea></label><button type="submit" class="community-secondary">Comentar</button></form>
@@ -276,6 +277,7 @@ export function mountCommunity(root, profile) {
       coffee.classList.toggle('is-brewing',liked);
       try {
         Object.assign(state,await rpc('community_set_coffee',{p_post:state.id,p_liked:liked}));
+        article.querySelector('.community-host-coffee').hidden = !state.marcela_liked;
         article.querySelector('[role=status]').textContent = '';
       } catch (error) { article.querySelector('[role=status]').textContent = errorText(error); }
       finally {

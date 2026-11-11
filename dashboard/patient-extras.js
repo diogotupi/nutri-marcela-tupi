@@ -1,12 +1,12 @@
 import {readHabits,groupHabits,saveCardioMinutes} from '../js/daily-habits.mjs?v=20261109-care';
-import {mountWeeklyOverview} from './weekly-overview.js?v=20261109-xicara';
+import {mountWeeklyOverview} from './weekly-overview.js?v=20261111-cardio';
 import { getSupabase, getLocalDateString, escapeHtml as esc } from '../js/app-core.js';
 import { addClinical, uploadAttachment, getSignedAttachment } from '../js/clinical.js';
 import { preparePhotoUpload } from '../js/media-upload.js';
 import {mountWeightCheckin} from './weight-checkin.js?v=20261106-visual';
-import {mountWorkoutProgress} from './workout-progress.js?v=20261108-habits';
+import {mountWorkoutProgress} from './workout-progress.js?v=20261111-cardio';
 import {celebrateWorkout} from './workout-celebration.js?v=20261108-habits';
-import {openWorkoutStory} from './workout-story.js?v=20261109-xicara';
+import {openWorkoutStory} from './workout-story.js?v=20261111-cardio';
 import { intensityLabel } from './patient-model.mjs';
 
 const db=()=>getSupabase();

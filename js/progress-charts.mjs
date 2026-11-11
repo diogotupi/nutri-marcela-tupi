@@ -1,3 +1,5 @@
+import {groupHabits, withHabitWorkouts} from './daily-habits.mjs?v=20261109-care';
+
 const clinicDate = new Intl.DateTimeFormat('sv-SE', {timeZone:'America/Sao_Paulo'});
 const decimal = new Intl.NumberFormat('pt-BR', {maximumFractionDigits:2});
 const dayMs = 86400000;
@@ -22,13 +24,15 @@ export function weightReminder({today,startsOn,registeredOn,lastWeighedOn}) {
   return {due:today>=nextOn,nextOn,measuredToday:last===today};
 }
 
-export function progressSeries(records, from, today) {
+export function progressSeries(records, from, today, habitRows = []) {
   const weights = [], sessions = [], weeks = new Map(), active = new Set();
+  const cardio = groupHabits(habitRows.filter(row => row.habit === 'cardio' && row.habit_date >= from && row.habit_date <= today));
+  const durations = [...cardio.values()].map(day => day.cardioMinutes).filter(minutes => minutes !== null);
   const startWeek = weekStart(today), startMonth = today.slice(0,7) + '-01';
   for (let t = dayTime(weekStart(from)); t <= dayTime(today); t += 7 * dayMs) {
     weeks.set(new Date(t).toISOString().slice(0,10), 0);
   }
-  for (const record of records) {
+  for (const record of withHabitWorkouts(records, habitRows)) {
     if (record.archived_at) continue;
     const payload = record.payload || {};
     const instant = Date.parse(record.occurred_at);
@@ -50,6 +54,9 @@ export function progressSeries(records, from, today) {
     }
   }
   return {
+    cardioDays: cardio.size,
+    cardioTimedDays: durations.length,
+    cardioMinutes: durations.reduce((sum, minutes) => sum + minutes, 0),
     weights:weights.sort((a,b)=>a.instant-b.instant),
     sessions:sessions.sort((a,b)=>a.instant-b.instant),
     weeks:[...weeks].map(([day,value])=>({day,value})),
@@ -101,7 +108,9 @@ function table(headers, rows, summary) {
 export function workoutChart(series) {
   const {weeks,sessions,weekDays,monthDays}=series, intensity=sessions.filter(s=>s.value!==null);
   const avg=intensity.length?intensity.reduce((s,p)=>s+p.value,0)/intensity.length:null;
-  const counts=`<div class="progress-totals" data-progress-reveal>${metric('Nesta semana',progressNumber(weekDays,0)+' '+(weekDays===1?'dia':'dias'),'com treino registrado')}${metric('Neste mês',progressNumber(monthDays,0)+' '+(monthDays===1?'dia':'dias'),'com treino registrado')}${metric('Intensidade média',avg===null?'—':progressNumber(avg)+'<em>/10</em>','no período selecionado','peach')}</div>`;
+  const cardio = series.cardioMinutes ? metric('Tempo de cardio', progressNumber(series.cardioMinutes,0)+'<em>min</em>',
+    series.cardioTimedDays < series.cardioDays ? `Duração informada em ${series.cardioTimedDays} de ${series.cardioDays} dias de cardio` : 'no período selecionado', 'sand') : '';
+  const counts=`<div class="progress-totals" data-progress-reveal>${metric('Nesta semana',progressNumber(weekDays,0)+' '+(weekDays===1?'dia':'dias'),'com treino registrado')}${metric('Neste mês',progressNumber(monthDays,0)+' '+(monthDays===1?'dia':'dias'),'com treino registrado')}${cardio}${metric('Intensidade média',avg===null?'—':progressNumber(avg)+'<em>/10</em>','no período selecionado','peach')}</div>`;
   if(!sessions.length)return counts+emptyChart('Os treinos registrados vão desenhar sua evolução por aqui.');
   return counts+`<div class="progress-figures"><figure><figcaption><span class="progress-label">CONSTÂNCIA</span>Treinos por semana<small>${sessions.length} treino(s) no período</small></figcaption>`
     +progressPlot(weeks,{label:'Quantidade de treinos por semana no período selecionado',unit:'treino(s)',min:0,max:Math.max(2,Math.ceil(Math.max(...weeks.map(w=>w.value))/2)*2),bars:true})
