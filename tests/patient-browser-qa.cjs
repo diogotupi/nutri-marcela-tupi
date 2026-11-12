@@ -20,6 +20,8 @@ async (existingPage) => {
   const photoPost={id:'44444444-4444-4444-8444-444444444444',seq:1,author,caption:'Uma foto de teste',photo_path:pid+'/teste.webp',created_at:new Date().toISOString(),coffees:0,comments:0,liked:false,can_delete:false};
   const socialComments=[];
   const muralPhotos=new Map(), muralPosts=new Map(), publishAttempts=[];
+  const uploadAttempts=[];
+  let loseUpload='after';
   let losePublishReceipt=true;
   let accessState='open',water=0,failNextWater=true,failClinical=false,noWaterGoal=false,failNextMessage=true;
   const applied=new Map(),habitRows=new Map(),retiredRequests=[];
@@ -28,36 +30,44 @@ async (existingPage) => {
   const foodReplyGate=new Promise(resolve=>{releaseFoodReply=resolve;});
   const waitFor=fn=>page.waitForFunction(fn,null,{polling:100});
   const assert = (condition,message) => {if(!condition) throw Error(message);};
+  const simulateMissingWebpEncoder = () => page.evaluateHandle(() => {
+    const original=HTMLCanvasElement.prototype.toBlob;
+    HTMLCanvasElement.prototype.toBlob=function(callback,type,quality){
+      return original.call(this,callback,type==='image/webp'?'image/png':type,quality);
+    };
+    return ()=>{HTMLCanvasElement.prototype.toBlob=original;};
+  });
   const apiData = async route => {
     const req=route.request(),url=new URL(req.url()),table=url.pathname.split('/').at(-1),method=req.method();
-    if(method==='OPTIONS') return route.fulfill({status:204,headers:{'access-control-allow-origin':'*','access-control-allow-headers':'*'}});
+    if(method==='OPTIONS') return route.fulfill({status:204,headers:{'access-control-allow-origin':'*','access-control-allow-headers':req.headers()['access-control-request-headers'] || '*','access-control-allow-methods':'GET, POST, PATCH, DELETE, OPTIONS'}});
     if(method==='POST' && url.pathname.includes('/storage/v1/object/community-photos/')) {
       const path=url.pathname.split('/community-photos/')[1], bytes=req.postDataBuffer();
       assert(path.startsWith(pid+'/'),'Mural photo must use the patient folder');
-      let image;
+      uploadAttempts.push(path);
       if (path.endsWith('.jpg')) {
-        const start=bytes.indexOf(Buffer.from([0xff,0xd8,0xff])), end=bytes.lastIndexOf(Buffer.from([0xff,0xd9]));
-        assert(start>=0 && end>start && bytes.subarray(0,start).includes(Buffer.from('image/jpeg')),'JPEG bytes, MIME type and filename must agree');
-        image=bytes.subarray(start,end+2);
+        assert(req.headers()['content-type']==='image/jpeg' && bytes.readUInt16BE(0)===0xffd8 && bytes.readUInt16BE(bytes.length-2)===0xffd9,'Send the JPEG bytes directly with their MIME type');
       } else {
-        const start=bytes.indexOf(Buffer.from('RIFF'));
-        assert(path.endsWith('.webp') && start>=0 && bytes.toString('ascii',start+8,start+12)==='WEBP','Invalid WebP upload');
-        image=bytes.subarray(start,start+8+bytes.readUInt32LE(start+4));
+        assert(path.endsWith('.webp') && req.headers()['content-type']==='image/webp' && bytes.toString('ascii',8,12)==='WEBP','Invalid WebP upload');
       }
-      assert(image.length<=1024*1024,'Image exceeds the real bucket limit');
-      assert(!muralPhotos.has(path),'Retry uploaded a second copy');
-      muralPhotos.set(path,image);
+      assert(bytes.length<=1024*1024,'Image exceeds the real bucket limit');
+      if(loseUpload==='before'){loseUpload=null;return route.abort('connectionreset');}
+      if(muralPhotos.has(path)){
+        assert(bytes.equals(muralPhotos.get(path)),'An upload retry changed the Story');
+        return route.fulfill({status:400,json:{statusCode:'409',error:'Duplicate',message:'The resource already exists'},headers:{'access-control-allow-origin':'*'}});
+      }
+      muralPhotos.set(path,bytes);
+      if(loseUpload==='after'){loseUpload=null;return route.abort('connectionreset');}
       return route.fulfill({json:{Key:'community-photos/'+path},headers:{'access-control-allow-origin':'*'}});
     }
     if(url.pathname.includes('/storage/v1/object/') && !url.pathname.includes('/sign/')) {
-      const bytes=req.postDataBuffer();uploads.push({bytes:bytes?.length || 0,webp:bytes?.includes(Buffer.from('WEBP'))});return route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({Key:'clinical-files/demo.webp'})});
+      const bytes=req.postDataBuffer();uploads.push({path:url.pathname,jpeg:bytes?.includes(Buffer.from([0xff,0xd8,0xff]))});return route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({Key:url.pathname.split('/object/')[1]})});
     }
     if(url.pathname.includes('/storage/v1/object/sign/')) {
       if(method==='POST' && url.pathname.endsWith('/community-photos')) {
         const results=req.postDataJSON().paths.map(path=>({path,signedURL:'/object/sign/community-photos/'+path+'?token=DEMO'}));
         return route.fulfill({json:results,headers:{'access-control-allow-origin':'*'}});
       }
-      if(method==='POST')return route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({signedURL:'/object/sign/clinical-files/demo.webp?token=DEMO'})});
+      if(method==='POST')return route.fulfill({json:{signedURL:'/object/sign/'+url.pathname.split('/sign/')[1]+'?token=DEMO'},headers:{'access-control-allow-origin':'*'}});
       return route.fulfill({status:200,contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j6v8AAAAASUVORK5CYII=','base64'),headers:{'access-control-allow-origin':'*'}});
     }
     let body=req.postData()?JSON.parse(req.postData()):null, data=[];
@@ -227,7 +237,8 @@ async (existingPage) => {
     const counted=earlierMeals.length+1;
     await page.locator('#patient-weekly-overview').getByText(counted===1?'1 refeição livre registrada.':counted+' refeições livres registradas.').waitFor();
     if(counted===4)await page.locator('#patient-reminders').getByText('Como foram suas refeições livres?').waitFor();
-    await page.getByLabel('O que você comeu?').fill('Relato editado');await page.getByRole('button',{name:'Atualizar relato'}).click();
+    await page.getByLabel('O que você comeu?').fill('Relato editado');
+    await Promise.all([page.waitForResponse(response=>response.url().endsWith('/rpc/set_free_meal_note') && response.request().method()==='POST'),page.getByRole('button',{name:'Atualizar relato'}).click()]);
     await page.reload();await page.getByRole('button',{name:'Atualizar relato'}).waitFor();
     assert(await page.getByLabel('O que você comeu?').inputValue()==='Relato editado','Edit note in place');
     assert(await cardioInput.inputValue()==='31','Daily minutes survived reload');
@@ -321,7 +332,7 @@ async (existingPage) => {
       });
       const mockSharing = await page.evaluateHandle(() => {
         const original = ['share','canShare'].map(name => Object.getOwnPropertyDescriptor(navigator, name));
-        Object.defineProperty(navigator, 'canShare', {configurable:true, value:payload => payload.files[0] instanceof File});
+        Object.defineProperty(navigator, 'canShare', {configurable:true, value:payload => !window.qaDisableFileSharing && payload.files[0] instanceof File});
         Object.defineProperty(navigator, 'share', {configurable:true, value:async payload => {window.storyShared = payload.files[0].name;}});
         return () => ['share','canShare'].forEach((name,i) => original[i] ? Object.defineProperty(navigator,name,original[i]) : delete navigator[name]);
       });
@@ -329,6 +340,11 @@ async (existingPage) => {
       await dialog.getByRole('button', {name:'Escolher da galeria'}).click();
       await (await chooser).setFiles({name:'treino.jpg', mimeType:'image/jpeg', buffer:Buffer.from(horizontalImage, 'base64')});
       await ready.waitFor();
+      const shareButton=dialog.getByRole('button',{name:'Compartilhar',exact:true});
+      const shareBox=await shareButton.boundingBox(),saveBox=await ready.boundingBox();
+      assert(await ready.textContent()==='Salvar' && shareBox.x<saveBox.x && Math.abs(shareBox.y-saveBox.y)<2,'On mobile, share and save belong side by side in that order');
+      assert((await dialog.locator('#story-instagram-hint').textContent()).includes('escolha o Instagram'),'Explain the Instagram share sheet');
+      assert(saveBox.y<(await dialog.locator('[data-wall]').boundingBox()).y,'Export actions should precede the mural prompt');
       const badge = key => dialog.locator('[data-badge-key=' + key + ']');
       assert(await dialog.getByRole('checkbox',{name:'2,05 L de água'}).isChecked(), 'Use recorded intake, not a water goal');
       assert(await dialog.getByRole('checkbox',{name:'Gabaritei a dieta'}).isChecked(), 'Use only completed meals');
@@ -369,19 +385,14 @@ async (existingPage) => {
       assert(await page.evaluate(() => window.storyShared) === filename, 'Share must hand off the rendered file');
       assert(!muralPhotos.size && !publishAttempts.length,'Previewing, declining, downloading and native sharing must stay private');
       // Canvas implementations may silently export PNG for unsupported WebP requests.
-      const restoreEncoder=await page.evaluateHandle(()=>{
-        const original=HTMLCanvasElement.prototype.toBlob;
-        HTMLCanvasElement.prototype.toBlob=function(callback,type,quality){
-          return original.call(this,callback,type==='image/webp'?'image/png':type,quality);
-        };
-        return ()=>{HTMLCanvasElement.prototype.toBlob=original;};
-      });
+      const restoreEncoder=await simulateMissingWebpEncoder();
       await wall.getByLabel('Sim',{exact:true}).check();
       await wall.getByRole('button',{name:'Publicar no mural',exact:true}).click();
       await wall.getByRole('status').filter({hasText:'A imagem foi enviada'}).waitFor();
       await wall.getByRole('button',{name:'Tentar publicar novamente'}).click();
       await wall.getByRole('status').filter({hasText:'Story publicado no mural'}).waitFor();
       assert(muralPosts.size===1 && muralPhotos.size===1 && publishAttempts.length===2 && new Set(publishAttempts).size===1,'A lost response must not duplicate the Story');
+      assert(uploadAttempts.length===2 && uploadAttempts[0]===uploadAttempts[1],'Automatically retry an interrupted upload under the same id');
       assert([...muralPosts.values()][0].caption==='Meu treino <3','Story caption should reach the mural');
       const downloaded=await ready.evaluate(async anchor=>Array.from(new Uint8Array(await (await fetch(anchor.href)).arrayBuffer())));
       assert([...muralPhotos.keys()][0].endsWith('.jpg') && Buffer.from(downloaded).equals([...muralPhotos.values()][0]),'The finished Story must reach the mural byte-for-byte');
@@ -390,14 +401,16 @@ async (existingPage) => {
       const afterPost=page.waitForEvent('download');
       await ready.click();await afterPost;
       assert(publishAttempts.length===2,'Downloading an already published Story must not repost it');
-      await page.evaluate(restore => restore(), mockSharing);
-      await mockSharing.dispose();
       await dialog.screenshot({path:'.playwright-mcp/story-mobile.png'});
+      await page.evaluate(()=>{window.qaDisableFileSharing=true;});
       storyHistory = true;
       const weekly = page.getByRole('dialog',{name:'Story da semana'});
       const weeklyDownload = weekly.locator('[data-download][href]');
       await dialog.getByRole('radio',{name:'Esta semana',exact:true}).check();
       await weeklyDownload.waitFor();
+      assert(!await weekly.locator('[data-share]').isVisible() && (await weekly.locator('#story-instagram-hint').textContent()).includes('Salve a imagem'),'Offer saving instructions on browsers without file sharing');
+      await page.evaluate(restore => {delete window.qaDisableFileSharing;restore();}, mockSharing);
+      await mockSharing.dispose();
       assert(!await weekly.locator('[data-wall] [name=wall]:checked').count(),'A different Story needs its own choice');
       const weeklyWater = monday === today ? '2,05 L de água' : '3,3 L de água';
       assert(await weekly.getByRole('checkbox',{name:weeklyWater}).isChecked(),'Weekly volume uses only the chosen week and has its own selection');
@@ -444,8 +457,9 @@ async (existingPage) => {
       await weekly.locator('[name=gallery]').setInputFiles({name:'semana.jpg',mimeType:'image/jpeg',buffer:Buffer.from(horizontalImage,'base64')});
       await weeklyDownload.waitFor();
       await weekly.locator('[data-wall]').getByLabel('Sim',{exact:true}).check();
+      loseUpload='before';
       const combined=page.waitForEvent('download');
-      await weekly.getByRole('link',{name:'Baixar e publicar'}).click();
+      await weekly.getByRole('link',{name:'Salvar e publicar'}).click();
       assert((await combined).suggestedFilename().includes('semana-'),'Combined action must download the selected week');
       await weekly.getByRole('button',{name:'Ver no mural'}).click();
       await weekly.waitFor({state:'detached'});
@@ -453,6 +467,7 @@ async (existingPage) => {
       const inFeed=page.locator('article.community-post[data-id="'+lastStory.id+'"]');
       await inFeed.waitFor();
       assert(lastStory.caption==='' && muralPosts.size===2 && muralPhotos.size===2 && !await inFeed.locator('.community-caption').count(),'A weekly Story may be posted without a caption');
+      assert(uploadAttempts.length===4 && uploadAttempts[2]===uploadAttempts[3],'Recover when the first request never reached storage');
       assert(await page.locator('article.community-post').first().getAttribute('data-id')===lastStory.id && await withDraft.locator('textarea').inputValue()==='Um rascunho para depois','A new Story should appear first without losing a comment draft');
       await withDraft.locator('textarea').fill('');
       await page.getByRole('button',{name:'Hoje',exact:true}).click();
@@ -529,11 +544,16 @@ async (existingPage) => {
     await page.getByText('Sem avaliações no período',{exact:true}).waitFor();
     assert(await page.getByText('Sem avaliações no período',{exact:true}).count()===1,'Empty assessments state missing');
     await page.getByRole('button',{name:'Perfil',exact:true}).click();
-    await page.locator('#profile-photo-form [name=photo]').setInputFiles({name:'demo-avatar.png',mimeType:'image/png',buffer:Buffer.from(imageBytes)});
+    const restoreAvatarEncoder=await simulateMissingWebpEncoder();
+    const avatarJpeg=await page.evaluate(()=>document.createElement('canvas').toDataURL('image/jpeg').split(',')[1]);
+    await page.locator('#profile-photo-form [name=photo]').setInputFiles({name:'demo-avatar.jpg',mimeType:'image/jpeg',buffer:Buffer.from(avatarJpeg,'base64')});
     await page.locator('#profile-photo-form [name=consent]').check();
     await page.getByRole('button',{name:'Salvar foto',exact:true}).click();
     await page.locator('#profile-photo-form [role=status]').filter({hasText:'atualizada'}).waitFor();
-    assert(Boolean(profile.photo_path)&&uploads.length===2&&uploads[1].webp,'Profile avatar not stored/linked');
+    assert(profile.photo_path?.endsWith('.jpg')&&uploads.length===2&&uploads[1].jpeg&&uploads[1].path.endsWith(profile.photo_path),'A browser without WebP encoding must be able to save a private JPEG avatar');
+    await page.waitForFunction(()=>document.querySelector('#profile-photo-preview img')?.naturalWidth>0);
+    await page.evaluate(restore=>restore(),restoreAvatarEncoder);
+    await restoreAvatarEncoder.dispose();
     await page.getByRole('button',{name:'Exportar meus registros',exact:true}).click();
     await page.locator('#export-status').filter({hasText:'Registros exportados'}).waitFor();
     await page.locator('#profile-name').fill('Paciente Comunidade');

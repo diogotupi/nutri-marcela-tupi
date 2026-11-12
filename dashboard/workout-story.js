@@ -1,6 +1,6 @@
 import {readHabits,groupHabits} from '../js/daily-habits.mjs?v=20261109-care';
 import {getLocalDateString, getSupabase, showToast} from '../js/app-core.js';
-import {createCommunityPhotoDraft} from '../js/community.js?v=20261111-cardio';
+import {createCommunityPhotoDraft} from '../js/community.js?v=20261112-fotos';
 import {weeklyRange} from '../js/weekly-summary.mjs?v=20261111-cardio';
 import {loadPatientWeek, loadStoryWeight} from './weekly-data.js?v=20261111-cardio';
 import {drawWorkoutStory, loadStoryImage, prepareStoryPhoto, storyBadges, storyWeekLabel, weeklyStoryBadges} from './workout-story-art.mjs?v=20261111-cardio';
@@ -86,6 +86,11 @@ const editorMarkup = `
   <footer class="story-footer" hidden>
     <p class="story-feedback" data-export-status role="status"></p>
     <button type="button" class="story-text-button" data-retry-art hidden>Gerar imagem novamente</button>
+    <div class="story-export-actions">
+      <button type="button" class="app-btn app-btn--primary" data-share aria-describedby="story-instagram-hint" hidden>Compartilhar</button>
+      <a class="app-btn app-btn--ghost" data-download aria-disabled="true">Salvar</a>
+    </div>
+    <p class="story-hint" id="story-instagram-hint" hidden></p>
     <form class="story-wall" data-wall hidden>
       <fieldset class="story-wall-prompt">
         <legend>Deseja postar no mural da comunidade?</legend>
@@ -103,10 +108,6 @@ const editorMarkup = `
         <button type="button" class="story-text-button" data-view-wall hidden>Ver no mural</button>
       </div>
     </form>
-    <div class="story-export-actions">
-      <a class="app-btn app-btn--primary" data-download aria-disabled="true">Baixar imagem</a>
-      <button type="button" class="app-btn app-btn--ghost" data-share hidden>Compartilhar</button>
-    </div>
   </footer>`;
 
 export function openWorkoutStory(patientId, initialPeriod = 'day') {
@@ -120,6 +121,7 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
   const canvas = find('[data-preview]');
   const download = find('[data-download]');
   const share = find('[data-share]');
+  const instagramHint = find('#story-instagram-hint');
   const position = find('[name=position]');
   const photoStatus = find('[data-photo-status]');
   const exportStatus = find('[data-export-status]');
@@ -152,7 +154,7 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
     wall.elements.caption.readOnly = posting;
     publish.disabled = posting || !file;
     viewWall.hidden = !posted;
-    download.textContent = optedIn && !posting && !posted ? 'Baixar e publicar' : 'Baixar imagem';
+    download.textContent = optedIn && !posting && !posted ? 'Salvar e publicar' : 'Salvar';
   }
 
   function resetWall() {
@@ -207,6 +209,7 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
     download.setAttribute('aria-disabled', 'true');
     download.removeAttribute('href');
     share.disabled = true;
+    instagramHint.hidden = true;
     if (url) URL.revokeObjectURL(url);
     url = null;
     showWallChoices();
@@ -231,6 +234,12 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
       try {
         share.hidden = !(navigator.share && navigator.canShare?.({files: [file]}));
       } catch { share.hidden = true; }
+      download.classList.toggle('app-btn--primary', share.hidden);
+      download.classList.toggle('app-btn--ghost', !share.hidden);
+      instagramHint.textContent = share.hidden
+        ? 'Salve a imagem e abra o Instagram para postar nos Stories.'
+        : 'Toque em Compartilhar e escolha o Instagram para postar nos Stories.';
+      instagramHint.hidden = false;
       share.disabled = false;
       showWallChoices();
     }, 'image/jpeg', .92);
@@ -382,7 +391,7 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
     try {
       await navigator.share({files: [file]});
     } catch (error) {
-      if (dialog.open && error.name !== 'AbortError') exportStatus.textContent = 'Use Baixar imagem para salvar seu Story e postar.';
+      if (dialog.open && error.name !== 'AbortError') exportStatus.textContent = 'O compartilhamento não abriu. Você pode salvar a imagem e postar pelo Instagram.';
     }
   };
   dialog.addEventListener('close', () => {

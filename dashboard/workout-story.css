@@ -142,7 +142,7 @@
 .story-position input { width: 100%; min-height: 28px; margin: 0; accent-color: #345f48; }
 .story-footer { background: #fffdf8; border-top: 1px solid #d4dece; max-height: 62dvh; overflow-y: auto; }
 .story-footer .story-feedback:not(:empty) { margin: 0 0 6px; }
-.story-wall { margin: 0 0 12px; padding-bottom: 12px; border-bottom: 1px solid #d4dece; }
+.story-wall { margin: 12px 0 0; padding-top: 12px; border-top: 1px solid #d4dece; }
 .story-wall-prompt { min-width: 0; margin: 0; padding: 0; border: 0; }
 .story-wall-prompt legend { float: left; padding: 0; margin: .55rem 1rem .4rem 0; font-weight: 700; font-size: .9rem; }
 .story-wall-prompt .story-choices { gap: 6px; }
@@ -154,7 +154,9 @@
 .story-wall-compose .app-btn { min-height: 42px; }
 .story-wall-result { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 12px; }
 .story-wall-result .story-feedback:not(:empty) { margin: 5px 0 0; font-weight: 600; }
-.story-export-actions { justify-content: flex-end; }
+.story-export-actions { flex-wrap: nowrap; }
+.story-export-actions .app-btn { min-width: 0; }
+.story-export-actions + .story-hint { margin: 8px 0 0; }
 .story-export-actions a { display: inline-flex; align-items: center; text-decoration: none; }
 .workout-story-dialog .app-btn--primary:hover, .workout-story-dialog .app-btn--primary:active { background: #345b4d; color: #fffdf8; }
 .story-export-actions a[aria-disabled=true] { opacity: .48; pointer-events: none; }

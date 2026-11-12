@@ -43,9 +43,27 @@ function trash(label) {
 function publicationError(error, message) {
   const status = Number(error?.statusCode || error?.status);
   if (status === 401 || error?.code === 'PGRST301') return Error('Entre novamente na sua conta para publicar.');
-  if (status === 403 || error?.code === '42501') return Error('Sua conta está sem acesso para publicar no mural.');
-  if (status === 413) return Error('A imagem ultrapassou o limite de 1 MB do mural.');
+  if (status === 403 || error?.code === '42501' || /row.level security/i.test(error?.message)) return Error('Sua conta está sem acesso para publicar no mural.');
+  if (status === 413 || error?.error === 'EntityTooLarge') return Error('A imagem ultrapassou o limite de 1 MB do mural.');
   return Error(message);
+}
+
+async function uploadMuralPhoto(storage, path, photo) {
+  const bytes = await photo.arrayBuffer();
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      // Send the encoded image directly. Both attempts use identical bytes and the same object key.
+      unwrap(await storage.upload(path, bytes, {upsert:false, contentType:photo.type}));
+      return;
+    } catch (error) {
+      const status = Number(error?.statusCode || error?.status);
+      if (status === 409 || /already exists|duplicate/i.test(error?.message)) return;
+      const transient = status === 408 || status >= 500 || error instanceof TypeError ||
+        error?.originalError instanceof TypeError || /network|failed to fetch|load failed/i.test(error?.message);
+      if (attempt === 2 || !transient) throw error;
+      await new Promise(resolve => setTimeout(resolve, 400));
+    }
+  }
 }
 
 export function createCommunityPhotoDraft(profileId, file, {renderedStory=false}={}) {
@@ -63,11 +81,9 @@ export function createCommunityPhotoDraft(profileId, file, {renderedStory=false}
         const path = profileId + '/' + id + (photo.type === 'image/jpeg' ? '.jpg' : '.webp');
         onUpload?.();
         try {
-          const {error} = await db.storage.from(bucket).upload(path, photo, {upsert:false, contentType:photo.type});
-          // A retry can find its own file if Storage received it before the connection dropped.
-          if (error && Number(error.statusCode || error.status) !== 409 && !/already exists|duplicate/i.test(error.message)) throw error;
+          await uploadMuralPhoto(db.storage.from(bucket), path, photo);
         } catch (error) {
-          throw publicationError(error, 'Não foi possível enviar a imagem. Confira sua conexão e tente novamente.');
+          throw publicationError(error, 'O envio da foto foi interrompido. Confira a conexão e tente publicar novamente.');
         }
         uploaded = true;
       }

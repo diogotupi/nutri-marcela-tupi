@@ -1,12 +1,12 @@
 import {readHabits,groupHabits,saveCardioMinutes} from '../js/daily-habits.mjs?v=20261109-care';
-import {mountWeeklyOverview} from './weekly-overview.js?v=20261111-cardio';
+import {mountWeeklyOverview} from './weekly-overview.js?v=20261112-fotos';
 import { getSupabase, getLocalDateString, escapeHtml as esc } from '../js/app-core.js';
 import { addClinical, uploadAttachment, getSignedAttachment } from '../js/clinical.js';
-import { preparePhotoUpload } from '../js/media-upload.js';
+import { preparePhotoUpload } from '../js/media-upload.js?v=20261109-mural-jpg';
 import {mountWeightCheckin} from './weight-checkin.js?v=20261106-visual';
 import {mountWorkoutProgress} from './workout-progress.js?v=20261111-cardio';
 import {celebrateWorkout} from './workout-celebration.js?v=20261108-habits';
-import {openWorkoutStory} from './workout-story.js?v=20261111-cardio';
+import {openWorkoutStory} from './workout-story.js?v=20261112-fotos';
 import { intensityLabel } from './patient-model.mjs';
 
 const db=()=>getSupabase();
@@ -120,7 +120,17 @@ export async function initPatientExtras(profile) {
   if(profile.photo_path)renderAvatar(profile.photo_path).catch(()=>{avatarStatus.textContent='Não foi possível carregar sua foto agora.';});
   avatarRoot.querySelector('form').addEventListener('submit',async event=>{
     event.preventDefault();const form=event.target,button=form.querySelector('[type=submit]');button.disabled=true;choosePhoto.disabled=true;avatarStatus.textContent='Preparando sua foto…';
-    try {const file=await preparePhotoUpload(form.photo.files[0],{maxEdge:512,targetBytes:350*1024});await addClinical(profile.id,'consent',{scope:'profile_photo',status:'accepted',policy_version:1});const record=await uploadAttachment(profile.id,file,{category:'avatar'});const {error}=await db().rpc('set_profile_photo',{p_path:record.payload.path});if(error)throw error;await renderAvatar(record.payload.path);form.reset();avatarStatus.textContent='Foto de perfil atualizada.';notifyPatientSaved();}
+    try {
+      const file=await preparePhotoUpload(form.elements.photo.files[0],{format:'auto',maxEdge:512,targetBytes:350*1024});
+      await addClinical(profile.id,'consent',{scope:'profile_photo',status:'accepted',policy_version:1});
+      const record=await uploadAttachment(profile.id,file,{category:'avatar'});
+      const {error}=await db().rpc('set_profile_photo',{p_path:record.payload.path});
+      if(error)throw error;
+      await renderAvatar(record.payload.path);
+      form.reset();
+      avatarStatus.textContent='Foto de perfil atualizada.';
+      notifyPatientSaved();
+    }
     catch(error){avatarStatus.textContent=`Não foi possível atualizar: ${error.message}`;}finally{button.disabled=false;choosePhoto.disabled=false;}
   });
   const badges=document.getElementById('patient-badges');

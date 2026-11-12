@@ -10,7 +10,7 @@ import {dateKey,subtractDays,datesInRange,isPatientInactive,patientState,stateNa
 
 import {mountActivityCenter,pendingActivities} from './activity-center.mjs?v=20261108-club';
 import {mountMaterialLibrary} from '../js/material-library.mjs';
-import {mountCommunity} from '../js/community.js?v=20261111-cardio';
+import {mountCommunity} from '../js/community.js?v=20261112-fotos';
 
 const db=getSupabase(),$=s=>document.querySelector(s),view=$('#clinic-view'),dialog=$('#clinic-dialog'),form=$('#clinic-form');
 const patientFilterMenu = $('#patient-filter-menu');
