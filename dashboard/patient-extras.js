@@ -35,7 +35,17 @@ export async function initPatientExtras(profile) {
   training.innerHTML=`<div class="training-heading"><div><p class="patient-eyebrow">MOVIMENTO DO SEU JEITO</p><h2>Como foi o treino?</h2><p>Registre sua experiência de hoje, ${new Date().toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit'})}.</p></div>${bearSvg()}</div><form id="training-form" class="app-form"><label>Quer registrar mais detalhes? Conte o que você fez<textarea name="description" rows="2" placeholder="Ex.: caminhada no parque, treino de pernas…" required minlength="3" maxlength="4000"></textarea></label><div class="training-scale"><div>${bearSvg()}<span>1 · FOFO</span></div><label>Intensidade percebida<output id="intensity-label" for="training-intensity">5 · Moderado</output><input id="training-intensity" name="intensity" type="range" min="1" max="10" step="1" value="5" aria-describedby="training-scale-hint"></label><div>${bearSvg(true)}<span>10 · Hiper pesado</span></div></div><p id="training-scale-hint">É como você sentiu o treino. Mais intenso não vale mais conquistas.</p><button class="app-btn app-btn--primary">Registrar treino de hoje</button><p role="status"></p></form>`;
   const trainingForm=training.querySelector('form');
   const submit=trainingForm.querySelector('button'), status=trainingForm.querySelector('[role=status]');
-  submit.insertAdjacentHTML('beforebegin','<label>Minutos de aeróbico de hoje (opcional)<input id="cardio-minutes" name="cardio_minutes" type="number" inputmode="numeric" step="1" min="1" max="1440" placeholder="Ex.: 30"></label>');
+  trainingForm.insertAdjacentHTML('afterbegin', `
+    <label class="cardio-duration" for="cardio-minutes">
+      <svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <circle cx="12" cy="14" r="8"/><path d="M10 2h4m-2 0v4m6 1 2-2m-8 9 3-3"/>
+      </svg>
+      <span class="cardio-duration-label"><strong>Minutos de aeróbico</strong><small>Hoje · opcional</small></span>
+      <span class="cardio-duration-value">
+        <input id="cardio-minutes" name="cardio_minutes" type="number" inputmode="numeric" step="1" min="1" max="1440" placeholder="—">
+        <span aria-hidden="true">min</span>
+      </span>
+    </label>`);
   const minutes=trainingForm.elements.cardio_minutes, trainingDay=getLocalDateString();
   let durationEdited=false, durationRequest=0, savingWorkout=false;
   function updateSubmit() {

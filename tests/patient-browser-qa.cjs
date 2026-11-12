@@ -229,6 +229,8 @@ async (existingPage) => {
     await score.filter({hasText:'+4 pontos'}).waitFor();
     assert(await tile('free_meal').count()===0&&await page.locator('.habit-grid button').count()===5,'Free meal outside the checks');
     const cardioInput=page.locator('#training-form').getByLabel('Minutos de aeróbico');
+    const durationBox=await cardioInput.boundingBox();
+    assert(durationBox.height>=44 && durationBox.width<125,'Cardio duration needs a compact, touch-sized input on mobile');
     await cardioInput.fill('31');await page.getByRole('button',{name:'Salvar minutos de aeróbico'}).click();
     await page.locator('#training-form [role=status]').filter({hasText:'Minutos de aeróbico atualizados'}).waitFor();
     await page.getByLabel('O que você comeu?').fill('Relato da fixture');await page.getByRole('button',{name:'Salvar relato'}).click();
@@ -241,7 +243,7 @@ async (existingPage) => {
     await Promise.all([page.waitForResponse(response=>response.url().endsWith('/rpc/set_free_meal_note') && response.request().method()==='POST'),page.getByRole('button',{name:'Atualizar relato'}).click()]);
     await page.reload();await page.getByRole('button',{name:'Atualizar relato'}).waitFor();
     assert(await page.getByLabel('O que você comeu?').inputValue()==='Relato editado','Edit note in place');
-    assert(await cardioInput.inputValue()==='31','Daily minutes survived reload');
+    await waitFor(()=>document.querySelector('#cardio-minutes')?.value==='31');
     page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Excluir relato'}).click();await page.getByRole('button',{name:'Salvar relato'}).waitFor();
     await page.locator('#patient-reminders').getByText('Como foram suas refeições livres?').waitFor({state:'hidden'});
     await tile('alcohol').click();await score.filter({hasText:'+3 pontos'}).waitFor();

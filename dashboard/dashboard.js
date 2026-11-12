@@ -17,7 +17,7 @@ import {
 } from '../js/auth.js?v=20261108-habits';
 import { initGuidesPanel } from './guides-panel.js?v=20261105-materials';
 import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js?v=20261111-cardio';
-import { initPatientExtras, notifyPatientSaved } from './patient-extras.js?v=20261112-fotos';
+import { initPatientExtras, notifyPatientSaved } from './patient-extras.js?v=20261112-aerobico';
 import { hydrationMeter } from './patient-model.mjs?v=20261030-water';
 
 import {checkTrackingAccess} from './access-state.mjs';
