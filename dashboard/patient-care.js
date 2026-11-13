@@ -20,7 +20,7 @@ function lineChart(rows,key,unit) {
 export async function initPatientCare(profile) {
  const request=++reminderRequest;
  const root=document.getElementById('patient-reminders');
- const [appointments,notifications,tournaments]=await Promise.allSettled([listAppointments(profile.id),getSupabase().from('care_notifications').select('id,title,body,created_at').eq('patient_id',profile.id).order('created_at',{ascending:false}).limit(20),fetchMyActiveTournaments()]);
+ const [appointments,notifications,tournaments]=await Promise.allSettled([listAppointments(profile.id),getSupabase().from('care_notifications').select('id,title,body,created_at').eq('patient_id',profile.id).or('source_key.is.null,source_key.not.like.activity-star:*').order('created_at',{ascending:false}).limit(20),fetchMyActiveTournaments()]);
  if (request!==reminderRequest) return;
  const next=appointments.status==='fulfilled'?appointments.value.find(a=>new Date(a.starts_at)>=new Date()&&a.status!=='cancelled'):null;
  const notices=notifications.status==='fulfilled'&&!notifications.value.error?notifications.value.data||[]:[];

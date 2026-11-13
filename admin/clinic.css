@@ -30,3 +30,35 @@
 .activity-row time { font-size:.8rem; color:#53695c; }
 .activity-row p { white-space: pre-wrap; overflow-wrap: anywhere; }
 .clinic-activities [aria-pressed=true] { background:#cbdcd1; }
+.rail-feed { width:100%; min-height:40px; margin-bottom:.2rem; background:#355e51; color:#fffdf9; }
+.rail-community { min-height:37px; margin-bottom:.2rem; }
+.community-unread { min-width:1.5em; padding:.12em .4em; border-radius:1em; background:#8b4a34; color:white; font-size:.78rem; line-height:1.3; text-align:center; }
+.clinic-activities [data-new-community] { margin:.6rem 0 1rem; background:#f6e6da; }
+.community-latest { align-self:flex-start; }
+.patient-feed { overflow:auto; overscroll-behavior:contain; }
+.patient-feed-tools, .feed-entry-actions, .feed-entry-body header { display:flex; align-items:center; flex-wrap:wrap; gap:.5rem; }
+.patient-feed-tools { justify-content:space-between; margin:.5rem 0; }
+.patient-feed .feed-new { align-self:flex-start; background:#e6efe7; }
+.patient-feed-tools .range-buttons button[aria-pressed=true] { color:#29483f; background:#dce9df; border-color:#799784; }
+.patient-feed-content { width:100%; max-width:62rem; }
+.patient-feed-content h2 { margin:1.45rem 0 .45rem; color:#53695c; font-size:.87rem; }
+.patient-feed-content > [role=status] { color:#53695c; margin:.9rem 0; }
+.feed-entry-actions [role=status]:empty { display:none; }
+.patient-feed-entry { display:flex; gap:.9rem; padding:1rem 0; border-bottom:1px solid #dde4da; }
+.feed-icon { display:grid; place-items:center; flex:0 0 2.6rem; height:2.6rem; background:#edf1e8; border-radius:14px; font-size:1.22rem; }
+.feed-entry-body { flex:1; min-width:0; overflow-wrap:anywhere; }
+.feed-entry-body header { justify-content:space-between; gap:.15rem .7rem; }
+.feed-entry-body header .text-button { padding:0; font-weight:750; text-align:left; }
+.feed-entry-body time { font-size:.75rem; color:#58695d; }
+.feed-entry-body p { margin:.15rem 0; }
+.feed-entry-body .feed-detail { white-space:pre-wrap; color:#58695d; font-size:.83rem; }
+.feed-entry-actions:not(:empty) { margin-top:.6rem; }
+.feed-star, .feed-star-sent { display:inline-flex; gap:.4rem; align-items:center; min-height:38px; padding:.34rem .8rem; border:1px solid #a68e5d; background:#fff8e8; color:#654a1d; border-radius:12px; font-size:.8rem; font-weight:650; }
+.feed-star span { font-size:1.25rem; line-height:1; }
+.feed-star[data-sent=true], .feed-star-sent { background:#f7edcb; border-color:#d9c999; cursor:default; }
+.feed-entry-actions .text-button { font-size:.81rem; }
+@media(max-width:760px) {
+ .patient-feed-entry { gap:.65rem; }
+ .patient-feed-tools .range-buttons { flex-wrap:wrap; }
+ .mobile-toolbar:has(#mobile-community:not([hidden])) button { padding:8px; }
+}

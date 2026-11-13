@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../app/app.css">
-  <link rel="stylesheet" href="./patient.css?v=20261112-aerobico-2">
+  <link rel="stylesheet" href="./patient.css?v=20261113-stars">
   <link rel="stylesheet" href="/app/progress.css?v=20261106-visual">
   <link rel="stylesheet" href="./workout-story.css?v=20261112-fotos">
   <link rel="stylesheet" href="./basiquito.css?v=20261109-xicara">
@@ -50,6 +50,12 @@
             <p>Já fez o básico hoje?</p>
           </div>
         </div>
+        <details id="patient-stars" class="app-card patient-stars" hidden>
+          <summary><span aria-hidden="true">★</span> Estrelinhas da Marcela <small data-star-total></small></summary>
+          <ul></ul>
+          <button type="button" class="app-btn app-btn--ghost" data-older-stars hidden>Ver anteriores</button>
+          <p data-star-status role="status"></p>
+        </details>
         <section class="app-card h2o-card" style="margin-bottom:1rem;padding:1.25rem">
           <div class="h2o-card__head">
             <div>
@@ -159,6 +165,6 @@
     </main>
   </div>
 
-  <script type="module" src="./dashboard.js?v=20261112-aerobico"></script>
+  <script type="module" src="./dashboard.js?v=20261113-stars"></script>
 </body>
 </html>

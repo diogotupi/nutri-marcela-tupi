@@ -96,7 +96,7 @@ export function createCommunityPhotoDraft(profileId, file, {renderedStory=false}
   };
 }
 
-export function mountCommunity(root, profile) {
+export function mountCommunity(root, profile, {initialPost, onLatestLoaded}={}) {
   if (instances.has(root)) {
     // Keep any upload or comment draft when switching tabs.
     return instances.get(root)();
@@ -328,7 +328,9 @@ export function mountCommunity(root, profile) {
     reading = more.disabled = true;
     feed.setAttribute('aria-busy','true');
     try {
-      const rows = await rpc('community_feed',{p_before:first ? null : before});
+      const target=first && initialPost;
+      const start=target ? String(BigInt(target.seq)+1n) : null;
+      const rows = await rpc('community_feed',{p_before:first ? start : before});
       const signed = rows.length ? unwrap(await storage.createSignedUrls(rows.map(row => row.photo_path),3600)) : [];
       const urls = new Map(signed.map(row => [row.path,row.signedUrl]));
       const hasDraft = first && Array.from(feed.querySelectorAll('.community-thread textarea'))
@@ -350,6 +352,14 @@ export function mountCommunity(root, profile) {
       more.hidden = rows.length < 12;
       more.textContent = 'Ver mais fotos';
       pageAction = 'next';
+      if (first && target) {
+        initialPost=null;
+        const card=feed.querySelector(`[data-id="${CSS.escape(target.id)}"]`);
+        if (card) {card.tabIndex=-1;card.focus({preventScroll:true});card.scrollIntoView({block:'start'});}
+        else status.textContent='Esta publicação já não está no mural.';
+      } else if (first) {
+        onLatestLoaded?.();
+      }
     } catch (error) {
       status.textContent = errorText(error);
       more.hidden = false;

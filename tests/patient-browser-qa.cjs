@@ -16,6 +16,7 @@ async (existingPage) => {
   const lastSunday = shift(monday, -1);
   let storyHistory = false;
   const profile={id:pid,user_id:uid,username:'demonstracao',full_name:'Paciente Demonstração',role:'patient'};
+  const star={id:'33333333-3333-4333-8333-333333333333',body:'Sua nutri te deu uma estrelinha por você ter ido ao banheiro!',created_at:new Date().toISOString(),read_at:null};
   const author={username:'marcela_demo',is_marcela:true,is_admin:true,has_pride:false};
   const photoPost={id:'44444444-4444-4444-8444-444444444444',seq:1,author,caption:'Uma foto de teste',photo_path:pid+'/teste.webp',created_at:new Date().toISOString(),coffees:0,comments:0,liked:false,can_delete:false};
   const socialComments=[];
@@ -197,6 +198,12 @@ async (existingPage) => {
     if(table==='set_profile_photo'){profile.photo_path=body.p_path;data=null;}
     if(table==='evaluate_badges')data=[{id:'water3',title:'Hidratação em dia',description:'DEMONSTRAÇÃO: meta atingida em três dias',earned_at:new Date().toISOString()}];
     if(table==='appointments'||table==='care_notifications'||table==='my_active_tournaments') data=[];
+    if(table==='care_notifications'&&url.searchParams.has('source_key')){
+      assert(url.searchParams.get('source_key')==='like.activity-star:%'&&url.searchParams.get('patient_id')==='eq.'+pid,'Stars must be scoped to this patient');
+      if(method==='HEAD')return route.fulfill({status:200,headers:{'access-control-allow-origin':'*','access-control-expose-headers':'content-range','content-range':star.read_at?'*/0':'0-0/1'}});
+      return route.fulfill({json:[star],headers:{'access-control-allow-origin':'*'}});
+    }
+    if(table==='mark_notification_read'){assert(body.p_id===star.id,'Only acknowledge the selected star');star.read_at=new Date().toISOString();data=null;}
     if(table==='care_notifications'&&earlierMeals.length===3&&habitRows.has('free_meal'))
       data=[{id:'fixture-notice',title:'Como foram suas refeições livres?',body:'Você registrou 4 refeições livres nesta semana.',created_at:today}];
     if(req.headers().accept?.includes('application/vnd.pgrst.object+json')) data=Array.isArray(data)?data[0] || null:data;
@@ -214,6 +221,14 @@ async (existingPage) => {
   try {
     await page.goto('http://127.0.0.1:8877/dashboard/?qa=demonstration');
     await page.locator('#training-form').waitFor({state:'attached'});
+    const stars=page.locator('#patient-stars');
+    await stars.locator('summary').getByText('1 nova',{exact:true}).waitFor();
+    await stars.locator('summary').click();
+    await stars.getByText(star.body,{exact:true}).waitFor();
+    await stars.getByRole('button',{name:'Marcar como lida'}).click();
+    await stars.getByText('1 nova',{exact:true}).waitFor({state:'hidden'});
+    assert(star.read_at,'A star read acknowledgement must persist');
+    await stars.locator('summary').click();
     await page.locator('#patient-weekly-overview .week-story').waitFor();
     await page.locator('#patient-weekly-overview').screenshot({path:'.playwright-mcp/weekly-in-patient-page.png'});
     assert(await page.locator('[data-care="anamnesis"]').count()===0,'Patient anamnesis form must be removed');

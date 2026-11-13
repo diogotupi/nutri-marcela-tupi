@@ -42,9 +42,29 @@ await page.locator('#fixed-chat textarea').fill('Rascunho preservado');
    const post={id:'photo-demo',seq:1,author:{username:'paciente_demo'},caption:'Treino de hoje',photo_path:'p1/treino.jpg',
      created_at:new Date().toISOString(),coffees:0,comments:0,liked:false,marcela_liked:false};
    const comments=[];
+   const feedTime='2026-11-13T13:15:00Z';
+   const feedEntry={id:31,patient_id:'p1',patient_name:'Giovana DEMONSTRAÇÃO',kind:'bowel',occurred_at:feedTime,date_precision:'time',detail:'',can_star:true,is_patient:true};
+   const oldPost={...post,id:'foto-anterior',seq:21,caption:'Minha atividade anterior'};
+   let postUnread=true,starred=false,failStar=true;
    db.storage.from=()=>({createSignedUrls:async()=>({data:[{path:post.photo_path,signedUrl:'/assets/story-fundo-exemplo.jpg'}]})});
    db.rpc=async(name,args)=>{
-     if(name==='community_feed')return {data:[post]};
+     if(name==='clinic_community_unread')return {data:{count:postUnread?1:0,through:postUnread?88:null}};
+     if(name==='clinic_community_mark_read'){if(args.p_through!==88)throw Error('Marcador de leitura incorreto');postUnread=false;return {data:null};}
+     if(name==='clinic_activity_feed'){
+       if(args.p_kind==='community_post')return {data:[{...feedEntry,id:3,kind:'community_post',post_id:oldPost.id,post_seq:21}]};
+       if(args.p_before_id!=null){
+         if(args.p_before_id!==2||args.p_before_time!==feedTime)throw Error('Cursor da página incorreto');
+         return {data:[{...feedEntry,id:1,kind:'water',detail:'+250 ml',date_precision:'day'}]};
+       }
+       return {data:Array.from({length:30},(_,i)=>({...feedEntry,id:31-i,starred_at:!i&&starred?feedTime:null}))};
+     }
+     if(name==='clinic_star_activity'){
+       window.__ops.push({name,args});
+       if(args.p_activity!=31)throw Error('Atividade incorreta');
+       if(failStar){failStar=false;return {error:{message:'erro simulado'}};}
+       starred=true;return {data:null};
+     }
+     if(name==='community_feed')return {data:[args?.p_before==22?oldPost:post]};
      if(name==='community_comments_page')return {data:comments};
      if(name==='community_set_coffee') {
        const state={liked:args.p_liked,coffees:Number(args.p_liked),marcela_liked:args.p_liked};
@@ -58,7 +78,25 @@ await page.locator('#fixed-chat textarea').fill('Rascunho preservado');
      return fallback(name,args);
    };
  });
- await page.locator('[data-action=community]').click();await page.getByRole('heading',{name:'Comunidade',exact:true}).waitFor();
+ await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
+ await page.locator('.rail-community [data-community-count]').filter({hasText:'1'}).waitFor();
+ await page.locator('[data-action=activities]').click();
+ await page.getByRole('button',{name:'1 nova publicação na comunidade'}).waitFor();
+ await page.locator('[data-action=feed]').click();
+ const mural=page.locator('.patient-feed');
+ const firstStar=mural.locator('.feed-star').first();
+ await firstStar.click();await mural.getByRole('status').filter({hasText:'Não foi possível enviar'}).waitFor();
+ await firstStar.click();await firstStar.filter({hasText:'Estrelinha enviada'}).waitFor();
+ assert(await firstStar.getAttribute('aria-disabled')==='true','Persist star and prevent duplicate notification');
+ await mural.getByRole('button',{name:'Ver atividades anteriores'}).click();
+ await mural.getByText('+250 ml').waitFor();
+ await mural.getByRole('button',{name:'Publicações da comunidade'}).click();
+ await mural.getByRole('button',{name:'Ver publicação'}).click();
+ await page.locator('.community-caption').filter({hasText:'Minha atividade anterior'}).waitFor();
+ assert(await page.locator('.rail-community [data-community-count]').isVisible(),'Reading an old post must not clear new post notifications');
+ await page.getByRole('button',{name:'Ver publicações mais recentes'}).click();
+ await page.locator('.rail-community [data-community-count]').waitFor({state:'hidden'});
+ await page.getByRole('heading',{name:'Comunidade',exact:true}).waitFor();
  const post=page.locator('.community-post'), hostCoffee=post.getByText('Marcela deu um cafezinho');
  await post.getByRole('button',{name:'Dar um cafezinho'}).click();await hostCoffee.waitFor();
  await post.getByRole('button',{name:/Comentários/}).click();await post.getByLabel('Seu comentário').fill('Mandou bem!');

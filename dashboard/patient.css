@@ -29,6 +29,18 @@
 .profile-photo-control{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:3px 0 8px;min-width:0}
 .patient-avatar .profile-photo-select{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:46px;padding:11px 17px;border:1px solid #688078;background:#fffdf9;color:#29483f;border-radius:12px;box-shadow:2px 3px 0 #e8baaa;cursor:pointer;font-weight:600;flex:none}
 .profile-photo-select svg{flex:none}
+.patient-stars { margin: 0 0 1rem; padding: 1rem 1.25rem; background: #fff7df; }
+.patient-stars[hidden], .patient-stars [hidden] { display: none; }
+.patient-stars summary { cursor: pointer; font-weight: 700; color: #3f4d38; }
+.patient-stars summary > span { color: #a36715; }
+.patient-stars summary small { margin-left: .4rem; padding: .15rem .5rem; border-radius: 1rem; background: #f2d485; color: #4c3514; font-size: .75rem; }
+.patient-stars ul { list-style: none; max-height: 50vh; overflow-y: auto; margin: .65rem 0 0; padding: 0; }
+.patient-stars li { padding: .7rem 0; border-top: 1px solid #ded0aa; }
+.patient-stars li p { margin: 0 0 .25rem; }
+.patient-stars li div { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .35rem .8rem; }
+.patient-stars time { font-size: .8rem; color: #5e6553; }
+.patient-stars [data-read-star] { min-height: 36px; border: 0; padding: .25rem; text-decoration: underline; font: inherit; font-size: .85rem; cursor: pointer; background: transparent; color: #315746; }
+.patient-stars [data-star-status]:empty { display: none; }
 .patient-training .cardio-duration {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;

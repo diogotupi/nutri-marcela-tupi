@@ -9,8 +9,9 @@ import {mountPatientChat} from '../js/patient-chat.js';
 import {dateKey,subtractDays,datesInRange,isPatientInactive,patientState,stateNames,categoryNames,calendarRange,contactState,auditSentence} from './clinic-model.mjs?v=20261109-community';
 
 import {mountActivityCenter,pendingActivities} from './activity-center.mjs?v=20261108-club';
+import {mountPatientFeed} from './patient-feed.mjs?v=20261113-mural';
 import {mountMaterialLibrary} from '../js/material-library.mjs';
-import {mountCommunity} from '../js/community.js?v=20261112-fotos';
+import {mountCommunity} from '../js/community.js?v=20261113-mural';
 
 const db=getSupabase(),$=s=>document.querySelector(s),view=$('#clinic-view'),dialog=$('#clinic-dialog'),form=$('#clinic-form');
 const patientFilterMenu = $('#patient-filter-menu');
@@ -69,6 +70,42 @@ function renderRail(){
  $('#patient-list').innerHTML=list.length?list.map(p=>{const state=railState(p),inactive=isPatientInactive(p);return `<button class="patient-row ${inactive?'is-inactive':''} ${selected===p.id?'selected':''}" data-patient="${p.id}" aria-label="${esc(p.full_name)} · ${inactive?'Inativo · Período vencido':stateNames[state]}"><i class="dot ${state}" aria-hidden="true"></i><span><strong>${esc(p.full_name)}</strong><small>${categoryNames[p.category]||'Sem acompanhamento'}${inactive?' · Inativo':''}${p.nanny_enabled?' · Babá':''}${p.unread?' · '+Number(p.unread)+' nova(s) no chat':''}</small></span><span aria-hidden="true">›</span></button>`;}).join(''):empty(patients.length?'Nenhum paciente encontrado.':'Comece pelo ＋ para cadastrar o primeiro paciente.');
 }
 async function updatePending(){const n=await pendingActivities(db);$('#pending-count').textContent=n?'('+n+')':'';}
+let unreadRequest=0, communityUnread=0, unreadInitialized=false;
+function paintCommunityUnread(){
+ document.querySelectorAll('[data-community-count]').forEach(badge=>{
+   badge.hidden=!communityUnread;
+   badge.textContent=communityUnread>99?'99+':String(communityUnread);
+   badge.parentElement.setAttribute('aria-label',communityUnread?`Comunidade · ${communityUnread} ${communityUnread===1?'nova publicação':'novas publicações'}`:'Comunidade');
+ });
+ $('#mobile-community').hidden=!communityUnread;
+ const notice=$('[data-new-community]');
+ if(notice){notice.hidden=!communityUnread;notice.textContent=`${communityUnread} ${communityUnread===1?'nova publicação':'novas publicações'} na comunidade →`;}
+}
+async function refreshCommunityUnread() {
+ if(actor?.role!=='admin')return;
+ const seq=++unreadRequest;
+ const info=await rpc('clinic_community_unread');
+ if(seq===unreadRequest){
+   const next=Number(info?.count)||0;
+   if(unreadInitialized && next>communityUnread && !document.hidden)
+     toast(next-communityUnread===1?'Nova publicação na comunidade.':`${next-communityUnread} novas publicações na comunidade.`);
+   communityUnread=next;
+   unreadInitialized=true;
+   paintCommunityUnread();
+ }
+ return info;
+}
+async function openCommunity(post) {
+ leavePatient();const request=++epoch;renderRail();history.replaceState({},'',location.pathname);
+ view.innerHTML=`<section class="calendar-page community-page"><header class="page-heading"><h1>Comunidade</h1><button class="secondary" data-action="${post?'feed':'calendar'}">${post?'← Atividades':'← Calendário'}</button></header>${post?'<button type="button" class="text-button community-latest" data-action="community">Ver publicações mais recentes</button>':''}<div data-community></div></section>`;
+ const region=view.querySelector('[data-community]');
+ const unread=post?null:await refreshCommunityUnread().catch(()=>null);
+ if(request!==epoch)return;
+ return mountCommunity(region,actor,{initialPost:post,onLatestLoaded:async()=>{
+   if(!region.isConnected || !unread?.through)return;
+   try{await rpc('clinic_community_mark_read',{p_through:unread.through});await refreshCommunityUnread();}catch{/* Keep the count until read state is confirmed. */}
+ }});
+}
 async function loadPatients(){updatePending().catch(()=>{});const [list,inbox]=await Promise.all([rpc('crm_list'),rpc('patient_chat_inbox')]);patients=(list||[]).map(p=>({...p,unread:(inbox||[]).find(c=>c.id===p.id||c.patient_id===p.id)?.unread||0}));renderRail();}
 function leavePatient(){disposeProgressMotion();disposeChat?.();disposeChat=null;selected=null;detail=null;$('#patients-rail').classList.remove('open');}
 async function calendar(){leavePatient();const request=++epoch;history.replaceState({},'',location.pathname);renderRail();view.innerHTML=empty('Carregando calendário…');
@@ -197,12 +234,17 @@ async function logs(append=false){if(actor.role!=='admin')return;const offset=ap
  const events=await query(q);$('#audit-list').insertAdjacentHTML('beforeend',events.map(r=>`<article class="audit-row"><strong>${esc(auditSentence(r))}</strong><time>${stamp(r.created_at)}</time>${r.before_data||r.after_data?`<details><summary>Ver alteração registrada</summary><pre>${esc(JSON.stringify({antes:r.before_data,depois:r.after_data},null,2))}</pre></details>`:''}</article>`).join('')||(!append?empty('As ações das secretárias aparecerão aqui a partir de agora.') :''));$('#audit-list').dataset.offset=offset+events.length;$('[data-action=more-logs]').hidden=events.length<50;
 }
 async function action(name){
- if(name==='community'){
-   leavePatient();++epoch;renderRail();history.replaceState({},'',location.pathname);
-   view.innerHTML='<section class="calendar-page community-page"><header class="page-heading"><h1>Comunidade</h1><button class="secondary" data-action="calendar">← Calendário</button></header><div data-community></div></section>';
-   return mountCommunity(view.querySelector('[data-community]'),actor);
+ if(name==='community'||name==='unread-community')return openCommunity();
+ if(name==='feed'){
+   ++epoch;leavePatient();renderRail();history.replaceState({},'',location.pathname);
+   return mountPatientFeed(view,rpc,{openPost:post=>openCommunity(post).catch(fail)});
  }
- if(name==='activities'){++epoch;leavePatient();renderRail();history.replaceState({},'',location.pathname);return mountActivityCenter(view,db,{openPatient,onResolve:()=>updatePending().catch(fail)});}
+ if(name==='activities'){++epoch;leavePatient();renderRail();history.replaceState({},'',location.pathname);
+   const load=mountActivityCenter(view,db,{openPatient,onResolve:()=>updatePending().catch(fail)});
+   view.querySelector('.clinic-activities h1').insertAdjacentHTML('afterend','<button type="button" data-new-community data-action="community" class="secondary" hidden></button>');
+   paintCommunityUnread();
+   return load;
+ }
  if(name==='tracking-mode')return trackingDialog();
  if(name==='team-notes')return teamNotesDialog();
  if(name==='materials'){leavePatient();++epoch;renderRail();view.innerHTML='<section class="calendar-page material-page"><header class="page-heading"><h1>Materiais</h1><button class="secondary" data-action="calendar">← Calendário</button></header><div data-library></div></section>';return mountMaterialLibrary(view.querySelector('[data-library]'),{staff:true});}
@@ -228,6 +270,10 @@ document.addEventListener('click',async event=>{const b=event.target.closest('bu
 $('#patient-search').oninput=renderRail;$('#add-patient').onclick=()=>patientForm();$('#toggle-patients').onclick=()=>$('#patients-rail').classList.toggle('open');
 window.addEventListener('beforeunload',e=>{if(dirty&&dialog.open){e.preventDefault();e.returnValue='';}});
 async function init(){try{const auth=await requireAuth({role:location.pathname.startsWith('/secretaria')?'secretary':'admin'});if(!auth)return;actor=auth.profile;$('#open-audit').hidden=actor.role!=='admin';await loadPatients();const params=new URLSearchParams(location.search),id=params.get('patient');if(id&&patients.some(p=>p.id===id)){await openPatient(id);}else await calendar();const job=sessionStorage.getItem('clinic-delete-job');if(job){const r=await edge('delete-client',{job_id:job});if(!r.cleanup_pending)sessionStorage.removeItem('clinic-delete-job');}
+ if(actor.role==='admin'){
+   const checkCommunity=()=>{if(!document.hidden)refreshCommunityUnread().catch(()=>{});};
+   checkCommunity();setInterval(checkCommunity,20000);document.addEventListener('visibilitychange',checkCommunity);
+ }
  setInterval(async()=>{if(document.hidden||dialog.open||document.activeElement?.closest('#patient-panel form')||document.querySelector('#patient-panel [data-unsaved]'))return;try{if(selected)await refreshPatient();else{await loadPatients();if($('.calendar-grid'))await calendar();}}catch{/* Retry on next refresh. */}},60000);
  }catch(error){view.innerHTML=`<section class="card">${empty('Não foi possível carregar o painel.')}<p>${esc(error.message)}</p><button data-action="refresh">Tentar novamente</button></section>`;}}
 init();
