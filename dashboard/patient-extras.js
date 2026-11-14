@@ -1,12 +1,12 @@
 import {readHabits,groupHabits,saveCardioMinutes} from '../js/daily-habits.mjs?v=20261114-checks';
-import {mountWeeklyOverview} from './weekly-overview.js?v=20261114-checks';
+import {mountWeeklyOverview} from './weekly-overview.js?v=20261114-story-weight';
 import { getSupabase, getLocalDateString, escapeHtml as esc } from '../js/app-core.js';
 import { addClinical, uploadAttachment, getSignedAttachment } from '../js/clinical.js';
 import { preparePhotoUpload } from '../js/media-upload.js?v=20261109-mural-jpg';
-import {mountWeightCheckin} from './weight-checkin.js?v=20261106-visual';
+import {mountWeightCheckin} from './weight-checkin.js?v=20261114-story-weight';
 import {mountWorkoutProgress} from './workout-progress.js?v=20261111-cardio';
 import {celebrateWorkout} from './workout-celebration.js?v=20261108-habits';
-import {openWorkoutStory} from './workout-story.js?v=20261114-checks';
+import {openWorkoutStory} from './workout-story.js?v=20261114-story-weight';
 import { intensityLabel } from './patient-model.mjs';
 
 const db=()=>getSupabase();

@@ -20,14 +20,13 @@ export function storyWeekLabel({start,until}) {
   return stampDate(start,newYear)+' — '+stampDate(until,newYear);
 }
 
-export function weeklyStoryBadges(summary, weight, {past=false}={}) {
+export function weeklyStoryBadges(summary, weight) {
   const badges=[];
   const metric=(key,label,selected=true,note)=>badges.push({key,label,selected,...(note?{note}:{})});
   if (summary?.sessions) metric('workouts',summary.sessions+(summary.sessions===1?' treino':' treinos'));
   if (summary?.dietDays) metric('diet',summary.dietDays+(summary.dietDays===1?' dia':' dias')+' de dieta');
   if (summary?.water) metric('water',waterLabel(summary.water));
-  if (summary?.cardioMinutes) metric('cardio',`Fiz ${number.format(summary.cardioMinutes)} ${summary.cardioMinutes===1?'minuto':'minutos'} de cardio ${past?'na semana passada':'essa semana'}`,true,
-    summary.cardioTimedDays<summary.cardioDays?'Duração informada em '+summary.cardioTimedDays+' de '+summary.cardioDays+' dias de cardio':null);
+  if (summary?.cardioMinutes) metric('cardio','cardio: '+number.format(summary.cardioMinutes)+' min');
   else if (summary?.cardioDays) metric('cardio',summary.cardioDays+(summary.cardioDays===1?' dia':' dias')+' de cardio');
   if (summary?.strengthDays) metric('strength',summary.strengthDays+(summary.strengthDays===1?' dia':' dias')+' de força',false);
   if (summary?.waterGoalDays) metric('goal','Meta de água em '+summary.waterGoalDays+(summary.waterGoalDays===1?' dia':' dias'),false);
@@ -112,13 +111,29 @@ function paintPhoto(context, photo, fit, position) {
 
 // Each number is drawn in bold while the unit keeps its regular weight.
 function measureMetric(ctx,label) {
-  const parts=/^(Fiz )?(<?[0-9][0-9.,]*%?)( .+)$/.exec(label);
+  const parts=/^(cardio: )?(<?[0-9][0-9.,]*%?)( .+)$/.exec(label);
   const prefix=parts?.[1]||'', value=parts?.[2]||'', caption=parts?.[3]||label;
   ctx.font='700 29px '+FONT;
   const valueWidth=ctx.measureText(value).width;
   ctx.font='400 29px '+FONT;
   const prefixWidth=ctx.measureText(prefix).width;
   return {prefix,value,caption,prefixWidth,valueWidth,width:prefixWidth+valueWidth+ctx.measureText(caption).width};
+}
+
+function metricColumns(metrics, week) {
+  const columns=[[],[]];
+  if (week) {
+    const diet=metrics.find(m=>m.key==='diet'), cardio=metrics.find(m=>m.key==='cardio');
+    if (diet && cardio) {
+      metrics=metrics.filter(m=>m!==diet && m!==cardio);
+      columns[metrics.length?1:0].push(diet,cardio);
+    }
+  }
+  for (const metric of metrics) {
+    const shorter=columns[0].length<=columns[1].length?columns[0]:columns[1];
+    shorter.push(metric);
+  }
+  return columns;
 }
 
 export function drawWorkoutStory(canvas,{photo,logo,day,week,badges,fit='cover',position=.5}) {
@@ -141,24 +156,24 @@ export function drawWorkoutStory(canvas,{photo,logo,day,week,badges,fit='cover',
   for (const badge of badges) {
     const metric=measureMetric(ctx,badge.label);
     if (metric.width>maxColumn) full.push(metric);
-    else compact.push(metric);
+    else compact.push({...metric,key:badge.key});
   }
   const notes=badges.flatMap(b=>b.note?[b.note]:[]);
-  const compactRows=Math.ceil(compact.length/2), rows=compactRows+full.length;
+  const columns=metricColumns(compact,week);
+  const compactRows=Math.max(...columns.map(col=>col.length)), rows=compactRows+full.length;
   const height=rows?128+rows*49+notes.length*29:0;
   const top=bottom-height;
   const logoWidth=232, logoHeight=logoWidth*logo.naturalHeight/logo.naturalWidth;
   ctx.drawImage(logo,MARGIN,top-logoHeight-(rows?20:0),logoWidth,logoHeight);
   if (rows) {
-    const columns=[0,0];
-    compact.forEach((m,i)=>{columns[i%2]=Math.max(columns[i%2],m.width);});
+    const widths=columns.map(col=>Math.max(0,...col.map(metric=>metric.width)));
     const stamp=week?storyWeekLabel(week):stampDate(day,true);
     const heading=week?'Resumo da semana':'Resumo do dia';
     ctx.font='500 34px '+FONT;
     const titleWidth=ctx.measureText(heading).width;
     ctx.font='400 21px '+FONT;
     const notesWidth=Math.max(0,...notes.map(note=>ctx.measureText(note).width));
-    const w=Math.min(maxWidth,2*padding+Math.max(titleWidth,notesWidth,...full.map(m=>m.width),columns[0]+(columns[1]?gap+columns[1]:0)));
+    const w=Math.min(maxWidth,2*padding+Math.max(titleWidth,notesWidth,...full.map(m=>m.width),widths[0]+(widths[1]?gap+widths[1]:0)));
     ctx.beginPath(); ctx.roundRect(MARGIN,top,w,height,29);
     ctx.fillStyle='rgba(23,21,19,.67)'; ctx.fill();
     ctx.lineWidth=1.4; ctx.strokeStyle='rgba(255,246,225,.20)'; ctx.stroke();
@@ -174,9 +189,9 @@ export function drawWorkoutStory(canvas,{photo,logo,day,week,badges,fit='cover',
       ctx.font='400 29px '+FONT; ctx.fillText(m.caption,m.prefixWidth+m.valueWidth,0);
       ctx.restore();
     }
-    compact.forEach((m,i)=>{
-      const col=i%2, available=columns[1]?(inner-gap)*columns[col]/(columns[0]+columns[1]):inner;
-      paintMetric(m,col?x+inner-available:x,Math.floor(i/2),available);
+    columns.forEach((metrics,col)=>{
+      const available=widths[1]?(inner-gap)*widths[col]/(widths[0]+widths[1]):inner;
+      metrics.forEach((m,row)=>paintMetric(m,col?x+inner-available:x,row,available));
     });
     full.forEach((m,i)=>paintMetric(m,x,compactRows+i,inner));
     ctx.font='400 21px '+FONT;

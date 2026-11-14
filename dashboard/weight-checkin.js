@@ -16,7 +16,13 @@ export function mountWeightCheckin(root, patientId) {
   ].join('');
   const form=root.querySelector('form'), button=form.querySelector('button'), details=root.querySelector('details');
   const status=root.querySelector('[data-save-status]'), loadError=root.querySelector('[data-load-error]');
+  const notice=document.getElementById('weight-due-notice');
   let context=null, operation=null, edited=false, pending=false, request=0, displayedDay=getLocalDateString();
+  notice.querySelector('button').onclick=()=>{
+    details.open=true;
+    form.elements.weight.focus({preventScroll:true});
+    form.scrollIntoView({block:'center'});
+  };
   form.addEventListener('input',()=>{edited=true;});
   root.querySelector('[data-view-chart]').onclick=()=>document.querySelector('#dashboard-nav [data-tab="evolution"]').click();
 
@@ -24,6 +30,7 @@ export function mountWeightCheckin(root, patientId) {
     if(!context)return;
     displayedDay=getLocalDateString();
     const reminder=weightReminder({today:displayedDay,startsOn:context.starts_on,registeredOn:context.registered_on,lastWeighedOn:context.last_weighed_on});
+    notice.hidden=!reminder.due;
     root.classList.toggle('is-weight-due',reminder.due);
     root.querySelector('[data-title]').textContent=reminder.due?'Dia de atualizar seu peso!':'Seu peso ao longo do tempo';
     root.querySelector('[data-reminder]').textContent=reminder.due

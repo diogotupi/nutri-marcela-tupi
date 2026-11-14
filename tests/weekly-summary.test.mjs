@@ -48,6 +48,7 @@ test('empty days make no claims, and private habits never appear in the public S
   const s=weeklySummary({today});assert.equal(s.activeDays,0);assert.equal(s.dietDays,0);
   assert.match(weeklyMarkup(s),/Nenhum registro nesta semana/);
   assert.match(weeklyMarkup(s),/Nenhuma refeição livre registrada/);
+  assert.doesNotMatch(weeklyMarkup(s),/álcool/i);
   assert.match(weekDayDescription(s.days[0]),/Nenhum registro neste dia/);
   assert.deepEqual(storyBadges({bowel:1,alcohol:10}),[]);
   assert.deepEqual(storyBadges({strength:1,cardio:1,diet:1}).map(b=>b.key),['strength','diet','cardio']);
@@ -69,10 +70,9 @@ test('cardio uses recorded minutes; a free meal counts once per day and stays of
   const cardioCard=html.match(/<article [^>]*data-week-total="cardio">[\s\S]*?<\/article>/)[0];
   assert.match(cardioCard,/data-progress-number="340"/);
   assert.match(cardioCard,/Duração informada em 2 de 3 dias de cardio/);
-  assert.equal(badges.find(b=>b.key==='cardio').label,'Fiz 340 minutos de cardio essa semana');
-  assert.match(badges.find(b=>b.key==='cardio').note,/2 de 3 dias/);
+  assert.deepEqual(badges.find(b=>b.key==='cardio'),{key:'cardio',label:'cardio: 340 min',selected:true});
   const past=weeklySummary({today,offset:-1,habits,records});
-  assert.equal(weeklyStoryBadges(past,null,{past:true}).find(b=>b.key==='cardio').label,'Fiz 80 minutos de cardio na semana passada');
+  assert.equal(weeklyStoryBadges(past).find(b=>b.key==='cardio').label,'cardio: 80 min');
   const report=progressSeries(records,'2026-11-04',today,habits);
   assert.equal(report.cardioMinutes,200);assert.match(workoutChart(report),/Duração informada em 1 de 2 dias de cardio/);
   assert.doesNotMatch(workoutChart(progressSeries(records,today,today,[habit('cardio')])),/Tempo de cardio/);

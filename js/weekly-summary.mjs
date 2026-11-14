@@ -88,7 +88,7 @@ export function weeklyMarkup(s,{past=false}={}) {
     <p class="week-habit-recap">
       <span data-week-total="diet">${s.dietDays ? `Gabaritou a dieta em <strong>${s.dietDays} ${dayUnit(s.dietDays)}</strong>.` : 'Nenhum check de dieta.'}</span>
       <span data-week-total="free-meal">${s.freeMealDays ? `Registrou <strong>${s.freeMealDays} ${s.freeMealDays === 1 ? 'refeição livre' : 'refeições livres'}</strong>.` : 'Nenhuma refeição livre registrada.'}</span>
-      <span data-week-total="alcohol">${s.alcoholDays ? `Marcou consumo de álcool em <strong>${s.alcoholDays} ${dayUnit(s.alcoholDays)}</strong>.` : 'Nenhum registro de álcool.'}</span>
+      ${s.alcoholDays ? `<span data-week-total="alcohol">Marcou consumo de álcool em <strong>${s.alcoholDays} ${dayUnit(s.alcoholDays)}</strong>.</span>` : ''}
     </p>
     <div class="week-days" aria-label="Registros por dia">${s.days.map((d,i)=>{
       const future=d.date>s.until,active=d.water!==null||d.workouts||dayRows(d.habits).length;

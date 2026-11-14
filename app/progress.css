@@ -1,3 +1,6 @@
+.weight-due-notice:not([hidden]){display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem 1.25rem;margin:0 0 1.2rem;padding:1rem 1.3rem;background:linear-gradient(110deg,#f6dfd2,#fff5e8);border-inline-start:5px solid #ad6e4f}
+.weight-due-notice h2{margin:0;font-size:clamp(1.1rem,2.4vw,1.45rem);line-height:1.25}
+.weight-due-notice button{min-height:44px}
 .weight-checkin{padding:1rem 1.3rem;margin:0 0 1rem}
 .weight-checkin-heading{display:flex;align-items:center;gap:1rem}
 .weight-checkin-heading h2{margin:.15rem 0 .4rem;font-size:1.4rem;line-height:1.25}

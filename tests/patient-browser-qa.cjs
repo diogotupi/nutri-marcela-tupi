@@ -223,6 +223,7 @@ async (existingPage) => {
     await page.locator('#training-form').waitFor({state:'attached'});
     const stars=page.locator('#patient-stars');
     await stars.locator('summary').getByText('1 nova',{exact:true}).waitFor();
+    assert((await stars.locator('summary').innerText()).includes('Estrelinhas da nutri'),'Patient star panel heading');
     await stars.locator('summary').click();
     await stars.getByText(star.body,{exact:true}).waitFor();
     await stars.getByRole('button',{name:'Marcar como lida'}).click();
@@ -249,7 +250,8 @@ async (existingPage) => {
     assert(!/\bpontos?\b/i.test(await page.locator('#patient-habits').innerText()+' '+await week.innerText()),'Checks and weekly recap must have no score');
     for(const key of ['bowel','strength','cardio','diet'])await tile(key).click();
     await Promise.all([total('bowel',1),total('strength',1),total('diet',1)]);
-    assert(await tile('free_meal').count()===0&&await page.locator('.habit-grid button').count()===5,'Free meal outside the checks');
+    assert(await tile('free_meal').count()===0 && await page.locator('.habit-grid button').count()===4,'Four daily checks, with the free meal reported separately');
+    assert(await page.locator('[data-habit=alcohol],#habit-alcohol-level').count()===0 && await week.locator('[data-week-total=alcohol]').count()===0,'Alcohol controls and empty alcohol recap are hidden');
     const cardioInput=page.locator('#training-form').getByLabel('Minutos de aeróbico');
     const durationBox=await cardioInput.boundingBox();
     assert(durationBox.height>=44 && durationBox.width<125,'Cardio duration needs a compact, touch-sized input on mobile');
@@ -269,12 +271,6 @@ async (existingPage) => {
     page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Excluir relato'}).click();await page.getByRole('button',{name:'Salvar relato'}).waitFor();
     await page.locator('#patient-reminders').getByText('Como foram suas refeições livres?').waitFor({state:'hidden'});
     await total('free-meal',earlierMeals.length);
-    await tile('alcohol').click();await total('alcohol',1);
-    await page.locator('#habit-alcohol-level').fill('10');await page.waitForFunction(()=>document.querySelector('.alcohol-scale output').value==='10/10');
-    await page.waitForFunction(()=>!document.querySelector('[data-habit=alcohol]').disabled);
-    await page.reload();await total('alcohol',1);
-    assert(await page.locator('#habit-alcohol-level').inputValue()==='10','Alcohol intensity must persist on reload');
-    await tile('alcohol').click();await total('alcohol',0);
     await tile('bowel').click();await total('bowel',0);
     assert(await tile('strength').getAttribute('aria-pressed')==='true'&&await tile('cardio').getAttribute('aria-pressed')==='true','Workout checks must persist independently');
     await page.locator('#patient-habits').screenshot({path:'.playwright-mcp/habits-mobile.png'});
@@ -292,7 +288,9 @@ async (existingPage) => {
     await page.locator('#water-status').filter({hasText:'desfeito'}).waitFor();
     assert(water===0,'Undo must compensate volume');
     await total('water',0);
-    assert(await page.locator('#panel-today > section').first().evaluate(el=>el.classList.contains('h2o-card')),'Hydration must be the first card');
+    const weighIn=page.locator('#weight-due-notice');
+    await weighIn.waitFor();
+    assert(await weighIn.evaluate(el=>el.nextElementSibling?.classList.contains('h2o-card')),'Due reminder must sit immediately above hydration');
     water=1600;await page.reload();await page.locator('#h2o-amount').filter({hasText:'1600'}).waitFor();
     await page.locator('[data-water="200"]').click();await page.locator('.water-achievement.is-celebrating').waitFor();
     await page.reload();await page.locator('.water-achievement').waitFor();
@@ -443,11 +441,11 @@ async (existingPage) => {
       assert(await weekly.getByRole('checkbox',{name:weeklyWater}).isChecked(),'Weekly volume uses only the chosen week and has its own selection');
       assert(await weekly.getByRole('checkbox',{name:'1 treino',exact:true}).isChecked() && !await weekly.getByRole('checkbox',{name:'1 dia de força'}).isChecked(),'Weekly totals and optional strength detail');
       assert(await weekly.getByRole('checkbox',{name:'1 dia de dieta'}).isChecked(),'Weekly meals must use the weekly recap definition');
-      const weeklyCardio = weekly.getByRole('checkbox',{name:'Fiz 35 minutos de cardio essa semana'});
+      const weeklyCardio = weekly.getByRole('checkbox',{name:'cardio: 35 min',exact:true});
       assert(await weeklyCardio.isChecked(),'The Story should offer the recorded weekly cardio total');
       await weeklyCardio.uncheck();
       await weeklyDownload.waitFor();
-      assert(!(await weekly.locator('canvas').getAttribute('aria-label')).includes('minutos de cardio'),'Cardio can be left off the photo');
+      assert(!(await weekly.locator('canvas').getAttribute('aria-label')).includes('cardio:'),'Cardio can be left off the photo');
       await weeklyCardio.check();
       await weeklyDownload.waitFor();
       const weightBadge = weekly.getByRole('checkbox',{name:'5% abaixo do peso inicial'});
@@ -455,6 +453,7 @@ async (existingPage) => {
       await weightBadge.check();
       await weeklyDownload.waitFor();
       const artLabel = await weekly.locator('canvas').getAttribute('aria-label');
+      assert(artLabel.includes('cardio: 35 min') && !artLabel.includes('Duração informada'),'Weekly Story shows a compact cardio total');
       assert(artLabel.includes('5% abaixo do peso inicial') && artLabel.includes('Pesagens de') && !artLabel.includes(' kg'), 'Personal Story must carry the percentage and the measurement dates');
       assert(await weeklyDownload.getAttribute('download') === 'faz-o-basico-club-semana-' + monday + '_' + today + '.jpg', 'Weekly download must identify its actual interval');
       await weekly.screenshot({path:'.playwright-mcp/story-week-mobile.png'});
@@ -524,12 +523,14 @@ async (existingPage) => {
     await page.locator('#patient-weight').screenshot({path:'.playwright-mcp/weekly-weight-card.png'});
 
     const weight=page.locator('#patient-weight');
-    if (!await weight.locator('details').evaluate(e=>e.open)) await weight.locator('summary').click();
+    await weighIn.getByRole('button',{name:'Registrar meu peso'}).click();
+    assert(await weight.getByRole('spinbutton').evaluate(el=>document.activeElement===el),'Weigh-in reminder opens and focuses the single weight form');
     await weight.getByRole('spinbutton').fill('71.3');
     await weight.getByRole('button',{name:'Salvar peso'}).click();
     await weight.getByRole('status').filter({hasText:'71,3 kg'}).waitFor();
     assert(clinical.filter(r=>r.payload.category==='weight_checkin').length===1,'Weight check-in missing');
     assert(await page.locator('#patient-weight.is-weight-due').count()===0,'weigh-in clears the reminder');
+    await weighIn.waitFor({state:'hidden'});
     assert((await page.locator('#patient-weight [data-reminder]').innerText()).includes('Próximo lembrete'),'next reminder scheduled');
     await page.locator('#patient-weight [data-view-chart]').click();
     await page.locator('#evolution-content').getByRole('heading',{name:'Evolução do peso',exact:true}).waitFor();
@@ -539,6 +540,7 @@ async (existingPage) => {
     await page.locator('#training-form').waitFor();
     await page.locator('#patient-weight [data-last-weight]').filter({hasText:'71,3 kg'}).waitFor();
     assert(await page.locator('#patient-weight.is-weight-due').count()===0,'saved weight reminder persists across reload');
+    assert(!await weighIn.isVisible(),'Hydration has no weigh-in announcement after logging for this week');
 
     await page.bringToFront();
     const imageBytes=await page.evaluate(async()=>{const canvas=document.createElement('canvas');canvas.width=2400;canvas.height=1600;const ctx=canvas.getContext('2d');ctx.fillStyle='#5c8c6c';ctx.fillRect(0,0,2400,1600);ctx.fillStyle='#fff';ctx.font='100px sans-serif';ctx.fillText('DEMONSTRAÇÃO',150,200);const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));return Array.from(new Uint8Array(await blob.arrayBuffer()));});

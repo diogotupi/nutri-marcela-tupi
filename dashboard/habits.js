@@ -6,15 +6,12 @@ export function mountHabits(root, patientId) {
   let day=blankDay(), saving=false, loaded=false, sequence=0;
   root.innerHTML=`<h2>Meus checks de hoje</h2>
     <p class="habits-intro">Marque o que fez hoje. Pode desmarcar se precisar corrigir.</p>
-    <div class="habit-grid">${habits.filter(h=>h.key!=='free_meal').map(h=>`<button type="button" class="habit-tile" data-habit="${h.key}" aria-pressed="false" disabled>
+    <div class="habit-grid">${habits.filter(h=>h.key!=='free_meal'&&h.key!=='alcohol').map(h=>`<button type="button" class="habit-tile" data-habit="${h.key}" aria-pressed="false" disabled>
       <span class="habit-art" aria-hidden="true">${h.key==='bowel'?'<img src="/assets/banheiro-trofeu.svg" alt="">':h.icon}</span>
       <strong class="habit-copy">${h.label}</strong><span class="habit-tick" aria-hidden="true">✓</span></button>`).join('')}</div>
-    <div class="alcohol-scale" hidden><label for="habit-alcohol-level">Quanto você bebeu? <output for="habit-alcohol-level"></output></label>
-      <input id="habit-alcohol-level" type="range" min="1" max="10" step="1" value="1">
-      <div class="scale-ends"><span>🥂 1 · Quase nada</span><span>10 · Aloprei 🎉</span></div></div>
     <p class="habit-status" role="status"></p><button type="button" class="app-btn app-btn--ghost" data-retry hidden>Tentar novamente</button>`;
   const find=selector=>root.querySelector(selector);
-  const buttons=[...root.querySelectorAll('[data-habit]')], scale=find('.alcohol-scale'), slider=scale.querySelector('input');
+  const buttons=[...root.querySelectorAll('[data-habit]')];
   const status=find('[role=status]'), retry=find('[data-retry]'), meal=document.getElementById('meal-note');
   const note=meal.elements.description, removeMeal=meal.querySelector('[data-remove-meal]'), mealStatus=meal.querySelector('[role=status]');
   let noteEdited=false;
@@ -23,10 +20,6 @@ export function mountHabits(root, patientId) {
       b.disabled=saving||!loaded;
       b.setAttribute('aria-pressed',String(Boolean(day[b.dataset.habit])));
     }
-    scale.hidden=!day.alcohol;
-    slider.disabled=saving||!loaded;
-    slider.value=String(day.alcohol||1);
-    scale.querySelector('output').value=slider.value+'/10';
     if (!noteEdited) note.value=day.mealDescription;
     removeMeal.hidden=!day.free_meal;
     meal.querySelector('[type=submit]').textContent=day.free_meal?'Atualizar relato':'Salvar relato';
@@ -66,8 +59,6 @@ export function mountHabits(root, patientId) {
     return save(key,()=>saveHabit(db,patientId,today,key,level),()=>{day[key]=level;},'Check atualizado.');
   }
   for (const b of buttons) b.onclick=()=>set(b.dataset.habit,day[b.dataset.habit]?0:1);
-  slider.oninput=()=>{scale.querySelector('output').value=slider.value+'/10';};
-  slider.onchange=()=>set('alcohol',Number(slider.value));
   function recordMeal(description) {
     return save('free_meal',()=>saveFreeMeal(db,patientId,today,description),()=>{
       day.free_meal=description?1:0; day.mealDescription=description||''; noteEdited=false;

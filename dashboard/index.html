@@ -10,13 +10,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../app/app.css">
   <link rel="stylesheet" href="./patient.css?v=20261113-stars">
-  <link rel="stylesheet" href="/app/progress.css?v=20261106-visual">
+  <link rel="stylesheet" href="/app/progress.css?v=20261114-story-weight">
   <link rel="stylesheet" href="./workout-story.css?v=20261112-fotos">
   <link rel="stylesheet" href="./basiquito.css?v=20261109-xicara">
   <link rel="stylesheet" href="/app/community.css?v=20261111-cardio">
   <link rel="stylesheet" href="/app/site-credit.css?v=20261109">
   <script src="../js/config.js"></script>
-<link rel="stylesheet" href="/app/fresh.css?v=20261030b"><link rel="stylesheet" href="/app/chat.css?v=20261030-chat"><link rel="stylesheet" href="/app/habits.css?v=20261114-checks"><link rel="stylesheet" href="/app/materials.css"><link rel="stylesheet" href="/app/progress-visual.css?v=20261114-checks"></head>
+<link rel="stylesheet" href="/app/fresh.css?v=20261030b"><link rel="stylesheet" href="/app/chat.css?v=20261030-chat"><link rel="stylesheet" href="/app/habits.css?v=20261114-story-weight"><link rel="stylesheet" href="/app/materials.css"><link rel="stylesheet" href="/app/progress-visual.css?v=20261114-checks"></head>
 <body class="app-body">
   <div class="app-shell" inert>
     <aside class="app-sidebar">
@@ -51,11 +51,15 @@
           </div>
         </div>
         <details id="patient-stars" class="app-card patient-stars" hidden>
-          <summary><span aria-hidden="true">★</span> Estrelinhas da Marcela <small data-star-total></small></summary>
+          <summary><span aria-hidden="true">★</span> Estrelinhas da nutri <small data-star-total></small></summary>
           <ul></ul>
           <button type="button" class="app-btn app-btn--ghost" data-older-stars hidden>Ver anteriores</button>
           <p data-star-status role="status"></p>
         </details>
+        <aside id="weight-due-notice" class="app-card weight-due-notice" aria-labelledby="weight-due-title" hidden>
+          <h2 id="weight-due-title">Dia de atualizar seu peso!</h2>
+          <button type="button" class="app-btn app-btn--primary" aria-controls="patient-weight">Registrar meu peso</button>
+        </aside>
         <section class="app-card h2o-card" style="margin-bottom:1rem;padding:1.25rem">
           <div class="h2o-card__head">
             <div>
@@ -165,6 +169,6 @@
     </main>
   </div>
 
-  <script type="module" src="./dashboard.js?v=20261114-checks"></script>
+  <script type="module" src="./dashboard.js?v=20261114-story-weight"></script>
 </body>
 </html>

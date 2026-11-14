@@ -1,4 +1,4 @@
-import {mountHabits} from './habits.js?v=20261114-checks';
+import {mountHabits} from './habits.js?v=20261114-story-weight';
 import {mountCommunity} from '../js/community.js?v=20261112-fotos';
 import {mountBasiquito} from './basiquito.js?v=20261109-care';
 import {mountPatientChat} from '../js/patient-chat.js?v=20261030-team';
@@ -18,7 +18,7 @@ import {
 import { initGuidesPanel } from './guides-panel.js?v=20261105-materials';
 import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js?v=20261113-stars';
 import { mountPatientStars } from './patient-stars.js?v=20261113-stars';
-import { initPatientExtras, notifyPatientSaved } from './patient-extras.js?v=20261114-checks';
+import { initPatientExtras, notifyPatientSaved } from './patient-extras.js?v=20261114-story-weight';
 import { hydrationMeter } from './patient-model.mjs?v=20261030-water';
 
 import {checkTrackingAccess} from './access-state.mjs';
