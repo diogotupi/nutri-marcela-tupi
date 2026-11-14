@@ -1,10 +1,10 @@
 export const habits = Object.freeze([
-  {key:'bowel', label:'Fui ao banheiro', icon:'🏆', points:1},
-  {key:'strength', label:'Exercício de força', icon:'🏋️', points:1},
-  {key:'cardio', label:'Cardio', icon:'👟', points:1},
-  {key:'diet', label:'Gabaritei a dieta', icon:'🍽️', points:1},
-  {key:'alcohol', label:'Bebi álcool', icon:'🥂', points:-1},
-  {key:'free_meal', label:'Refeição livre', points:0}
+  {key:'bowel', label:'Fui ao banheiro', icon:'🏆'},
+  {key:'strength', label:'Exercício de força', icon:'🏋️'},
+  {key:'cardio', label:'Cardio', icon:'👟'},
+  {key:'diet', label:'Gabaritei a dieta', icon:'🍽️'},
+  {key:'alcohol', label:'Bebi álcool', icon:'🥂'},
+  {key:'free_meal', label:'Refeição livre'}
 ]);
 export const blankDay = () => ({bowel:0,strength:0,cardio:0,diet:0,alcohol:0,free_meal:0,cardioMinutes:null,mealDescription:''});
 export function groupHabits(rows=[]) {
@@ -18,8 +18,6 @@ export function groupHabits(rows=[]) {
   }
   return days;
 }
-export const scoreDay = day => habits.reduce((n,h)=>n+(day[h.key]?h.points:0),0);
-export const signedPoints = n => (n>0?'+':'')+n+' '+(Math.abs(n)===1?'ponto':'pontos');
 export function habitLabel(habit, day) {
   if (habit.key==='alcohol') return habit.label+' · '+day.alcohol+'/10';
   if (habit.key==='cardio' && day.cardioMinutes) return habit.label+' · '+day.cardioMinutes+' min';

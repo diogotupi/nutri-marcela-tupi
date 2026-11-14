@@ -13,7 +13,7 @@
 
 ## Checks de hábitos
 
-Dieta e anamnese ficam no WebDiet. Os checks do paciente são individuais e diários (horário de São Paulo): banheiro, força, cardio e dieta valem +1 cada; álcool desconta um ponto no dia, com intensidade de 1 a 10. A equipe acompanha e corrige os registros na ficha do paciente. O Story usa os checks de movimento realmente marcados. Banheiro e álcool ficam fora da imagem pública.
+Dieta e anamnese ficam no WebDiet. O paciente pode marcar banheiro, força, cardio, dieta e álcool uma vez por dia, no horário de São Paulo. Para álcool, pode indicar a intensidade de 1 a 10. A equipe acompanha e corrige os registros na ficha do paciente. O Story usa os checks de movimento realmente marcados. Banheiro e álcool ficam fora da imagem pública.
 
 ## Logs
 
@@ -25,6 +25,6 @@ Exclusões exigem confirmação extra para acompanhamento ativo. O manifesto pri
 
 ## Validação
 
-- `npm test`: datas e cores do CRM, hidratação, treino, peso, pontuação e dados usados nos Stories.
+- `npm test`: datas e cores do CRM, hidratação, treino, peso, resumo semanal dos hábitos e dados usados nos Stories.
 - `tests/clinic-browser-qa.cjs` e `tests/patient-browser-qa.cjs`: celular e desktop com dados fictícios. Cobrem o cadastro, as permissões da equipe, os checks, a correção pelo consultório, o chat e a imagem compartilhável.
-- `supabase/daily-habits-regression.sql`: verifica pontuação, idempotência, isolamento entre pacientes e bloqueio por acompanhamento em uma transação revertida.
+- `supabase/daily-habits-regression.sql`: verifica marcação e desmarcação dos hábitos, idempotência, isolamento entre pacientes e bloqueio por acompanhamento em uma transação revertida.

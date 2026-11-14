@@ -10,10 +10,12 @@ async(existingPage)=>{
  const records=[-25,-23,-22,-20,-18,-16,-14,-12,-10,-8,-4,-3,-1,0].map((n,i)=>({id:'e'+i,kind:'exercise',occurred_at:shift(n)+'T12:00Z',payload:{description:'Treino de demonstração',intensity:[3,6,5,7,4,8,6,7,5,8,6,8,5,7][i]}}));
  records.push(...[-28,-24,-20,-16,-12,-8,-4,0].map((n,i)=>({id:'p'+i,kind:'checkin',occurred_at:shift(n)+'T12:00Z',payload:{category:'weight_checkin',weight_kg:[73.4,73.1,73.3,72.8,72.9,72.4,72.6,72.2][i]}})));
  const habits=[-3,-2,0].map(n=>({habit_date:shift(n),habit:'diet',level:1}));
+ habits.push({habit_date:today,habit:'bowel',level:1},{habit_date:shift(-1),habit:'strength',level:1},
+   {habit_date:today,habit:'cardio',level:1,cardio_minutes:35},{habit_date:shift(-4),habit:'cardio',level:1,cardio_minutes:50});
  window.__data={records,water,habits};
  const data=t=>window.__empty?[]:t==='clinical_records'?records.filter(row=>row.kind==='exercise').map(row=>({...row,intensity:row.payload.intensity})):t==='patient_water_logs'?water:t==='patient_daily_habits'?habits:t==='patient_goals'?[{id:'g1',valid_from:'2020-01-01',water_ml:2000}]:[];
  const db={from(t){let offset=0,filters=[];const q=new Proxy({}, {get(_,k){if(k==='then')return f=>Promise.resolve(f({data:data(t).filter(r=>filters.every(([key,op,v])=>op==='gte'?r[key]>=v:r[key]<=v)).slice(offset,offset+500),error:window.__fail?{message:'QA offline'}:null}));return(...a)=>{if(k==='range')offset=a[0];if(k==='gte'||k==='lte')filters.push([a[0],k,a[1]]);return q;};}});return q;}};
- export const getSupabase=()=>db;export const getLocalDateString=()=>today;export const escapeHtml=s=>String(s);
+ export const getSupabase=()=>db;export const getLocalDateString=()=>today;export const escapeHtml=s=>String(s);export const showToast=()=>{};
  `;
  await page.route('**/*.supabase.co/**',r=>r.abort());
  await page.route('**/js/app-core.js',r=>r.fulfill({contentType:'text/javascript',body:state}));
@@ -32,9 +34,11 @@ async(existingPage)=>{
  await page.locator('.week-story').waitFor();
  assert(await page.locator('.week-day').count()===7,'Seven day timeline');
  assert(await page.locator('.week-day:disabled').count()===2,'Future weekend must not be shown as missed');
- assert(await page.locator('.week-stat').nth(0).locator('[data-progress-number]').getAttribute('data-progress-number')==='4','Distinct workout days');
- assert(await page.locator('.week-stat').nth(1).locator('[data-progress-number]').getAttribute('data-progress-number')==='9.8','Weekly water total');
- assert(await page.locator('.week-stat').nth(2).locator('[data-progress-number]').getAttribute('data-progress-number')==='3','Days with diet check');
+ const total=key=>page.locator('[data-week-total="'+key+'"]');
+ const number=key=>total(key).locator('[data-progress-number]').getAttribute('data-progress-number');
+ assert(await number('bowel')==='1' && await number('strength')==='1','One daily check each for bathroom and strength');
+ assert(await number('water')==='9.8' && await number('cardio')==='85','Total recorded water and minutes');
+ assert(/3 dias/.test(await total('diet').innerText()),'Days with diet check');
  await page.locator('[data-week-day="4"]').click();assert((await page.locator('.week-day-detail').innerText()).includes('1,5 L'),'Day details');
  await page.waitForTimeout(1300);await page.screenshot({path:'.playwright-mcp/progress-modern-desktop.png',fullPage:true});
  await page.locator('#workouts .progress-chart').last().scrollIntoViewIfNeeded();
@@ -42,22 +46,23 @@ async(existingPage)=>{
  await first.focus();await first.press('ArrowRight');
  assert(await page.evaluate(()=>document.activeElement.dataset.point)==='1','Keyboard point navigation');
  assert((await page.locator('#workouts .progress-readout').last().innerText()).includes('de 10'),'Exact intensity readout');
- await page.locator('[data-week="-1"]').click();await page.getByText('SUA SEMANA PASSADA',{exact:true}).waitFor();
+ await page.locator('[data-week="-1"]').click();await page.getByRole('heading',{name:'Na semana passada, você…',exact:true}).waitFor();
  assert(await page.locator('.week-day:disabled').count()===0,'Previous week complete');
- await page.locator('[data-week="0"]').click();await page.getByText('SUA SEMANA ATÉ AQUI',{exact:true}).waitFor();
+ assert(await number('bowel')==='0' && await number('strength')==='0','Previous week excludes current checks');
+ await page.locator('[data-week="0"]').click();await page.getByRole('heading',{name:'Nesta semana, você…',exact:true}).waitFor();
  await page.setViewportSize({width:390,height:844});await page.locator('#weekly').scrollIntoViewIfNeeded();
  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No mobile overflow');
  await page.locator('[data-week-day="0"]').tap({force:true}).catch(()=>page.locator('[data-week-day="0"]').click());
  await page.waitForTimeout(1300);await page.locator('#weekly').screenshot({path:'.playwright-mcp/progress-modern-mobile.png'});
  await page.locator('#workouts').screenshot({path:'.playwright-mcp/progress-modern-workout-mobile.png'});
  await page.evaluate(()=>{window.__data.water.at(-1).amount_ml=2000;dispatchEvent(new CustomEvent('patient:record-saved'));});
- await page.waitForFunction(()=>document.querySelectorAll('.week-stat [data-progress-number]')[1]?.dataset.progressNumber==='10.3');
+ await total('water').locator('[data-progress-number="10.3"]').waitFor();
  await page.evaluate(()=>window.__fail=true);await page.locator('[data-week-refresh]').click();await page.getByText('Não foi possível carregar seu resumo. Toque em atualizar para tentar novamente.',{exact:true}).waitFor();
  assert(await page.locator('.week-story').count()===0,'Failed fetch must not show stale weekly totals');
- await page.evaluate(()=>{window.__fail=false;window.__empty=true;});await page.locator('[data-week-refresh]').click();await page.getByText('Sua semana começa aqui.',{exact:true}).waitFor();
- assert((await page.locator('.week-stats').innerText()).includes('Pontos da semana'),'Honest empty state');
+ await page.evaluate(()=>{window.__fail=false;window.__empty=true;});await page.locator('[data-week-refresh]').click();await page.getByText(/Nenhum registro nesta semana/i).waitFor();
+ assert(await number('bowel')==='0' && await number('water')==='0' && !/\bpontos?\b/i.test(await page.locator('#weekly').innerText()),'Empty week has zero recorded activity and no score');
  await page.emulateMedia({reducedMotion:'reduce'});await page.reload();await page.locator('.week-story').waitFor();
- assert(await page.locator('.week-stat').nth(1).locator('strong').innerText()==='9,8L','Reduced motion shows final value immediately');
+ assert((await total('water').locator('strong').innerText()).replace(/\s/g,'')==='9,8L','Reduced motion shows final value immediately');
  assert(await page.locator('.progress-line').first().evaluate(e=>e.getAnimations().length)===0,'Reduced motion must disable draw animation');
  assert(errors.length===0,errors.join('; '));await page.close();return {passed:true,weeklyCounts:true,previousWeek:true,touch:true,keyboard:true,reducedMotion:true,liveUpdate:true,errorRecovery:true,productionWrites:0};
 }

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {weeklySummary,weeklyMarkup,weeklyRange,weightChangeThrough} from '../js/weekly-summary.mjs';
+import {weeklySummary,weeklyMarkup,weekDayDescription,weeklyRange,weightChangeThrough} from '../js/weekly-summary.mjs';
 import {weeklyStoryBadges,storyWeekLabel,storyBadges} from '../dashboard/workout-story-art.mjs';
 import {hydrationChart,progressPlot,progressSeries,workoutChart} from '../js/progress-charts.mjs';
 
@@ -30,17 +30,25 @@ test('water is summed once per day, zero is a record, missing days never meet go
 });
 
 const habit=(habit,level=1,habit_date=today)=>({habit,level,habit_date});
-test('independent checks, only one point lost regardless of alcohol level, and no invented sessions',()=>{
-  const s=weeklySummary({today,habits:[habit('strength'),habit('cardio'),habit('diet'),habit('bowel'),habit('alcohol',10),habit('alcohol',2,'2026-11-04'),habit('strength',1,'2026-11-07')],records:[exercise(today,7)]});
-  assert.equal(s.points,2);assert.equal(s.activeDays,2);assert.equal(s.workoutDays,1);assert.equal(s.sessions,1);assert.equal(s.intensity,7);
+test('independent checks count dates once, exclude other weeks and keep exercise sessions distinct',()=>{
+  const s=weeklySummary({today,habits:[habit('strength'),habit('cardio'),habit('diet'),habit('bowel'),habit('bowel'),habit('bowel',1,'2026-11-01'),habit('alcohol',10),habit('alcohol',2,'2026-11-04'),habit('strength',1,'2026-11-07')],records:[exercise(today,7)]});
+  assert.equal('points' in s,false);assert.equal(s.activeDays,2);assert.equal(s.workoutDays,1);assert.equal(s.sessions,1);assert.equal(s.intensity,7);
   assert.equal(s.strengthDays,1);assert.equal(s.cardioDays,1);assert.equal(s.dietDays,1);assert.equal(s.bowelDays,1);assert.equal(s.alcoholDays,2);
   const onlyChecks=weeklySummary({today,habits:[habit('strength'),habit('cardio')]});
   assert.equal(onlyChecks.workoutDays,1);assert.equal(onlyChecks.sessions,1);assert.equal(onlyChecks.intensity,null);
-  assert.equal(weeklySummary({today,habits:[habit('alcohol',10)]}).points,-1);
+  const html=weeklyMarkup(s);
+  assert.match(html,/Gabaritou a dieta em <strong>1 dia<\/strong>/);
+  assert.match(html,/Marcou consumo de álcool em <strong>2 dias<\/strong>/);
+  assert.match(html,/Duração não informada/);
+  assert.doesNotMatch(html,/\bpontos?\b/i);
+  const details=weekDayDescription(s.days[4]);
+  assert.match(details,/Fui ao banheiro/);assert.match(details,/Bebi álcool · 10\/10/);assert.doesNotMatch(details,/\bpontos?\b/i);
 });
 test('empty days make no claims, and private habits never appear in the public Story',()=>{
   const s=weeklySummary({today});assert.equal(s.activeDays,0);assert.equal(s.dietDays,0);
-  assert.match(weeklyMarkup(s),/Dias em branco/);assert.doesNotMatch(weeklyMarkup(s),/refeições|chutei o balde/i);
+  assert.match(weeklyMarkup(s),/Nenhum registro nesta semana/);
+  assert.match(weeklyMarkup(s),/Nenhuma refeição livre registrada/);
+  assert.match(weekDayDescription(s.days[0]),/Nenhum registro neste dia/);
   assert.deepEqual(storyBadges({bowel:1,alcohol:10}),[]);
   assert.deepEqual(storyBadges({strength:1,cardio:1,diet:1}).map(b=>b.key),['strength','diet','cardio']);
   assert.deepEqual(storyBadges({cardio:1}).map(b=>b.key),['cardio']);
@@ -54,9 +62,13 @@ test('cardio uses recorded minutes; a free meal counts once per day and stays of
   const records=[exercise(today,5,{payload:{intensity:5,cardio_minutes:200}})];
   const s=weeklySummary({today,habits,records});
   const badges=weeklyStoryBadges(s);
-  assert.equal(s.freeMealDays,1);assert.equal(s.points,3);
-  assert.match(weeklyMarkup(s),/1 refeição livre registrada/);
-  assert.equal(s.cardioMinutes,340);assert.match(weeklyMarkup(s),/340 min de cardio/);
+  assert.equal(s.freeMealDays,1);
+  const html=weeklyMarkup(s);
+  assert.match(html,/Registrou <strong>1 refeição livre<\/strong>/);
+  assert.equal(s.cardioMinutes,340);
+  const cardioCard=html.match(/<article [^>]*data-week-total="cardio">[\s\S]*?<\/article>/)[0];
+  assert.match(cardioCard,/data-progress-number="340"/);
+  assert.match(cardioCard,/Duração informada em 2 de 3 dias de cardio/);
   assert.equal(badges.find(b=>b.key==='cardio').label,'Fiz 340 minutos de cardio essa semana');
   assert.match(badges.find(b=>b.key==='cardio').note,/2 de 3 dias/);
   const past=weeklySummary({today,offset:-1,habits,records});

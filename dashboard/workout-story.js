@@ -1,8 +1,8 @@
-import {readHabits,groupHabits} from '../js/daily-habits.mjs?v=20261109-care';
+import {readHabits,groupHabits} from '../js/daily-habits.mjs?v=20261114-checks';
 import {getLocalDateString, getSupabase, showToast} from '../js/app-core.js';
 import {createCommunityPhotoDraft} from '../js/community.js?v=20261112-fotos';
-import {weeklyRange} from '../js/weekly-summary.mjs?v=20261111-cardio';
-import {loadPatientWeek, loadStoryWeight} from './weekly-data.js?v=20261111-cardio';
+import {weeklyRange} from '../js/weekly-summary.mjs?v=20261114-checks';
+import {loadPatientWeek, loadStoryWeight} from './weekly-data.js?v=20261114-checks';
 import {drawWorkoutStory, loadStoryImage, prepareStoryPhoto, storyBadges, storyWeekLabel, weeklyStoryBadges} from './workout-story-art.mjs?v=20261111-cardio';
 
 const exampleUrl = '/assets/story-fundo-exemplo.jpg';

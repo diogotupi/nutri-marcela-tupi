@@ -13,7 +13,7 @@ do $$ declare au uuid:=gen_random_uuid();su uuid:=gen_random_uuid();pu uuid:=gen
  if public.clinic_start_care(op,pp,payload)<>en or (select count(*) from public.crm_enrollments where patient_id=pp)<>1 then raise exception 'FAIL idempotent care';end if;
  perform public.set_daily_habit(pp,current_date-2,'alcohol',4);
  perform public.set_daily_habit(pp,current_date-2,'alcohol',8);
- if not exists(select 1 from public.patient_daily_habits where patient_id=pp and habit='alcohol' and level=8 and points=-1) then raise exception 'FAIL staff habit correction';end if;
+ if not exists(select 1 from public.patient_daily_habits where patient_id=pp and habit='alcohol' and level=8) then raise exception 'FAIL staff habit correction';end if;
  if (select water_ml from public.patient_goals where patient_id=pp)<>2300 then raise exception 'FAIL water goal';end if;
  perform public.send_patient_message(msg,pp,'QA mensagem');perform public.send_patient_message(msg,pp,'QA mensagem');
  if (select count(*) from public.patient_messages where id=msg)<>1 or (select sender_name from public.patient_messages where id=msg)<>'QA Secretaria' then raise exception 'FAIL staff chat attribution';end if;

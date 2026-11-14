@@ -30,6 +30,8 @@ await page.locator('#fixed-chat textarea').fill('Rascunho preservado');
  assert(!await page.locator('[data-tab=anamnesis]').count(),'No anamnesis tab');
  await page.getByText('Relato de teste do paciente',{exact:false}).first().waitFor();
  await page.getByRole('button',{name:'Cardio · 35 min'}).waitFor();
+ const checkHistory=page.locator('section.card').filter({has:page.getByRole('heading',{name:'Checks de hábitos',exact:true})});
+ assert(!/\bpontos?\b/i.test(await checkHistory.innerText()),'Habit history should show the daily checks without scores');
  await page.getByRole('button',{name:'Refeição livre',exact:true}).click();
  await page.locator('#clinic-dialog textarea[name=description]').fill('Revisão de teste');
  await page.locator('#dialog-save').click();await page.waitForFunction(()=>window.__ops.some(o=>o.name==='set_free_meal_note'&&o.args.p_description==='Revisão de teste'));

@@ -1,17 +1,17 @@
 import {getSupabase, getLocalDateString} from '../js/app-core.js';
-import {habits, blankDay, groupHabits, readHabits, saveHabit, saveFreeMeal, scoreDay, signedPoints} from '../js/daily-habits.mjs?v=20261109-care';
+import {habits, blankDay, groupHabits, readHabits, saveHabit, saveFreeMeal} from '../js/daily-habits.mjs?v=20261114-checks';
 
 export function mountHabits(root, patientId) {
   const db=getSupabase(), today=getLocalDateString();
   let day=blankDay(), saving=false, loaded=false, sequence=0;
-  root.innerHTML=`<div class="habits-heading"><div><p class="patient-eyebrow">FAZ O BÁSICO CLUB</p><h2>Meus checks de hoje</h2></div><output class="daily-score" aria-label="Pontuação do dia">—</output></div>
+  root.innerHTML=`<h2>Meus checks de hoje</h2>
     <p class="habits-intro">Marque o que fez hoje. Pode desmarcar se precisar corrigir.</p>
-    <div class="habit-grid">${habits.filter(h=>h.points!==0).map(h=>`<button type="button" class="habit-tile" data-habit="${h.key}" aria-pressed="false" disabled>
+    <div class="habit-grid">${habits.filter(h=>h.key!=='free_meal').map(h=>`<button type="button" class="habit-tile" data-habit="${h.key}" aria-pressed="false" disabled>
       <span class="habit-art" aria-hidden="true">${h.key==='bowel'?'<img src="/assets/banheiro-trofeu.svg" alt="">':h.icon}</span>
-      <span class="habit-copy"><strong>${h.label}</strong><small>${signedPoints(h.points)}</small></span><span class="habit-tick" aria-hidden="true">✓</span></button>`).join('')}</div>
+      <strong class="habit-copy">${h.label}</strong><span class="habit-tick" aria-hidden="true">✓</span></button>`).join('')}</div>
     <div class="alcohol-scale" hidden><label for="habit-alcohol-level">Quanto você bebeu? <output for="habit-alcohol-level"></output></label>
       <input id="habit-alcohol-level" type="range" min="1" max="10" step="1" value="1">
-      <div class="scale-ends"><span>🥂 1 · Quase nada</span><span>10 · Aloprei 🎉</span></div><small>O desconto é de 1 ponto no dia, em qualquer intensidade.</small></div>
+      <div class="scale-ends"><span>🥂 1 · Quase nada</span><span>10 · Aloprei 🎉</span></div></div>
     <p class="habit-status" role="status"></p><button type="button" class="app-btn app-btn--ghost" data-retry hidden>Tentar novamente</button>`;
   const find=selector=>root.querySelector(selector);
   const buttons=[...root.querySelectorAll('[data-habit]')], scale=find('.alcohol-scale'), slider=scale.querySelector('input');
@@ -23,7 +23,6 @@ export function mountHabits(root, patientId) {
       b.disabled=saving||!loaded;
       b.setAttribute('aria-pressed',String(Boolean(day[b.dataset.habit])));
     }
-    find('.daily-score').textContent=loaded?signedPoints(scoreDay(day)):'—';
     scale.hidden=!day.alcohol;
     slider.disabled=saving||!loaded;
     slider.value=String(day.alcohol||1);

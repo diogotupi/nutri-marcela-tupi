@@ -7,7 +7,7 @@ insert into auth.users(id) values(current_setting('qa.habit_user')::uuid);
 insert into public.profiles(id,user_id,role,full_name) values
  (current_setting('qa.habit_patient')::uuid,current_setting('qa.habit_user')::uuid,'patient','Fixture de hábitos'),
  (current_setting('qa.habit_other')::uuid,null,'patient','Segunda fixture');
-insert into public.patient_daily_habits values(current_setting('qa.habit_other')::uuid,(now() at time zone 'America/Sao_Paulo')::date,'diet',1,default);
+insert into public.patient_daily_habits(patient_id,habit_date,habit,level) values(current_setting('qa.habit_other')::uuid,(now() at time zone 'America/Sao_Paulo')::date,'diet',1);
 select set_config('request.jwt.claims',json_build_object('sub',current_setting('qa.habit_user'),'role','authenticated')::text,true);
 set local role authenticated;
 do $$
@@ -20,21 +20,20 @@ begin
  perform public.set_daily_habit(pid,day,'alcohol',1);
  perform public.set_daily_habit(pid,day,'alcohol',10);
  if (select count(*) from public.patient_daily_habits)<>3 or
-    (select sum(points) from public.patient_daily_habits)<>1 or
-    (select level from public.patient_daily_habits where habit='alcohol')<>10 then raise exception 'Persistence, isolation or score failed'; end if;
+    (select level from public.patient_daily_habits where habit='alcohol') is distinct from 10 then raise exception 'Persistence or isolation failed'; end if;
  perform public.set_daily_habit(pid,day,'alcohol',0);
  perform public.set_daily_habit(pid,day,'alcohol',0);
- if (select sum(points) from public.patient_daily_habits)<>2 then raise exception 'Undo failed'; end if;
+ if (select count(*) from public.patient_daily_habits)<>2 or exists(select 1 from public.patient_daily_habits where habit='alcohol') then raise exception 'Undo failed'; end if;
  perform public.set_free_meal_note(pid,day,'Relato de teste');
  perform public.set_free_meal_note(pid,day,'Relato editado');
  perform public.set_cardio_minutes(pid,day,35);
- if (select sum(points) from public.patient_daily_habits)<>2 or
-    (select meal_description from public.patient_daily_habits where habit='free_meal')<>'Relato editado' or
-    (select cardio_minutes from public.patient_daily_habits where habit='cardio')<>35 then raise exception 'Habit details incorrect'; end if;
+ if (select count(*) from public.patient_daily_habits)<>3 or
+    (select meal_description from public.patient_daily_habits where habit='free_meal') is distinct from 'Relato editado' or
+    (select cardio_minutes from public.patient_daily_habits where habit='cardio') is distinct from 35 then raise exception 'Habit details incorrect'; end if;
  begin perform public.set_free_meal_note(pid,day,' '); raise exception 'Blank note accepted'; exception when check_violation then null; end;
  begin perform public.set_free_meal_note(other_id,day,'Fixture'); raise exception 'Cross patient note'; exception when insufficient_privilege then null; end;
  perform public.set_free_meal_note(pid,day,null);
- if (select sum(points) from public.patient_daily_habits)<>2 then raise exception 'Meal undo failed'; end if;
+ if (select count(*) from public.patient_daily_habits)<>2 or exists(select 1 from public.patient_daily_habits where habit='free_meal') then raise exception 'Meal undo failed'; end if;
  perform public.set_daily_habit(pid,day,'cardio',0);
  insert into public.clinical_records(patient_id,created_by,kind,payload,occurred_at,visibility,status)
    values(pid,pid,'exercise',jsonb_build_object('date',day,'description','Treino de teste','intensity',4,'cardio_minutes',28),now(),'shared','submitted');

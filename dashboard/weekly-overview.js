@@ -1,11 +1,11 @@
 import {getLocalDateString} from '../js/app-core.js';
-import {weeklyMarkup,weekDayDescription} from '../js/weekly-summary.mjs?v=20261111-cardio';
-import {loadPatientWeek} from './weekly-data.js?v=20261111-cardio';
-import {openWorkoutStory} from './workout-story.js?v=20261112-fotos';
+import {weeklyMarkup,weekDayDescription} from '../js/weekly-summary.mjs?v=20261114-checks';
+import {loadPatientWeek} from './weekly-data.js?v=20261114-checks';
+import {openWorkoutStory} from './workout-story.js?v=20261114-checks';
 import {enhanceProgress} from '../js/progress-motion.mjs?v=20261106-visual';
 
 export function mountWeeklyOverview(root,patientId) {
-  root.innerHTML='<div class="week-toolbar"><span class="progress-label">SEU RESUMO</span><div role="group" aria-label="Semana do resumo"><button type="button" data-week="0" aria-pressed="true">Esta semana</button><button type="button" data-week="-1" aria-pressed="false">Semana passada</button></div><button type="button" data-week-refresh aria-label="Atualizar resumo semanal">↻</button></div><p class="week-status" role="status"></p><div data-week-content></div>';
+  root.innerHTML='<div class="week-toolbar"><div role="group" aria-label="Semana do resumo"><button type="button" data-week="0" aria-pressed="true">Esta semana</button><button type="button" data-week="-1" aria-pressed="false">Semana passada</button></div><button type="button" data-week-refresh aria-label="Atualizar resumo semanal">↻</button></div><p class="week-status" role="status"></p><div data-week-content></div>';
   const status=root.querySelector('.week-status'),content=root.querySelector('[data-week-content]');
   let offset=0,request=0,disposeMotion=()=>{},timer;
   async function refresh(){

@@ -20,9 +20,11 @@ begin
  execute 'reset role';
  insert into public.patient_daily_habits(patient_id,habit_date,habit,level)
    select pp,t-i,'diet',1 from generate_series(0,20)i where i<>10;
+ insert into public.patient_daily_habits(patient_id,habit_date,habit,level,meal_description)
+   values(pp,t-10,'alcohol',5,null),(pp,t-10,'free_meal',1,'Teste');
  execute 'set local role authenticated';perform public.evaluate_badges();
  if not exists(select 1 from public.patient_badges where patient_id=pp and badge_id='meals3') then raise exception 'FAIL diet streak';end if;
- if exists(select 1 from public.patient_badges where patient_id=pp and badge_id='steady21') then raise exception 'FAIL missing day treated as evidence';end if;
+ if exists(select 1 from public.patient_badges where patient_id=pp and badge_id='steady21') then raise exception 'FAIL alcohol/free meal treated as evidence';end if;
  execute 'reset role';
  insert into public.patient_daily_habits(patient_id,habit_date,habit,level) values(pp,t-10,'bowel',1);
  execute 'set local role authenticated';perform public.evaluate_badges();
