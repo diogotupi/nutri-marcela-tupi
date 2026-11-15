@@ -42,12 +42,7 @@ def main():
     white = Image.new("RGBA", circular.size, (255, 255, 255, 0))
     white.putalpha(circular.getchannel("A"))
     white.save(destination / "logo-white-transparent.png", optimize=True)
-    for size, name in [(16, "favicon-16.png"), (32, "favicon-32.png"), (180, "apple-touch-icon.png")]:
-        icon = ImageOps.contain(circular, (size, size), Image.Resampling.LANCZOS)
-        canvas = Image.new("RGBA", (size, size), (255, 255, 255, 255) if size == 180 else (0, 0, 0, 0))
-        canvas.alpha_composite(icon, ((size - icon.width) // 2, (size - icon.height) // 2))
-        canvas.save(destination / name, optimize=True)
-    print("Extracted three original transparent logos and generated site icons.")
+    print("Extracted the three original transparent logos.")
 
 
 if __name__ == "__main__":

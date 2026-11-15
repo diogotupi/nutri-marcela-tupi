@@ -1,5 +1,4 @@
 import sharp from 'sharp';
-import { readFileSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -32,9 +31,4 @@ const whiteBase = sharp(whiteOut, {
 
 await base.clone().png().toFile(join(root, 'assets', 'logo-transparent.png'));
 await whiteBase.clone().png().toFile(join(root, 'assets', 'logo-white-transparent.png'));
-const fit = { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } };
-await base.clone().resize(180, 180, fit).flatten({ background: '#ffffff' }).png().toFile(join(root, 'assets', 'apple-touch-icon.png'));
-await base.clone().resize(32, 32, fit).png().toFile(join(root, 'assets', 'favicon-32.png'));
-await base.clone().resize(16, 16, fit).png().toFile(join(root, 'assets', 'favicon-16.png'));
-
-console.log('Logo original preservada: transparente, branca, favicons');
+console.log('Geradas as versões transparente e branca da logo.');
