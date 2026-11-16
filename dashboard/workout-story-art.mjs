@@ -2,10 +2,13 @@ import {fittedDimensions, validatePhoto} from '../js/media-sizing.mjs?v=20261108
 
 const WIDTH = 1080;
 const HEIGHT = 1920;
-const MARGIN = 92;
 const FONT = '"Plus Jakarta Sans", Arial, sans-serif';
+const SERIF = 'Georgia, "Times New Roman", serif';
 const INK = '#203e32';
 const PAPER = '#fff8ea';
+const CARD_INSET = 12;
+export const DEFAULT_STORY_POSITION = Object.freeze({x:.12, y:.87});
+const backdrops = new WeakMap();
 const decimal = new Intl.NumberFormat('pt-BR', {maximumFractionDigits:3});
 const number = new Intl.NumberFormat('pt-BR', {maximumFractionDigits:1});
 const month = new Intl.DateTimeFormat('pt-BR',{month:'short',timeZone:'UTC'});
@@ -76,6 +79,25 @@ export async function prepareStoryPhoto(file) {
   }
 }
 
+function softBackdrop(photo) {
+  const cached = backdrops.get(photo);
+  if (cached) return cached;
+  // The soft fill can be downsampled. Keep the foreground photograph at full resolution.
+  const back = document.createElement('canvas');
+  back.width = WIDTH / 4;
+  back.height = HEIGHT / 4;
+  const ctx = back.getContext('2d');
+  const scale = Math.max((back.width+20)/photo.width, (back.height+20)/photo.height);
+  const width = photo.width * scale, height = photo.height * scale;
+  ctx.fillStyle = INK;
+  ctx.fillRect(0, 0, back.width, back.height);
+  ctx.globalAlpha = .34;
+  ctx.filter = 'blur(7.5px)';
+  ctx.drawImage(photo, (back.width-width)/2, (back.height-height)/2, width, height);
+  backdrops.set(photo, back);
+  return back;
+}
+
 function paintPhoto(context, photo, fit, position) {
   context.fillStyle = INK;
   context.fillRect(0, 0, WIDTH, HEIGHT);
@@ -92,14 +114,7 @@ function paintPhoto(context, photo, fit, position) {
   const width = photo.width * cover;
   const height = photo.height * cover;
   if (fit === 'contain') {
-    // Keep the full photograph on a soft version of its own background.
-    context.save();
-    context.globalAlpha = .34;
-    context.filter = 'blur(30px)';
-    const bleed = Math.max((WIDTH + 80) / photo.width, (HEIGHT + 80) / photo.height);
-    const backWidth = photo.width * bleed, backHeight = photo.height * bleed;
-    context.drawImage(photo, (WIDTH - backWidth) / 2, (HEIGHT - backHeight) / 2, backWidth, backHeight);
-    context.restore();
+    context.drawImage(softBackdrop(photo), 0, 0, WIDTH, HEIGHT);
     const scale = Math.min(WIDTH / photo.width, HEIGHT / photo.height);
     const framedWidth = photo.width * scale;
     const framedHeight = photo.height * scale;
@@ -109,15 +124,36 @@ function paintPhoto(context, photo, fit, position) {
   }
 }
 
-// Each number is drawn in bold while the unit keeps its regular weight.
-function measureMetric(ctx,label) {
-  const parts=/^(cardio: )?(<?[0-9][0-9.,]*%?)( .+)$/.exec(label);
-  const prefix=parts?.[1]||'', value=parts?.[2]||'', caption=parts?.[3]||label;
-  ctx.font='700 29px '+FONT;
-  const valueWidth=ctx.measureText(value).width;
-  ctx.font='400 29px '+FONT;
-  const prefixWidth=ctx.measureText(prefix).width;
-  return {prefix,value,caption,prefixWidth,valueWidth,width:prefixWidth+valueWidth+ctx.measureText(caption).width};
+// Measure runs before drawing so mixed fonts stay centered as a single line.
+function textLine(ctx, runs) {
+  let width = 0;
+  const parts = runs.map(([font, text]) => {
+    ctx.font = font;
+    const x = width;
+    width += ctx.measureText(text).width;
+    return {font, text, x};
+  });
+  return {parts, width};
+}
+
+function paintLine(ctx, line, center, baseline, available) {
+  const scale = Math.min(1, available / line.width);
+  ctx.save();
+  ctx.translate(center - line.width * scale / 2, baseline);
+  ctx.scale(scale, 1);
+  ctx.textAlign = 'left';
+  for (const {font, text, x} of line.parts) {
+    ctx.font = font;
+    ctx.fillText(text, x, 0);
+  }
+  ctx.restore();
+}
+
+function metricLine(ctx, {key, label}) {
+  const normal = '400 32px ' + FONT;
+  const parts = /^(cardio: |Intensidade |Meta de água em |Peso · )?(<?\d+(?:[.,]\d+)*(?:%|\/10| L\b| ml\b)?)(.*)$/u.exec(label);
+  const runs = parts ? [[normal, parts[1] || ''], ['700 32px ' + FONT, parts[2]], [normal, parts[3]]] : [[normal, label]];
+  return {key, ...textLine(ctx, runs)};
 }
 
 function metricColumns(metrics, week) {
@@ -136,66 +172,73 @@ function metricColumns(metrics, week) {
   return columns;
 }
 
-export function drawWorkoutStory(canvas,{photo,logo,day,week,badges,fit='cover',position=.5}) {
+function fraction(value, fallback) {
+  return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : fallback;
+}
+
+export function drawWorkoutStory(canvas,{photo,day,week,badges,fit='cover',position=.5,overlayPosition=DEFAULT_STORY_POSITION}) {
   if (canvas.width!==WIDTH) canvas.width=WIDTH;
   if (canvas.height!==HEIGHT) canvas.height=HEIGHT;
   const ctx=canvas.getContext('2d');
   ctx.save();
   ctx.imageSmoothingQuality='high';
   paintPhoto(ctx,photo,fit,position);
-  const bottom=HEIGHT-214;
-  const shade=ctx.createLinearGradient(0,HEIGHT*.54,0,HEIGHT);
-  shade.addColorStop(0,'rgba(14,12,11,0)');
-  shade.addColorStop(.62,'rgba(14,12,11,.18)');
-  shade.addColorStop(1,'rgba(14,12,11,.48)');
-  ctx.fillStyle=shade; ctx.fillRect(0,0,WIDTH,HEIGHT);
 
-  const padding=27, gap=42, maxWidth=WIDTH-2*MARGIN;
-  const maxColumn=(maxWidth-2*padding-gap)/2;
-  const compact=[], full=[];
+  const brand = textLine(ctx, [['bold 66px ' + SERIF, 'Faz o '], ['italic bold 66px ' + SERIF, 'Básico']]);
+  const signature = textLine(ctx, [['600 22px ' + FONT, 'C L U B'], ['400 24px ' + SERIF, '  ·  por Nutri Marcela Tupi']]);
+  const compact = [], full = [];
   for (const badge of badges) {
-    const metric=measureMetric(ctx,badge.label);
-    if (metric.width>maxColumn) full.push(metric);
-    else compact.push({...metric,key:badge.key});
+    const line = metricLine(ctx, badge);
+    (line.width > 310 ? full : compact).push(line);
   }
-  const notes=badges.flatMap(b=>b.note?[b.note]:[]);
-  const columns=metricColumns(compact,week);
-  const compactRows=Math.max(...columns.map(col=>col.length)), rows=compactRows+full.length;
-  const height=rows?128+rows*49+notes.length*29:0;
-  const top=bottom-height;
-  const logoWidth=232, logoHeight=logoWidth*logo.naturalHeight/logo.naturalWidth;
-  ctx.drawImage(logo,MARGIN,top-logoHeight-(rows?20:0),logoWidth,logoHeight);
+  const columns = metricColumns(compact, week);
+  const columnWidths = columns.map(column => Math.max(0, ...column.map(line => line.width)));
+  const compactRows = Math.max(...columns.map(column => column.length));
+  const rows = compactRows + full.length;
+  const notes = badges.flatMap(badge => badge.note ? [badge.note] : []);
+  const padding = 34, gap = 34, rowHeight = 48;
+  ctx.font = '400 23px ' + FONT;
+  const gridWidth = columnWidths[0] + (columnWidths[1] ? gap + columnWidths[1] : 0);
+  const width = Math.min(WIDTH - 2 * CARD_INSET, Math.max(rows ? 604 : 460,
+    2 * padding + Math.max(brand.width, signature.width, gridWidth, ...full.map(line => line.width), ...notes.map(note => ctx.measureText(note).width))));
+  const height = rows ? 270 + rows * rowHeight + notes.length * 32 : 151;
+  const maxX = WIDTH - width - CARD_INSET, maxY = HEIGHT - height - CARD_INSET;
+  const x = CARD_INSET + fraction(overlayPosition?.x, DEFAULT_STORY_POSITION.x) * (maxX - CARD_INSET);
+  const y = CARD_INSET + fraction(overlayPosition?.y, DEFAULT_STORY_POSITION.y) * (maxY - CARD_INSET);
+
+  ctx.translate(x,y);
+  const glass = ctx.createLinearGradient(0,0,width,height);
+  glass.addColorStop(0,'rgba(53,44,35,.72)');
+  glass.addColorStop(1,'rgba(36,31,27,.67)');
+  ctx.beginPath(); ctx.roundRect(1,1,width-2,height-2,26);
+  ctx.fillStyle = glass; ctx.fill();
+  ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,244,218,.27)'; ctx.stroke();
+
+  const inner = width - padding * 2;
+  const center = width / 2;
+  ctx.fillStyle = PAPER;
+  ctx.textBaseline = 'alphabetic';
+  paintLine(ctx,brand,center,82,inner);
+  paintLine(ctx,signature,center,118,inner);
   if (rows) {
-    const widths=columns.map(col=>Math.max(0,...col.map(metric=>metric.width)));
-    const stamp=week?storyWeekLabel(week):stampDate(day,true);
-    const heading=week?'Resumo da semana':'Resumo do dia';
-    ctx.font='500 34px '+FONT;
-    const titleWidth=ctx.measureText(heading).width;
-    ctx.font='400 21px '+FONT;
-    const notesWidth=Math.max(0,...notes.map(note=>ctx.measureText(note).width));
-    const w=Math.min(maxWidth,2*padding+Math.max(titleWidth,notesWidth,...full.map(m=>m.width),widths[0]+(widths[1]?gap+widths[1]:0)));
-    ctx.beginPath(); ctx.roundRect(MARGIN,top,w,height,29);
-    ctx.fillStyle='rgba(23,21,19,.67)'; ctx.fill();
-    ctx.lineWidth=1.4; ctx.strokeStyle='rgba(255,246,225,.20)'; ctx.stroke();
-    const x=MARGIN+padding;
-    ctx.fillStyle=PAPER; ctx.textBaseline='alphabetic';
-    ctx.font='500 34px '+FONT; ctx.fillText(heading,x,top+51);
-    ctx.font='400 25px '+FONT; ctx.fillText(stamp,x,top+85);
-    const inner=w-2*padding;
-    function paintMetric(m,left,row,available) {
-      ctx.save(); ctx.translate(left,top+145+49*row); ctx.scale(Math.min(1,available/m.width),1);
-      ctx.font='400 29px '+FONT; ctx.fillText(m.prefix,0,0);
-      ctx.font='700 29px '+FONT; ctx.fillText(m.value,m.prefixWidth,0);
-      ctx.font='400 29px '+FONT; ctx.fillText(m.caption,m.prefixWidth+m.valueWidth,0);
-      ctx.restore();
-    }
-    columns.forEach((metrics,col)=>{
-      const available=widths[1]?(inner-gap)*widths[col]/(widths[0]+widths[1]):inner;
-      metrics.forEach((m,row)=>paintMetric(m,col?x+inner-available:x,row,available));
+    ctx.textAlign = 'center';
+    ctx.font = '500 36px ' + FONT;
+    ctx.fillText(week ? 'Resumo da semana' : 'Resumo do dia',center,185,inner);
+    ctx.font = '400 28px ' + FONT;
+    ctx.fillText(week ? storyWeekLabel(week) : stampDate(day,true),center,222,inner);
+
+    const firstRow = 279;
+    const hasTwoColumns = columnWidths[1] > 0;
+    const spareWidth = Math.max(0, inner - gridWidth);
+    columns.forEach((column, index) => {
+      const available = hasTwoColumns ? columnWidths[index] + spareWidth / 2 : inner;
+      const middle = hasTwoColumns ? (index === 0 ? padding + available / 2 : width - padding - available / 2) : center;
+      column.forEach((line,row) => paintLine(ctx,line,middle,firstRow + rowHeight * row,available));
     });
-    full.forEach((m,i)=>paintMetric(m,x,compactRows+i,inner));
-    ctx.font='400 21px '+FONT;
-    notes.forEach((note,i)=>ctx.fillText(note,x,top+128+rows*49+i*29,w-2*padding));
+    full.forEach((line,row) => paintLine(ctx,line,center,firstRow + rowHeight * (compactRows + row),inner));
+    ctx.font = '400 23px ' + FONT;
+    notes.forEach((note,i) => ctx.fillText(note,center,firstRow + rowHeight * (rows - 1) + 38 + i * 32,inner));
   }
   ctx.restore();
+  return {x, y, width, height, minX:CARD_INSET, minY:CARD_INSET, maxX, maxY};
 }

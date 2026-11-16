@@ -9,10 +9,7 @@
   background: linear-gradient(115deg, #e5eede, #fffaf0 70%, #f9e6db);
 }
 .story-invite-cover {
-  display:flex;
-  align-items:flex-end;
-  padding:7px;
-  background:linear-gradient(transparent 48%, #1c1919a8), url('/assets/story-fundo-exemplo.jpg') center/cover;
+  object-fit: cover;
   flex: none;
   width: clamp(58px, 13vw, 78px);
   height: auto;
@@ -22,7 +19,6 @@
   box-shadow: 3px 4px 0 #dcb29d;
   transform: rotate(-4deg);
 }
-.story-invite-cover img { width:62%; height:auto; }
 .workout-story-invite h3 { margin: 0; font-size: 1.2rem; letter-spacing: -.04em; }
 .workout-story-invite p { margin: 5px 0 12px; color: #516657; font-size: .82rem; line-height: 1.5; }
 .workout-story-invite .app-btn { min-height: 40px; gap: 9px; }
@@ -81,12 +77,16 @@
   overflow: auto;
   overscroll-behavior: contain;
 }
-.story-frame {
+.story-preview {
   grid-area: preview;
-  position: relative;
   width: 100%;
   max-width: 285px;
+  min-width: 0;
   justify-self: center;
+}
+.story-frame {
+  position: relative;
+  width: 100%;
   aspect-ratio: 9 / 16;
   margin: 0;
   border-radius: 16px;
@@ -95,8 +95,29 @@
   box-shadow: 0 4px 17px #233a2920;
 }
 .story-frame img, .story-frame canvas { display: block; width: 100%; height: 100%; object-fit: contain; }
+.story-frame [data-story-drag] {
+  position: absolute;
+  border-radius: 8px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.story-frame [data-story-drag].is-dragging { cursor: grabbing; }
+.story-frame [data-story-drag]:focus-visible {
+  outline: 2px solid #fffaf0;
+  outline-offset: -3px;
+  box-shadow: inset 0 0 0 4px #315743;
+}
+.story-move-help { display: grid; text-align: center; }
+.story-move-help span { grid-area: 1 / 1; }
+#story-key-help, .story-preview:has([data-story-drag]:focus-visible) #story-drag-hint { visibility: hidden; }
+.story-preview:has([data-story-drag]:focus-visible) #story-key-help { visibility: visible; }
+.story-sr-only { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 .story-frame figcaption {
   position: absolute;
+  pointer-events: none;
   left: 12px;
   bottom: 12px;
   border-radius: 18px;
@@ -161,16 +182,20 @@
 .workout-story-dialog .app-btn--primary:hover, .workout-story-dialog .app-btn--primary:active { background: #345b4d; color: #fffdf8; }
 .story-export-actions a[aria-disabled=true] { opacity: .48; pointer-events: none; }
 .story-text-button { padding: 6px 0; border: 0; background: transparent; font: inherit; font-size: .78rem; text-decoration: underline; color: #315d47; cursor: pointer; }
+@media (max-width: 590px), (max-height: 900px) {
+  .workout-story-dialog[open] { display: block; overflow-y: auto; overscroll-behavior: contain; }
+  .story-header { position: sticky; top: 0; z-index: 1; }
+  .story-workspace { overflow: visible; }
+  .story-footer { max-height: none; overflow: visible; }
+  .story-preview { max-width: min(285px, calc(56.25dvh - 80px)); }
+}
 @media (max-width: 590px) {
   .story-workspace { display: flex; flex-direction: column; align-items: stretch; gap: 14px; padding: 16px; }
   .story-workspace > * { flex: none; }
   .story-source { order: -1; }
   .story-header, .story-footer { padding: 12px 16px; }
-  .story-frame { align-self: center; width: min(205px, 70%); }
+  .story-preview { align-self: center; }
   .story-wall-prompt legend { float: none; margin: 0 0 6px; }
   .story-source-actions .app-btn, .story-export-actions .app-btn { flex: 1; }
-}
-@media (max-height: 530px) and (min-width: 591px) {
-  .story-frame { max-width: 170px; }
 }
 @media print { .workout-story-dialog, .workout-story-invite, .weekly-story-button { display: none !important; } }

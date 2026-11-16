@@ -402,6 +402,59 @@ async (existingPage) => {
       await wall.locator('textarea').fill('Meu treino <3');
       await wall.getByLabel('Não',{exact:true}).check();
       assert(!await wall.locator('textarea').isVisible(),'Declining must collapse the caption');
+      await page.setViewportSize({width:1440,height:1000});
+      const drag=dialog.locator('[data-story-drag]');
+      const preview=dialog.locator('canvas');
+      const positionInPreview=()=>drag.evaluate(el=>{
+        const card=el.getBoundingClientRect(),photo=el.closest('figure').querySelector('canvas').getBoundingClientRect();
+        return {x:card.x-photo.x,y:card.y-photo.y,width:card.width,height:card.height};
+      });
+      const thumbnail=()=>preview.evaluate(canvas=>{
+        const thumb=document.createElement('canvas');
+        thumb.width=54;thumb.height=96;
+        thumb.getContext('2d').drawImage(canvas,0,0,54,96);
+        return thumb.toDataURL();
+      });
+      await drag.scrollIntoViewIfNeeded();
+      const originalArt=await thumbnail();
+      const art=await preview.boundingBox(),grip=await drag.boundingBox(),initial=await positionInPreview();
+      await page.mouse.move(grip.x+grip.width/2,grip.y+grip.height/2);
+      await page.mouse.down();
+      await page.mouse.move(art.x+art.width-1,art.y+1,{steps:5});
+      assert(!await ready.count(),'Dragging must invalidate the old download');
+      await page.mouse.up();
+      await ready.waitFor();
+      const moved=await positionInPreview();
+      assert(moved.y+20<initial.y && moved.x>initial.x+5 && moved.x+moved.width<=art.width+1 && moved.y>=-1,'Card moves up/right and stays inside the photo');
+      assert(await thumbnail()!==originalArt,'Moving the card must redraw the photo');
+      await drag.press('ArrowDown');
+      await ready.waitFor();
+      const nudged=await positionInPreview();
+      assert(nudged.y>moved.y+1,'Arrow keys move the focused card');
+      await badge('water').check();
+      await ready.waitFor();
+      await badge('water').uncheck();
+      await ready.waitFor();
+      const edited=await positionInPreview();
+      assert(Math.abs(edited.x-nudged.x)<2 && Math.abs(edited.y-nudged.y)<2,'Editing the metrics must retain the chosen position');
+      const jpegError=await ready.evaluate(async anchor=>{
+        const exported=new Image();
+        exported.src=anchor.href;await exported.decode();
+        const sample=document.createElement('canvas');
+        sample.width=exported.naturalWidth;sample.height=exported.naturalHeight;
+        const ctx=sample.getContext('2d');
+        ctx.drawImage(exported,0,0);
+        const jpeg=ctx.getImageData(0,0,sample.width,sample.height).data;
+        const drawn=anchor.closest('dialog').querySelector('canvas').getContext('2d').getImageData(0,0,sample.width,sample.height).data;
+        let error=0,samples=0;
+        for(let i=0;i<jpeg.length;i+=4*23){
+          for(let c=0;c<3;c++)error+=Math.abs(drawn[i+c]-jpeg[i+c]);
+          samples+=3;
+        }
+        return error/samples;
+      });
+      assert(jpegError<2,'JPEG and preview differ after moving the card: '+jpegError);
+      await page.setViewportSize({width:390,height:844});
       const downloadEvent = page.waitForEvent('download');
       await ready.click();
       const filename = (await downloadEvent).suggestedFilename();

@@ -3,10 +3,9 @@ import {getLocalDateString, getSupabase, showToast} from '../js/app-core.js';
 import {createCommunityPhotoDraft} from '../js/community.js?v=20261112-fotos';
 import {weeklyRange} from '../js/weekly-summary.mjs?v=20261114-story-weight';
 import {loadPatientWeek, loadStoryWeight} from './weekly-data.js?v=20261114-story-weight';
-import {drawWorkoutStory, loadStoryImage, prepareStoryPhoto, storyBadges, storyWeekLabel, weeklyStoryBadges} from './workout-story-art.mjs?v=20261114-story-weight';
+import {DEFAULT_STORY_POSITION, drawWorkoutStory, loadStoryImage, prepareStoryPhoto, storyBadges, storyWeekLabel, weeklyStoryBadges} from './workout-story-art.mjs?v=20261116-story-drag';
 
 const exampleUrl = '/assets/story-fundo-exemplo.jpg';
-const logoUrl = '/assets/story-club.png';
 let openEditor;
 
 async function readDay(patientId, day, signal) {
@@ -38,10 +37,19 @@ const editorMarkup = `
     <button type="button" class="story-close" data-close aria-label="Fechar editor do Story">×</button>
   </header>
   <div class="story-workspace">
-    <figure class="story-frame">
-      <canvas data-preview hidden width="1080" height="1920" role="img" aria-label="Prévia do seu Story"></canvas>
-      <figcaption data-example-label>Foto de exemplo</figcaption>
-    </figure>
+    <div class="story-preview">
+      <figure class="story-frame">
+        <canvas data-preview hidden width="1080" height="1920" role="img" aria-label="Prévia do seu Story"></canvas>
+        <div data-story-drag hidden tabindex="0" role="group" aria-label="Posição do cartão"
+          aria-describedby="story-drag-hint story-key-help" aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight Home"></div>
+        <figcaption data-example-label>Foto de exemplo</figcaption>
+      </figure>
+      <p class="story-hint story-move-help">
+        <span id="story-drag-hint">Arraste o cartão para posicioná-lo na foto.</span>
+        <span id="story-key-help">Mova com as setas. Home restaura a posição.</span>
+      </p>
+      <span class="story-sr-only" data-position-status role="status"></span>
+    </div>
     <div class="story-source">
       <fieldset class="story-period">
         <legend>Período do Story</legend>
@@ -119,6 +127,7 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
   dialog.innerHTML = editorMarkup;
   const find = selector => dialog.querySelector(selector);
   const canvas = find('[data-preview]');
+  const dragTarget = find('[data-story-drag]');
   const download = find('[data-download]');
   const share = find('[data-share]');
   const instagramHint = find('#story-instagram-hint');
@@ -134,7 +143,8 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
   const choices = {day: new Map(), week: new Map(), previous: new Map()};
   let period = initialPeriod;
   let week, badges = [];
-  let photo, logo, examplePhoto, file, url;
+  let photo, examplePhoto, file, url;
+  let overlayPosition = DEFAULT_STORY_POSITION, cardBounds, drag;
   let loadingPhoto = false;
   let statsRequest;
   let renderVersion = 0, photoVersion = 0, frame, encodeTimer;
@@ -147,7 +157,7 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
 
   function showWallChoices() {
     const optedIn = wall.elements.wall.value === 'yes';
-    wall.hidden = !file;
+    wall.hidden = !photo;
     wallPrompt.hidden = posted;
     wallPrompt.disabled = posting;
     wallCompose.hidden = !optedIn || posted;
@@ -209,7 +219,6 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
     download.setAttribute('aria-disabled', 'true');
     download.removeAttribute('href');
     share.disabled = true;
-    instagramHint.hidden = true;
     if (url) URL.revokeObjectURL(url);
     url = null;
     showWallChoices();
@@ -245,38 +254,115 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
     }, 'image/jpeg', .92);
   }
 
-  function redraw() {
+  function redraw({moving = false} = {}) {
     const version = ++renderVersion;
     cancelAnimationFrame(frame);
     clearTimeout(encodeTimer);
     clearExport();
-    if (wallDraft) resetWall();
+    if (posted) resetWall();
+    else if (wallDraft) {
+      wallDraft = null;
+      wallStatus.textContent = '';
+      publish.textContent = 'Publicar no mural';
+    }
     find('[data-retry-art]').hidden = true;
-    if (loadingPhoto || !dialog.open) return;
+    if (loadingPhoto || !dialog.open) {
+      dragTarget.hidden = true;
+      return;
+    }
     const fit = find('[name=fit]:checked').value;
     const ratio = photo ? photo.width / photo.height : 9 / 16;
     find('[data-position-control]').hidden = fit === 'contain' || Math.abs(ratio - 9 / 16) < .005;
     find('[data-position-label]').textContent = ratio > 9 / 16 ? 'Posição horizontal' : 'Posição vertical';
-    exportStatus.textContent = photo?'Preparando imagem…':'';
+    const progress = photo && !drag && !moving ? 'Preparando imagem…' : '';
+    if (exportStatus.textContent !== progress) exportStatus.textContent = progress;
     frame = requestAnimationFrame(async () => {
       try {
-        logo ??= loadStoryImage(logoUrl).catch(error => { logo = null; throw error; });
         if (!photo) examplePhoto ??= loadStoryImage(exampleUrl).catch(error => { examplePhoto=null; throw error; });
-        const [wordmark,background] = await Promise.all([logo,photo||examplePhoto]);
+        const background = photo || await examplePhoto;
         if (!dialog.open || renderVersion !== version) return;
         const included = badges.filter(badge => choices[period].get(badge.key) ?? badge.selected);
-        drawWorkoutStory(canvas, {photo:background, logo: wordmark, day, week, badges: included, fit, position: Number(position.value) / 100});
+        cardBounds = drawWorkoutStory(canvas, {photo:background, day, week, badges: included, fit, position: Number(position.value) / 100, overlayPosition});
+        dragTarget.style.left = 100 * cardBounds.x / canvas.width + '%';
+        dragTarget.style.top = 100 * cardBounds.y / canvas.height + '%';
+        dragTarget.style.width = 100 * cardBounds.width / canvas.width + '%';
+        dragTarget.style.height = 100 * cardBounds.height / canvas.height + '%';
+        dragTarget.hidden = false;
         const periodLabel = week ? 'Minha semana · ' + storyWeekLabel(week) : day;
         canvas.setAttribute('aria-label', ['Prévia do Story Faz o Básico Club', periodLabel, ...included.map(badge => [badge.label, badge.note].filter(Boolean).join(' · '))].join(' · '));
         canvas.hidden = false;
         find('[data-example-label]').hidden = Boolean(photo);
         // Coalesce fast changes to the crop slider before encoding the exact preview.
-        if (photo && !statsRequest) encodeTimer = setTimeout(() => prepareExport(version), 100);
+        if (photo && !statsRequest && !drag?.moved) encodeTimer = setTimeout(() => prepareExport(version), 100);
       } catch {
-        if (dialog.open && renderVersion === version) artError();
+        if (dialog.open && renderVersion === version) {
+          dragTarget.hidden = true;
+          artError();
+        }
       }
     });
   }
+
+  const within = value => Math.max(0, Math.min(1, value));
+  function setOverlayPosition(x, y) {
+    x = within(x); y = within(y);
+    if (x === overlayPosition.x && y === overlayPosition.y) return;
+    overlayPosition = {x,y};
+    redraw({moving:true});
+  }
+
+  dragTarget.onpointerdown = event => {
+    if (posting || drag || !cardBounds || !event.isPrimary || event.button !== 0) return;
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    drag = {
+      id:event.pointerId, startX:event.clientX, startY:event.clientY, moved:false,
+      grabX:(event.clientX - rect.left) * canvas.width / rect.width - cardBounds.x,
+      grabY:(event.clientY - rect.top) * canvas.height / rect.height - cardBounds.y
+    };
+    dragTarget.setPointerCapture(event.pointerId);
+    dragTarget.classList.add('is-dragging');
+  };
+  function moveCard(event) {
+    if (posting || drag?.id !== event.pointerId) return;
+    if (!drag.moved && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 2) return;
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    drag.moved = true;
+    const x = (event.clientX - rect.left) * canvas.width / rect.width - drag.grabX;
+    const y = (event.clientY - rect.top) * canvas.height / rect.height - drag.grabY;
+    const {minX,minY,maxX,maxY} = cardBounds;
+    setOverlayPosition((x - minX) / (maxX - minX || 1), (y - minY) / (maxY - minY || 1));
+  }
+  function finishDrag(event) {
+    if (drag?.id !== event.pointerId) return;
+    if (event.type === 'pointerup') moveCard(event);
+    const {moved,id} = drag;
+    drag = null;
+    dragTarget.classList.remove('is-dragging');
+    if (dragTarget.hasPointerCapture(id)) dragTarget.releasePointerCapture(id);
+    if (moved) redraw({moving:true});
+  }
+  dragTarget.onpointermove = moveCard;
+  dragTarget.onpointerup = finishDrag;
+  dragTarget.onpointercancel = finishDrag;
+  dragTarget.onlostpointercapture = finishDrag;
+  dragTarget.onkeydown = event => {
+    if (posting || drag) return;
+    const step = event.shiftKey ? .08 : .015;
+    let {x,y} = overlayPosition;
+    switch (event.key) {
+      case 'ArrowLeft': x -= step; break;
+      case 'ArrowRight': x += step; break;
+      case 'ArrowUp': y -= step; break;
+      case 'ArrowDown': y += step; break;
+      case 'Home': ({x,y} = DEFAULT_STORY_POSITION); break;
+      default: return;
+    }
+    event.preventDefault();
+    setOverlayPosition(x,y);
+    find('[data-position-status]').textContent = 'Horizontal ' + Math.round(overlayPosition.x * 100) + '%, vertical ' + Math.round(overlayPosition.y * 100) + '%.';
+  };
 
   function renderChoices() {
     const labels = badges.map(badge => {

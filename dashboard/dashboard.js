@@ -18,7 +18,7 @@ import {
 import { initGuidesPanel } from './guides-panel.js?v=20261105-materials';
 import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js?v=20261113-stars';
 import { mountPatientStars } from './patient-stars.js?v=20261113-stars';
-import { initPatientExtras, notifyPatientSaved } from './patient-extras.js?v=20261114-story-weight';
+import { initPatientExtras, notifyPatientSaved } from './patient-extras.js?v=20261116-story-drag';
 import { hydrationMeter } from './patient-model.mjs?v=20261030-water';
 
 import {checkTrackingAccess} from './access-state.mjs';
