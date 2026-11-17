@@ -23,6 +23,7 @@
 .basiquito-tools { display:flex; gap:7px; padding:7px 12px; border-top:1px solid #e0dfce; }
 .basiquito-tools button,.basiquito-feed button { background:#fffcf5; border:1px solid #aeBAa6; padding:7px 12px; border-radius:16px; font-size:.79rem; }
 .basiquito-feed button { background:#e4efdd; font-weight:650; }
+.basiquito-choice-hint { width:100%; padding:3px 2px 0; color:#516456; font-size:.76rem; line-height:1.4; }
 .basiquito-panel form { display:flex; align-items:center; gap:7px; padding:4px 12px 12px; }
 .basiquito-panel textarea { flex:1; min-width:0; resize:none; height:43px; border:1px solid #a4b19c; border-radius:13px; font:inherit; padding:9px 12px; }
 .basiquito-panel form button { background:#305c43; color:white; border:0; border-radius:14px; font-size:1.5rem; width:43px; height:43px; }

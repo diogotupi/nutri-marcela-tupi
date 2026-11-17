@@ -59,7 +59,7 @@ export function createHandler({createClient,getEnv,fetchImpl=fetch,converse=runF
       if (post&&(body?.action!=='basiquito'||typeof body.message!=='string'||!body.message.trim()||
         body.message.length>500||(body.image!=null&&!validLabelImage(body.image)))) return json({error:'Confira a mensagem ou a foto e tente de novo.'},400);
       if (body?.conversation_id&&!Object.hasOwn(body,'context')) return json({error:'Atualize a página para conversar com a nova versão do Basiquito.'},409);
-      const key=getEnv('OPENAI_API_KEY')?.trim(),model=getEnv('OPENAI_MODEL')?.trim()||DEFAULT_MODEL;
+      const key=getEnv('OPENAI_API_KEY')?.trim(),model=DEFAULT_MODEL;
       const secret=getEnv('BASIQUITO_CONTEXT_SECRET')||getEnv('SUPABASE_SERVICE_ROLE_KEY');
       if (!key||!secret) return json({error:'O Basiquito está indisponível no momento.'},503);
       const {data:patient,error}=await caller.rpc('basiquito_access',{p_charge:post});

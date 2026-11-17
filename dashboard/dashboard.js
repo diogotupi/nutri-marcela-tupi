@@ -1,6 +1,6 @@
 import {mountHabits} from './habits.js?v=20261114-story-weight';
 import {mountCommunity} from '../js/community.js?v=20261112-fotos';
-import {mountBasiquito} from './basiquito.js?v=20261109-care';
+import {mountBasiquito} from './basiquito.js?v=20261117-preparo-livre';
 import {mountPatientChat} from '../js/patient-chat.js?v=20261030-team';
 import {
   escapeHtml,

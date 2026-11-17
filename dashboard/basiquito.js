@@ -3,7 +3,7 @@ import {preparePhotoUpload} from '../js/media-upload.js';
 
 const avatar='<span class="basiquito-avatar" aria-hidden="true"><img class="cup-body" src="/assets/basiquito.webp" alt=""><img class="cup-steam" src="/assets/basiquito.webp" alt=""><img class="cup-thinking" src="/assets/basiquito-pensando.webp" alt=""></span>';
 const greeting='Fala pra mim! O que você quer substituir hoje?';
-const hints={source_preparation:'Como foi preparado?',source_quantity:'Ex.: 80 g',target_food:'O que você quer comer no lugar?',target_preparation:'Como você vai preparar?'};
+const hints={source_preparation:'Escreva como foi preparado…',source_quantity:'Ex.: 80 g',target_food:'O que você quer comer no lugar?',target_preparation:'Escreva como pretende preparar…'};
 
 export function mountBasiquito(openNutri) {
   const root=document.createElement('div');
@@ -65,6 +65,12 @@ export function mountBasiquito(openNutri) {
       for (const choice of answer.choices||[]) {
         const b=action(line,choice,()=>send(choice));
         b.dataset.answer='';
+      }
+      if (answer.choices?.length && ['source_preparation','target_preparation'].includes(answer.state?.awaiting)) {
+        const hint=document.createElement('small');
+        hint.className='basiquito-choice-hint';
+        hint.textContent='Ou escreva o preparo do seu jeito no campo abaixo.';
+        line.append(hint); scroll();
       }
     }
   }
