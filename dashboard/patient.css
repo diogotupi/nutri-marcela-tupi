@@ -116,6 +116,17 @@
 
 .check-row__toggle{position:relative;display:flex;align-items:flex-start;justify-content:center;min-width:34px;min-height:34px;margin:-5px 0 -5px -5px;padding:5px;box-sizing:border-box;cursor:pointer}.food-saved-open{display:flex;align-items:flex-start;flex-direction:column;gap:4px;text-align:left;padding:0;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer}.food-saved-open:hover{text-decoration:underline}.food-saved-open small{color:#6a8066;font-size:.66rem;font-weight:500;text-decoration:none}.substitution-saved-list{display:grid;gap:12px;margin:14px 0 20px}.substitution-saved-list article{border:1px solid #bdd0b4;border-radius:15px;padding:14px;background:#f5f9ef}.substitution-saved-list [data-saved-target]{display:grid;gap:8px;padding:0;width:100%;text-align:left;background:transparent;border:0;font:inherit;color:#284e3f}.substitution-saved-list [data-saved-target] span{font-size:.85rem}.substitution-saved-list [data-forget-target]{font-size:.68rem;padding:8px 0 0}
 
+.record-date-panel{padding:1rem 1.25rem;margin-bottom:1rem;scroll-margin-top:1rem}
+.record-date-panel>label{display:block;font-weight:700;margin-bottom:.65rem}
+.record-date-controls{display:grid;grid-template-columns:46px minmax(0,11rem) 46px;align-items:center;gap:.6rem}
+.record-date-controls input{box-sizing:border-box;min-width:0;width:100%;min-height:48px;padding:.6rem .7rem;border:1px solid #849780;border-radius:12px;background:#fffdf8;color:#294c40;font:inherit;font-weight:600;text-align:center}
+.record-date-controls button{min-width:46px;min-height:48px;padding:.4rem .8rem;border:1px solid #849780;border-radius:12px;background:#e8efe4;color:#294c40;font:inherit;font-size:1.5rem;cursor:pointer}
+.record-date-controls [data-record-today]{grid-column:1/-1;justify-self:start;font-size:.8rem;font-weight:700;background:#cce0d5}
+.record-date-controls :disabled{opacity:.45;cursor:default}
+.record-date-controls :focus-visible{outline:3px solid #ad7b39;outline-offset:3px}
+.record-date-panel p{margin:.7rem 0 0;font-size:.8rem;line-height:1.5;color:#53695e}
+.record-date-panel.is-past-day{background:#f8eee4;border-color:#b8866c}
+@media(max-width:380px){.record-date-panel{padding:1rem}.record-date-controls{gap:.4rem}}
 .tracking-banner { max-width: 47rem; margin: 1.5rem auto; padding: clamp(1.3rem,4vw,2.5rem); }
 .tracking-banner p { margin-block: .65rem 1.2rem; }
 .tracking-banner[hidden], .dashboard-tab[hidden] { display: none; }

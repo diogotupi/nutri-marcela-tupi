@@ -1,12 +1,13 @@
 import {readHabits,groupHabits,saveCardioMinutes} from '../js/daily-habits.mjs?v=20261114-checks';
-import {mountWeeklyOverview} from './weekly-overview.js?v=20261116-story-drag';
+import {mountWeeklyOverview} from './weekly-overview.js?v=20261118-historico';
 import { getSupabase, getLocalDateString, escapeHtml as esc } from '../js/app-core.js';
 import { addClinical, uploadAttachment, getSignedAttachment } from '../js/clinical.js';
 import { preparePhotoUpload } from '../js/media-upload.js?v=20261109-mural-jpg';
-import {mountWeightCheckin} from './weight-checkin.js?v=20261114-story-weight';
+import {mountWeightCheckin} from './weight-checkin.js?v=20261118-historico';
+import {getRecordDate,lockRecordDate,formatRecordDate} from './record-date.js?v=20261118-historico';
 import {mountWorkoutProgress} from './workout-progress.js?v=20261111-cardio';
 import {celebrateWorkout} from './workout-celebration.js?v=20261108-habits';
-import {openWorkoutStory} from './workout-story.js?v=20261116-story-drag';
+import {openWorkoutStory} from './workout-story.js?v=20261118-historico';
 import { intensityLabel } from './patient-model.mjs';
 
 const db=()=>getSupabase();
@@ -32,7 +33,7 @@ export async function initPatientExtras(profile) {
   mountWeightCheckin(document.getElementById('patient-weight'), profile.id);
   mountWorkoutProgress(document.getElementById('patient-workout-progress'),profile.id);
   const training=document.getElementById('patient-training');
-  training.innerHTML=`<div class="training-heading"><div><p class="patient-eyebrow">MOVIMENTO DO SEU JEITO</p><h2>Como foi o treino?</h2><p>Registre sua experiência de hoje, ${new Date().toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit'})}.</p></div>${bearSvg()}</div><form id="training-form" class="app-form"><label>Quer registrar mais detalhes? Conte o que você fez<textarea name="description" rows="2" placeholder="Ex.: caminhada no parque, treino de pernas…" required minlength="3" maxlength="4000"></textarea></label><div class="training-scale"><div>${bearSvg()}<span>1 · FOFO</span></div><label>Intensidade percebida<output id="intensity-label" for="training-intensity">5 · Moderado</output><input id="training-intensity" name="intensity" type="range" min="1" max="10" step="1" value="5" aria-describedby="training-scale-hint"></label><div>${bearSvg(true)}<span>10 · Hiper pesado</span></div></div><p id="training-scale-hint">É como você sentiu o treino. Mais intenso não vale mais conquistas.</p><button class="app-btn app-btn--primary">Registrar treino de hoje</button><p role="status"></p></form>`;
+  training.innerHTML=`<div class="training-heading"><div><p class="patient-eyebrow">MOVIMENTO DO SEU JEITO</p><h2>Como foi o treino?</h2><p data-training-date></p></div>${bearSvg()}</div><form id="training-form" class="app-form"><label>Quer registrar mais detalhes? Conte o que você fez<textarea name="description" rows="2" placeholder="Ex.: caminhada no parque, treino de pernas…" required minlength="3" maxlength="4000"></textarea></label><div class="training-scale"><div>${bearSvg()}<span>1 · FOFO</span></div><label>Intensidade percebida<output id="intensity-label" for="training-intensity">5 · Moderado</output><input id="training-intensity" name="intensity" type="range" min="1" max="10" step="1" value="5" aria-describedby="training-scale-hint"></label><div>${bearSvg(true)}<span>10 · Hiper pesado</span></div></div><p id="training-scale-hint">É como você sentiu o treino. Mais intenso não vale mais conquistas.</p><button class="app-btn app-btn--primary">Registrar treino de hoje</button><p role="status"></p></form>`;
   const trainingForm=training.querySelector('form');
   const submit=trainingForm.querySelector('button'), status=trainingForm.querySelector('[role=status]');
   trainingForm.insertAdjacentHTML('afterbegin', `
@@ -40,33 +41,38 @@ export async function initPatientExtras(profile) {
       <svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
         <circle cx="12" cy="14" r="8"/><path d="M10 2h4m-2 0v4m6 1 2-2m-8 9 3-3"/>
       </svg>
-      <span class="cardio-duration-label"><strong>Minutos de aeróbico</strong><small>Hoje · opcional</small></span>
+      <span class="cardio-duration-label"><strong>Minutos de aeróbico</strong><small data-cardio-date></small></span>
       <span class="cardio-duration-value">
         <input id="cardio-minutes" name="cardio_minutes" type="number" inputmode="numeric" step="1" min="1" max="1440" placeholder="—">
         <span aria-hidden="true">min</span>
       </span>
     </label>`);
-  const minutes=trainingForm.elements.cardio_minutes, trainingDay=getLocalDateString();
-  let durationEdited=false, durationRequest=0, savingWorkout=false;
+  const minutes=trainingForm.elements.cardio_minutes;
+  const drafts=new Map();
+  let trainingDay=getRecordDate(), durationEdited=false, durationRequest=0, savingWorkout=false;
+  const dayText=()=>trainingDay===getLocalDateString()?'hoje':formatRecordDate(trainingDay);
   function updateSubmit() {
     const onlyMinutes=durationEdited&&!trainingForm.description.value.trim();
     trainingForm.description.required=!onlyMinutes;
-    submit.textContent=onlyMinutes?'Salvar minutos de aeróbico':'Registrar treino de hoje';
+    submit.textContent=onlyMinutes?'Salvar minutos de aeróbico':'Registrar treino de '+dayText();
+    training.querySelector('[data-training-date]').textContent='Registre sua experiência de '+dayText()+'.';
+    training.querySelector('[data-cardio-date]').textContent=(trainingDay===getLocalDateString()?'Hoje':formatRecordDate(trainingDay))+' · opcional';
+    training.setAttribute('aria-label','Seu treino de '+dayText());
   }
   async function loadDuration() {
-    const request=++durationRequest;
-    if (getLocalDateString()!==trainingDay) { location.reload(); return; }
+    const request=++durationRequest, selectedDay=trainingDay;
     try {
-      const day=groupHabits(await readHabits(db(),profile.id,trainingDay,trainingDay)).get(trainingDay);
-      if (request===durationRequest&&!durationEdited&&!savingWorkout) minutes.value=day?.cardioMinutes??'';
+      const day=groupHabits(await readHabits(db(),profile.id,selectedDay,selectedDay)).get(selectedDay);
+      if (request===durationRequest&&selectedDay===trainingDay&&!durationEdited&&!savingWorkout) minutes.value=day?.cardioMinutes??'';
     } catch {
-      if (request===durationRequest&&!durationEdited) status.textContent='Não consegui consultar os minutos de aeróbico de hoje.';
+      if (request===durationRequest&&selectedDay===trainingDay&&!durationEdited) status.textContent='Não consegui consultar os minutos de aeróbico de '+dayText()+'.';
     }
   }
   minutes.oninput=()=>{durationEdited=true;updateSubmit();};
   trainingForm.description.addEventListener('input',updateSubmit);
-  addEventListener('patient:record-saved',e=>{if (e.detail?.habit==='cardio') loadDuration();});
+  addEventListener('patient:record-saved',e=>{if (e.detail?.habit==='cardio'&&(!e.detail.date||e.detail.date===trainingDay)) loadDuration();});
   addEventListener('focus',loadDuration);
+  updateSubmit();
   loadDuration();
   const celebration=document.createElement('section');
   celebration.className='workout-celebration';
@@ -87,29 +93,31 @@ export async function initPatientExtras(profile) {
   trainingForm.addEventListener('submit',async event=>{
     event.preventDefault();
     if (savingWorkout) return;
-    if (getLocalDateString()!==trainingDay) { location.reload(); return; }
+    const day=trainingDay, unlockDate=lockRecordDate();
     savingWorkout=true; ++durationRequest;
     for (const el of trainingForm.elements) el.disabled=true;
     status.textContent='Salvando…';
     try {
-      const day=getLocalDateString(),payload={description:trainingForm.description.value.trim(),intensity:Number(trainingForm.intensity.value),date:day,reported_by:'patient'};
+      const payload={description:trainingForm.description.value.trim(),intensity:Number(trainingForm.intensity.value),date:day,reported_by:'patient'};
       if (durationEdited) payload.cardio_minutes=minutes.value===''?null:minutes.valueAsNumber;
       if (!payload.description&&durationEdited) {
         await saveCardioMinutes(db(),profile.id,day,payload.cardio_minutes);
         durationEdited=false;
         status.textContent='Minutos de aeróbico atualizados.';
-        notifyPatientSaved({kind:'cardio_minutes'});
+        drafts.delete(day);
+        notifyPatientSaved({kind:'cardio_minutes',date:day});
         return;
       }
       if(payload.description.length<3)throw Error('Descreva seu treino com pelo menos 3 caracteres.');
       intensityLabel(payload.intensity);
-      await addClinical(profile.id,'exercise',payload,{id:operationFor(trainingForm,payload)});
+      await addClinical(profile.id,'exercise',payload,{id:operationFor(trainingForm,payload),occurredAt:day===getLocalDateString()?new Date().toISOString():day+'T12:00:00-03:00'});
       pendingClinical.delete(trainingForm);
       const savedMinutes=minutes.value;
       trainingForm.reset(); minutes.value=savedMinutes; durationEdited=false;
       document.getElementById('intensity-label').textContent='5 · Moderado';
-      status.textContent='Treino de hoje registrado.';
-      notifyPatientSaved({kind:'exercise'});
+      drafts.delete(day);
+      status.textContent='Treino de '+dayText()+' registrado.';
+      notifyPatientSaved({kind:'exercise',date:day});
       try {const flags=groupHabits(await readHabits(db(),profile.id,day,day)).get(day);celebrateWorkout(celebration,{...payload,...flags});}
       catch {celebration.hidden=true;status.textContent+=' Orgulho da nutri!';}
     }
@@ -117,7 +125,27 @@ export async function initPatientExtras(profile) {
       savingWorkout=false;
       for (const el of trainingForm.elements) el.disabled=false;
       updateSubmit();
+      unlockDate();
     }
+  });
+  addEventListener('patient:date-changed',()=>{
+    drafts.set(trainingDay,{description:trainingForm.description.value,intensity:trainingForm.intensity.value,minutes:minutes.value,durationEdited,operation:pendingClinical.get(trainingForm)});
+    trainingDay=getRecordDate();
+    ++durationRequest;
+    const draft=drafts.get(trainingDay);
+    trainingForm.reset();
+    trainingForm.description.value=draft?.description||'';
+    trainingForm.intensity.value=draft?.intensity||'5';
+    minutes.value=draft?.minutes||'';
+    durationEdited=draft?.durationEdited||false;
+    if(draft?.operation)pendingClinical.set(trainingForm,draft.operation);
+    else pendingClinical.delete(trainingForm);
+    const intensity=Number(trainingForm.intensity.value);
+    document.getElementById('intensity-label').textContent=intensity+' · '+intensityLabel(intensity);
+    status.textContent='';
+    celebration.hidden=true;
+    updateSubmit();
+    loadDuration();
   });
   const avatarRoot=document.getElementById('patient-avatar');
   avatarRoot.innerHTML=`<div class="profile-photo-preview" id="profile-photo-preview"><span>${esc((profile.full_name||'P').split(' ').map(v=>v[0]).slice(0,2).join(''))}</span></div><div><h2>Sua foto de perfil</h2><p>Uma foto para deixar seu espaço com a sua cara.</p><form id="profile-photo-form" class="app-form"><div class="profile-photo-control"><input name="photo" type="file" accept="image/jpeg,image/png,image/webp" hidden><button type="button" class="app-btn app-btn--ghost profile-photo-select"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6l2-3h4l2 3h4a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V7a1 1 0 011-1z"/><circle cx="12" cy="12.5" r="3.5"/></svg>Escolher foto</button><span class="profile-photo-filename" aria-live="polite">Nenhuma foto selecionada</span></div><label class="photo-consent"><input name="consent" type="checkbox" required> Autorizo guardar esta foto com acesso privado para mim e para a equipe da Marcela.</label><button type="submit" class="app-btn app-btn--primary">Salvar foto</button><p role="status"></p></form></div>`;

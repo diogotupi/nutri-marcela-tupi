@@ -25,7 +25,11 @@ async (existingPage) => {
   let loseUpload='after';
   let losePublishReceipt=true;
   let accessState='open',water=0,failNextWater=true,failClinical=false,noWaterGoal=false,failNextMessage=true;
-  const applied=new Map(),habitRows=new Map(),retiredRequests=[];
+  const applied=new Map(),habitRows=new Map(),historicalHabits=new Map(),historicalWater=new Map(),retiredRequests=[];
+  const habitStore=day=>day===today?habitRows:historicalHabits;
+  const habitKey=(day,habit)=>day===today?habit:day+'|'+habit;
+  const habitWrites=[],durationWrites=[],mealWrites=[];
+  let delayedDay=null,releaseHistoricalRead=null,delayedReadStarted=null;
   const earlierMeals=[1,2,3].map(n=>shift(today,-n)).filter(day=>day>=monday).map(habit_date=>({patient_id:pid,habit_date,habit:'free_meal',level:1,meal_description:'Relato anterior'}));
   let releaseFoodReply;
   const foodReplyGate=new Promise(resolve=>{releaseFoodReply=resolve;});
@@ -75,7 +79,7 @@ async (existingPage) => {
     if(table==='clinic_tracking_state')data=accessState;
     if(table==='patient_progress_context') {
       const shift=offset=>{const date=new Date(today+'T12:00:00Z');date.setUTCDate(date.getUTCDate()+offset);return date.toISOString().slice(0,10);};
-      const latest=clinical.find(row=>row.payload?.category==='weight_checkin');
+      const latest=clinical.filter(row=>row.payload?.category==='weight_checkin').sort((a,b)=>b.payload.date.localeCompare(a.payload.date))[0];
       data={starts_on:shift(-21),registered_on:shift(-30),last_weighed_on:latest?.payload.date||shift(-7),last_weight_kg:latest?.payload.weight_kg||70};
     }
 
@@ -110,7 +114,16 @@ async (existingPage) => {
       socialComments.push(data);photoPost.comments=socialComments.length;
     }
     if(table==='patient_goals') data=noWaterGoal?[]:[{id:'g1',patient_id:pid,water_ml:1800,valid_from:'2020-01-01'}];
-    if(table==='patient_water_logs') data=water?[{id:'water1',patient_id:pid,log_date:today,amount_ml:water,goal_ml:1800}]:[];
+    if(table==='patient_water_logs') {
+      data=[...(water?[{id:'water1',patient_id:pid,log_date:today,amount_ml:water,goal_ml:1800}]:[]),
+        ...Array.from(historicalWater,([log_date,amount_ml])=>({id:'water-'+log_date,patient_id:pid,log_date,amount_ml,goal_ml:1800}))];
+      const exactDay=url.searchParams.get('log_date');
+      if (exactDay==='eq.'+delayedDay) {
+        delayedDay=null;
+        delayedReadStarted?.();
+        await new Promise(resolve=>{releaseHistoricalRead=resolve;});
+      }
+    }
     if (table === 'patient_water_logs' && storyHistory && url.searchParams.get('select') === 'log_date,amount_ml') {
       assert(url.searchParams.get('patient_id') === 'eq.' + pid, 'Weekly hydration must belong to the patient');
       const bounds = url.searchParams.getAll('log_date');
@@ -120,6 +133,12 @@ async (existingPage) => {
       data.push({log_date:lastSunday,amount_ml:3750});
       data = data.filter(row => row.log_date >= from && row.log_date <= until);
     }
+    if (table==='patient_water_logs') {
+      for (const bound of url.searchParams.getAll('log_date')) {
+        const [operator,...value]=bound.split('.'),day=value.join('.');
+        data=data.filter(row=>operator==='eq'?row.log_date===day:operator==='gte'?row.log_date>=day:operator==='lte'?row.log_date<=day:true);
+      }
+    }
     if(table==='patient_daily_habits'){
       assert(url.searchParams.get('patient_id')==='eq.'+pid,'Habits must be scoped to the patient');
       if(method==='PATCH'){
@@ -127,16 +146,18 @@ async (existingPage) => {
         Object.assign(habitRows.get('cardio'),body);
       }
       const bounds=url.searchParams.getAll('habit_date'),from=bounds.find(s=>s.startsWith('gte.'))?.slice(4),to=bounds.find(s=>s.startsWith('lte.'))?.slice(4);
-      data=method==='PATCH'?{cardio_minutes:body.cardio_minutes}:[...earlierMeals,...habitRows.values()].filter(r=>(!from||r.habit_date>=from)&&(!to||r.habit_date<=to));
+      data=method==='PATCH'?{cardio_minutes:body.cardio_minutes}:[...earlierMeals,...habitRows.values(),...historicalHabits.values()].filter(r=>(!from||r.habit_date>=from)&&(!to||r.habit_date<=to));
     }
     if(table==='set_cardio_minutes'){
-      assert(body.p_patient===pid&&body.p_day===today,'Duration scoped to own day');
-      habitRows.set('cardio',{patient_id:pid,habit_date:today,habit:'cardio',level:1,cardio_minutes:body.p_minutes}); data=null;
+      assert(body.p_patient===pid&&body.p_day<=today,'Duration scoped to own day');
+      durationWrites.push(body);
+      habitStore(body.p_day).set(habitKey(body.p_day,'cardio'),{patient_id:pid,habit_date:body.p_day,habit:'cardio',level:1,cardio_minutes:body.p_minutes}); data=null;
     }
     if(table==='set_free_meal_note'){
-      assert(body.p_patient===pid&&body.p_day===today,'Only own free meal can be written');
-      if(body.p_description===null)habitRows.delete('free_meal');
-      else habitRows.set('free_meal',{patient_id:pid,habit_date:today,habit:'free_meal',level:1,meal_description:body.p_description});
+      assert(body.p_patient===pid&&body.p_day<=today,'Only own free meal can be written');
+      mealWrites.push(body);
+      if(body.p_description===null)habitStore(body.p_day).delete(habitKey(body.p_day,'free_meal'));
+      else habitStore(body.p_day).set(habitKey(body.p_day,'free_meal'),{patient_id:pid,habit_date:body.p_day,habit:'free_meal',level:1,meal_description:body.p_description});
       data=null;
     }
     if(table==='food-substitution-ai'){
@@ -148,26 +169,37 @@ async (existingPage) => {
       }
     }
     if(table==='set_daily_habit'){
-      assert(body.p_patient===pid&&body.p_day===today,'Habit write must use own profile and clinic date');
-      if(body.p_level)habitRows.set(body.p_habit,{patient_id:pid,habit_date:today,habit:body.p_habit,level:body.p_level});
-      else habitRows.delete(body.p_habit);data=null;
+      assert(body.p_patient===pid&&body.p_day<=today,'Habit write must use own profile and clinic date');
+      habitWrites.push(body);
+      if(body.p_level)habitStore(body.p_day).set(habitKey(body.p_day,body.p_habit),{patient_id:pid,habit_date:body.p_day,habit:body.p_habit,level:body.p_level});
+      else habitStore(body.p_day).delete(habitKey(body.p_day,body.p_habit));data=null;
     }
     if(/^(diets|diet_meals|diet_items|meal_reports|patient_meal_checks|patient_item_checks|patient_.*substitutions|.*meal-ai)$/.test(table))retiredRequests.push(table);
     if(table==='record_water') {
       operations.push(body);
-      if(!applied.has(body.p_operation)) {water=Math.max(0,water+body.p_delta);applied.set(body.p_operation,water);}
+      if(!applied.has(body.p_operation)) {
+        if(body.p_date===today)water=Math.max(0,water+body.p_delta);
+        else historicalWater.set(body.p_date,Math.max(0,(historicalWater.get(body.p_date)||0)+body.p_delta));
+        applied.set(body.p_operation,body.p_date===today?water:historicalWater.get(body.p_date));
+      }
       if(failNextWater){failNextWater=false;return route.abort('failed');}
-      data={amount_ml:water,goal_ml:1800};
+      data={amount_ml:body.p_date===today?water:historicalWater.get(body.p_date),goal_ml:1800};
     }
     if(table==='clinical_records') {
       if(method==='GET' && failClinical) return route.fulfill({status:503,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({message:'DEMONSTRATION clinical query unavailable'})});
       if(method==='POST') {
         if(body.id && clinical.some(row=>row.id===body.id)) return route.fulfill({status:409,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({code:'23505',message:'duplicate demo operation'})});
         clinical.unshift({...body,id:body.id || 'record-'+clinical.length,created_at:new Date().toISOString()});
-        if(body.kind==='exercise'&&Object.hasOwn(body.payload,'cardio_minutes'))habitRows.set('cardio',{patient_id:pid,habit_date:today,habit:'cardio',level:1,cardio_minutes:body.payload.cardio_minutes});
+        if(body.kind==='exercise'&&Object.hasOwn(body.payload,'cardio_minutes'))habitStore(body.payload.date).set(habitKey(body.payload.date,'cardio'),{patient_id:pid,habit_date:body.payload.date,habit:'cardio',level:1,cardio_minutes:body.payload.cardio_minutes});
       }
       data=method==='POST'?[clinical[0]]:clinical;
       if(url.searchParams.get('id')?.startsWith('eq.'))data=data.filter(row=>row.id===url.searchParams.get('id').slice(3));
+      if (method==='GET') {
+        for (const bound of url.searchParams.getAll('occurred_at')) {
+          const [operator,...value]=bound.split('.'),time=Date.parse(value.join('.'));
+          data=data.filter(row=>operator==='gte'?Date.parse(row.occurred_at)>=time:operator==='lt'?Date.parse(row.occurred_at)<time:operator==='lte'?Date.parse(row.occurred_at)<=time:true);
+        }
+      }
       const fields = url.searchParams.get('select');
       if (fields === 'kind,occurred_at,intensity:payload->>intensity,category:payload->>category') {
         assert(url.searchParams.get('patient_id') === 'eq.' + pid && url.searchParams.get('visibility') === 'eq.shared', 'Weekly activity must be shared with this patient');
@@ -280,7 +312,7 @@ async (existingPage) => {
     await page.getByRole('button',{name:'+250 ml',exact:true}).click();
     await page.locator('#water-status').filter({hasText:'Não foi possível confirmar'}).waitFor();
     await page.getByRole('button',{name:'+250 ml',exact:true}).click();
-    await page.locator('#water-status').filter({hasText:'Salvo no seu acompanhamento'}).waitFor();
+    await page.locator('#water-status').filter({hasText:'Água registrada'}).waitFor();
     assert(operations.length===2 && operations[0].p_operation===operations[1].p_operation,'Water retry must reuse operation ID');
     assert(water===250,'Water retry duplicated volume');
     await total('water',0.25);
@@ -531,7 +563,7 @@ async (existingPage) => {
       await overview.locator('[data-week="-1"]').click();
       await overview.getByRole('button',{name:'Criar Story da semana'}).click();
       await weekly.getByRole('checkbox',{name:'3,75 L de água'}).waitFor();
-      assert(await weekly.getByRole('radio',{name:'Semana passada'}).isChecked() && !await weekly.locator('[data-example]').isVisible(), 'Opening from the overview must use the selected week with real statistics');
+      assert(await weekly.locator('[name=period][value=week]').isChecked() && !await weekly.locator('[data-example]').isVisible(), 'Opening from the overview must use the selected week with real statistics');
       await weekly.screenshot({path:'.playwright-mcp/story-week-desktop.png'});
       await weekly.locator('[name=gallery]').setInputFiles({name:'semana.jpg',mimeType:'image/jpeg',buffer:Buffer.from(horizontalImage,'base64')});
       await weeklyDownload.waitFor();
@@ -677,6 +709,85 @@ async (existingPage) => {
     await page.reload();
     await page.locator('#h2o-goal').filter({hasText:'ainda não definiu'}).waitFor();
     assert(await page.locator('#h2o-fill').evaluate(e=>e.style.width)==='50%','No-goal meter must restore the persisted volume');
+    // Editing a prior day must update only that day's records and its actual week.
+    const historicalDay=shift(monday,-3),olderDay=shift(historicalDay,-9);
+    historicalWater.set(historicalDay,750);
+    historicalWater.set(olderDay,125);
+    historicalHabits.set(habitKey(historicalDay,'bowel'),{patient_id:pid,habit_date:historicalDay,habit:'bowel',level:1});
+    historicalHabits.set(habitKey(historicalDay,'free_meal'),{patient_id:pid,habit_date:historicalDay,habit:'free_meal',level:1,meal_description:'Relato daquele dia'});
+    const todayWaterBefore=water,todayHabitsBefore=JSON.stringify([...habitRows]);
+    const dateField=page.locator('#record-date');
+    assert(await dateField.getAttribute('max')===today,'Date selection cannot extend beyond today');
+    const chooseDate=async day=>{
+      await dateField.fill(day);
+      await dateField.dispatchEvent('change');
+      await page.locator('#patient-habits [data-habit=bowel]:enabled').waitFor();
+    };
+    await chooseDate(historicalDay);
+    await page.locator('#h2o-amount').filter({hasText:'750 ml'}).waitFor();
+    await waitFor(()=>document.querySelector('#cardio-minutes').value==='');
+    assert(await tile('bowel').getAttribute('aria-pressed')==='true'&&await tile('strength').getAttribute('aria-pressed')==='false','Past checks must load their own state');
+    assert(await page.getByLabel('O que você comeu?').inputValue()==='Relato daquele dia','Past free meal should be editable');
+    await tile('strength').click();
+    await tile('strength').filter({has:page.locator('.habit-tick')}).waitFor();
+    await total('strength',1);
+    assert(habitWrites.at(-1).p_day===historicalDay,'A historical check must not write to today');
+    await page.getByLabel('O que você comeu?').fill('Relato anterior corrigido');
+    await page.getByRole('button',{name:'Atualizar relato'}).click();
+    await page.locator('#meal-note [role=status]').filter({hasText:'salvo'}).waitFor();
+    assert(mealWrites.at(-1).p_day===historicalDay,'A past free-meal edit must retain its date');
+    await cardioInput.fill('42');
+    await page.getByRole('button',{name:'Salvar minutos de aeróbico'}).click();
+    await page.locator('#training-form [role=status]').filter({hasText:'Minutos de aeróbico atualizados'}).waitFor();
+    assert(durationWrites.at(-1).p_day===historicalDay,'Past cardio duration must retain its date');
+    await page.getByRole('button',{name:'+250 ml',exact:true}).click();
+    await page.locator('#h2o-amount').filter({hasText:'1000 ml'}).waitFor();
+    assert(operations.at(-1).p_date===historicalDay&&water===todayWaterBefore,'Past hydration must not change today');
+    await Promise.all([total('cardio',42),total('water',1),total('free-meal',1)]);
+    await page.locator('#training-form [name=description]').fill('Treino registrado depois');
+    await page.locator('#training-form [type=submit],#training-form > button').first().click();
+    await page.locator('#training-form [role=status]').filter({hasText:'registrado'}).waitFor();
+    const priorWorkout=clinical.find(row=>row.payload.description==='Treino registrado depois');
+    assert(priorWorkout?.payload.date===historicalDay&&priorWorkout.occurred_at.startsWith(historicalDay),'Historical workout must land in the correct reporting date');
+    await weight.locator('details').evaluate(el=>{el.open=true;});
+    await weight.getByRole('spinbutton').fill('72.1');
+    await weight.getByRole('button',{name:'Salvar peso'}).click();
+    await weight.getByRole('status').filter({hasText:'72,1 kg'}).waitFor();
+    const priorWeight=clinical.find(row=>row.payload.category==='weight_checkin'&&row.payload.date===historicalDay);
+    assert(priorWeight?.occurred_at.startsWith(historicalDay),'Past weight must use the measured date');
+    assert((await weight.locator('[data-last-weight]').textContent()).includes('71,3'),'Earlier weight must not replace the most recent measurement');
+    await chooseDate(olderDay);
+    await page.locator('#h2o-amount').filter({hasText:'125 ml'}).waitFor();
+    await week.getByRole('heading',{name:'Na semana selecionada, você…'}).waitFor();
+    assert(await tile('strength').getAttribute('aria-pressed')==='false'&&await page.getByLabel('O que você comeu?').inputValue()==='','A different past day must not inherit checks or meal text');
+    await chooseDate(historicalDay);
+    await page.locator('#h2o-amount').filter({hasText:'1000 ml'}).waitFor();
+    await waitFor(()=>document.querySelector('#cardio-minutes').value==='42');
+    assert(await page.getByLabel('O que você comeu?').inputValue()==='Relato anterior corrigido','Revisiting the date should restore its saved report');
+    await week.locator('[data-week-day="0"]').click();
+    assert(await dateField.inputValue()===shift(monday,-7),'A calendar day must select the editable date');
+    await page.locator('[data-record-today]').click();
+    await page.locator('#h2o-amount').filter({hasText:todayWaterBefore+' ml'}).waitFor();
+    assert(await dateField.inputValue()===today&&JSON.stringify([...habitRows])===todayHabitsBefore,'Returning to today must preserve its separate checks');
+    assert(!await weighIn.isVisible(),'A historical weight must not change the current weigh-in reminder');
+    await chooseDate(historicalDay);
+    await page.locator('#h2o-amount').filter({hasText:'1000 ml'}).waitFor();
+    delayedDay=olderDay;
+    const startedHistoricalRead=new Promise(resolve=>{delayedReadStarted=resolve;});
+    await dateField.fill(olderDay);
+    await dateField.dispatchEvent('change');
+    await startedHistoricalRead;
+    await dateField.fill(historicalDay);
+    await dateField.dispatchEvent('change');
+    await page.locator('#h2o-amount').filter({hasText:'1000 ml'}).waitFor();
+    const staleRead=page.waitForResponse(response=>response.url().includes('patient_water_logs')&&new URL(response.url()).searchParams.get('log_date')==='eq.'+olderDay);
+    releaseHistoricalRead();
+    await staleRead;
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    assert(await dateField.inputValue()===historicalDay&&await page.locator('#h2o-amount').innerText()==='1000 ml','A late response from another date must not replace current hydration');
+    await page.locator('[data-record-today]').click();
+    await page.locator('#h2o-amount').filter({hasText:todayWaterBefore+' ml'}).waitFor();
+
     for (const state of ['expired','blocked','unavailable']) {
       accessState=state;
       await page.reload();

@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../app/app.css">
-  <link rel="stylesheet" href="./patient.css?v=20261113-stars">
+  <link rel="stylesheet" href="./patient.css?v=20261118-historico">
   <link rel="stylesheet" href="/app/progress.css?v=20261114-story-weight">
   <link rel="stylesheet" href="./workout-story.css?v=20261116-story-drag">
   <link rel="stylesheet" href="./basiquito.css?v=20261117-preparo-livre">
@@ -55,6 +55,16 @@
             <p>Já fez o básico hoje?</p>
           </div>
         </div>
+        <section id="record-date-panel" class="app-card record-date-panel" aria-label="Data dos registros">
+          <label for="record-date">Dia dos registros</label>
+          <div class="record-date-controls">
+            <button type="button" data-previous-day aria-label="Dia anterior" disabled>‹</button>
+            <input type="date" id="record-date" aria-describedby="record-date-status" disabled>
+            <button type="button" data-next-day aria-label="Dia seguinte" disabled>›</button>
+            <button type="button" data-record-today hidden>Voltar para hoje</button>
+          </div>
+          <p id="record-date-status" role="status"></p>
+        </section>
         <details id="patient-stars" class="app-card patient-stars" hidden>
           <summary><span aria-hidden="true">★</span> Estrelinhas da nutri <small data-star-total></small></summary>
           <ul></ul>
@@ -174,6 +184,6 @@
     </main>
   </div>
 
-  <script type="module" src="./dashboard.js?v=20261117-preparo-livre"></script>
+  <script type="module" src="./dashboard.js?v=20261118-historico"></script>
 </body>
 </html>

@@ -1,5 +1,6 @@
 import {readHabits,groupHabits} from '../js/daily-habits.mjs?v=20261114-checks';
 import {getLocalDateString, getSupabase, showToast} from '../js/app-core.js';
+import {getRecordDate,formatRecordDate} from './record-date.js?v=20261118-historico';
 import {createCommunityPhotoDraft} from '../js/community.js?v=20261112-fotos';
 import {weeklyRange} from '../js/weekly-summary.mjs?v=20261114-story-weight';
 import {loadPatientWeek, loadStoryWeight} from './weekly-data.js?v=20261114-story-weight';
@@ -54,9 +55,9 @@ const editorMarkup = `
       <fieldset class="story-period">
         <legend>Período do Story</legend>
         <div class="story-choices">
-          <label><input type="radio" name="period" value="day">Hoje</label>
-          <label><input type="radio" name="period" value="week">Esta semana</label>
-          <label><input type="radio" name="period" value="previous">Semana passada</label>
+          <label><input type="radio" name="period" value="day"><span>Hoje</span></label>
+          <label><input type="radio" name="period" value="week"><span>Esta semana</span></label>
+          <label><input type="radio" name="period" value="previous"><span>Semana passada</span></label>
         </div>
       </fieldset>
       <h3>Sua foto</h3>
@@ -118,14 +119,20 @@ const editorMarkup = `
     </form>
   </footer>`;
 
-export function openWorkoutStory(patientId, initialPeriod = 'day') {
+export function openWorkoutStory(patientId, initialPeriod = 'day', day = getRecordDate()) {
   if (openEditor?.open) return;
-  const day = getLocalDateString();
+  const today = getLocalDateString();
+  const baseWeekOffset = Math.round((Date.parse(weeklyRange(day).start)-Date.parse(weeklyRange(today).start))/604800000);
   const dialog = document.createElement('dialog');
   dialog.className = 'workout-story-dialog';
   dialog.setAttribute('aria-labelledby', 'workout-story-title');
   dialog.innerHTML = editorMarkup;
   const find = selector => dialog.querySelector(selector);
+  if (day !== today) find('[name=period][value=day]').nextElementSibling.textContent = formatRecordDate(day);
+  if (baseWeekOffset < 0) {
+    find('[name=period][value=week]').nextElementSibling.textContent = 'Semana de '+formatRecordDate(weeklyRange(day).start);
+    find('[name=period][value=previous]').nextElementSibling.textContent = 'Semana anterior';
+  }
   const canvas = find('[data-preview]');
   const dragTarget = find('[data-story-drag]');
   const download = find('[data-download]');
@@ -386,8 +393,8 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
     const request = new AbortController();
     statsRequest = request;
     const timeout = setTimeout(() => request.abort(), 12000);
-    const offset = period === 'previous' ? -1 : 0;
-    week = period === 'day' ? null : weeklyRange(day, offset);
+    const offset = baseWeekOffset + (period === 'previous' ? -1 : 0);
+    week = period === 'day' ? null : weeklyRange(today, offset);
     badges = week ? [] : storyBadges({});
     renderChoices();
     find('#workout-story-title').textContent = week ? 'Story da semana' : 'Story do treino';
@@ -402,7 +409,7 @@ export function openWorkoutStory(patientId, initialPeriod = 'day') {
     try {
       if (week) {
         const [totals, weight] = await Promise.allSettled([
-          loadPatientWeek(patientId, day, offset, request.signal), loadStoryWeight(patientId, week.until, request.signal)
+          loadPatientWeek(patientId, today, offset, request.signal), loadStoryWeight(patientId, week.until, request.signal)
         ]);
         incomplete = totals.status === 'rejected' || weight.status === 'rejected';
         nextBadges = weeklyStoryBadges(totals.value, weight.value);
