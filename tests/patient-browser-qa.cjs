@@ -77,6 +77,12 @@ async (existingPage) => {
     }
     let body=req.postData()?JSON.parse(req.postData()):null, data=[];
     if(table==='clinic_tracking_state')data=accessState;
+    if(table==='challenge_overview')data={challenge:{today,start_date:'2026-11-23',end_date:'2026-12-13'},is_staff:false,participant:false,ranking:[],timeline:[],updated_at:new Date().toISOString()};
+    if(table==='challenge_workouts_day'){
+      const workouts=clinical.filter(row=>row.kind==='exercise'&&!row.archived_at&&row.payload.date===body.p_date);
+      const cardio=workouts.filter(row=>row.payload.workout_type==='cardio');
+      data={workouts,has_typed_cardio:cardio.length>0,cardio_minutes:cardio.length?cardio.reduce((total,row)=>total+row.payload.duration_minutes,0):habitStore(body.p_date).get(habitKey(body.p_date,'cardio'))?.cardio_minutes??null};
+    }
     if(table==='patient_progress_context') {
       const shift=offset=>{const date=new Date(today+'T12:00:00Z');date.setUTCDate(date.getUTCDate()+offset);return date.toISOString().slice(0,10);};
       const latest=clinical.filter(row=>row.payload?.category==='weight_checkin').sort((a,b)=>b.payload.date.localeCompare(a.payload.date))[0];

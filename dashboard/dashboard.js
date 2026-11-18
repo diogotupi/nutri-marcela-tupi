@@ -1,6 +1,7 @@
 import {getRecordDate,formatRecordDate,lockRecordDate,mountRecordDate} from './record-date.js?v=20261118-historico';
 import {mountHabits} from './habits.js?v=20261118-historico';
 import {mountCommunity} from '../js/community.js?v=20261112-fotos';
+import {mountChallenge,mountChallengeInvite} from '../app/challenge.mjs?v=20261118-desafio';
 import {mountBasiquito} from './basiquito.js?v=20261117-preparo-livre';
 import {mountPatientChat} from '../js/patient-chat.js?v=20261030-team';
 import {
@@ -17,7 +18,7 @@ import {
 import { initGuidesPanel } from './guides-panel.js?v=20261105-materials';
 import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js?v=20261113-stars';
 import { mountPatientStars } from './patient-stars.js?v=20261113-stars';
-import { initPatientExtras, notifyPatientSaved } from './patient-extras.js?v=20261118-historico';
+import { initPatientExtras, notifyPatientSaved } from './patient-extras.js?v=20261118-desafio';
 import { hydrationMeter } from './patient-model.mjs?v=20261030-water';
 
 import {checkTrackingAccess} from './access-state.mjs';
@@ -32,6 +33,7 @@ const h2oGoal = document.getElementById('h2o-goal');
 
 let tracking = { water: { amount_ml: 0 } };
 let profile = null;
+let disposePatientChallenge = null;
 const waterOperations = new Map();
 let waterRequest = 0, waterReady = false, waterSaving = false;
 function currentWaterOperations(date = getRecordDate()) {
@@ -50,6 +52,7 @@ const panels = {
   community: document.getElementById('panel-community'),
   account: document.getElementById('panel-account'),
   evolution: document.getElementById('panel-evolution'),
+  ranking: document.getElementById('panel-ranking'),
 };
 
 document.getElementById('logout-btn').addEventListener('click', async () => {
@@ -75,6 +78,8 @@ function renderWater() {
 }
 
 function switchTab(tabId) {
+  disposePatientChallenge?.();
+  disposePatientChallenge = null;
   if (!Object.hasOwn(panels, tabId)) tabId = 'today';
   document.querySelectorAll('.dashboard-tab').forEach((tab) => {
     tab.classList.toggle('is-active', tab.dataset.tab === tabId);
@@ -82,6 +87,7 @@ function switchTab(tabId) {
   });
   if (tabId === 'guides' && profile) initGuidesPanel();
   if (tabId === 'community' && profile) mountCommunity(document.getElementById('patient-community'),profile);
+  if (tabId === 'ranking' && profile) disposePatientChallenge=mountChallenge(document.getElementById('patient-challenge'),profile);
   if (tabId === 'evolution' && profile) loadEvolution(profile.id).catch(error => { document.getElementById('evolution-content').textContent = error.message; });
 
   Object.entries(panels).forEach(([id, panel]) => {
@@ -226,8 +232,21 @@ async function init() {
   profile = auth.profile;
   const access=await checkTrackingAccess(getSupabase(),profile.id);
   document.querySelector('.app-shell').inert=false;
-  if(!access){sidebarUser.textContent=profile.full_name;return;}
+  if(!access){
+    sidebarUser.textContent=profile.full_name;
+    // Challenge enrollment grants ranking access only, never clinical write access.
+    try{
+      const {data,error}=await getSupabase().rpc('challenge_overview');
+      if(!error&&data?.participant){
+        const rankingTab=document.querySelector('[data-tab="ranking"]');
+        rankingTab.disabled=false;rankingTab.title='';panels.ranking.inert=false;
+        switchTab('ranking');
+      }
+    }catch{/* Keep all protected features closed when enrollment cannot be checked. */}
+    return;
+  }
   displayIdentity();
+  mountChallengeInvite(document.getElementById('patient-challenge-invite'),profile,()=>switchTab('ranking'));
   mountRecordDate(document.getElementById('record-date-panel'));
 
   mountPatientChat(document.getElementById('patient-chat'),{patientId:profile.id}).catch(()=>{document.getElementById('patient-chat').textContent='Não foi possível abrir a conversa. Atualize a página.';});

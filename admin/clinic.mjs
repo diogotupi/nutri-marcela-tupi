@@ -12,6 +12,8 @@ import {mountActivityCenter,pendingActivities} from './activity-center.mjs?v=202
 import {mountPatientFeed} from './patient-feed.mjs?v=20261113-mural';
 import {mountMaterialLibrary} from '../js/material-library.mjs';
 import {mountCommunity} from '../js/community.js?v=20261113-mural';
+import {mountChallenge} from '../app/challenge.mjs?v=20261118-desafio';
+import {WORKOUT_TYPES,CARDIO_TYPES,workoutName,workoutDetails} from '../js/workout-types.mjs?v=20261118-desafio';
 
 const db=getSupabase(),$=s=>document.querySelector(s),view=$('#clinic-view'),dialog=$('#clinic-dialog'),form=$('#clinic-form');
 const patientFilterMenu = $('#patient-filter-menu');
@@ -25,6 +27,7 @@ document.addEventListener('keydown', event => {
  }
 });
 let disposeProgressMotion=()=>{};
+let disposeChallenge=null;
 let actor,patients=[],selected=null,detail=null,tab='summary',filter='all',colorFilter='all',days=7,anchor=dateKey(),mode='week',epoch=0,disposeChat=null,dirty=false,saving=false;
 const fmt=d=>d?new Date(d.slice(0,10)+'T12:00:00Z').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'UTC'}):'—';
 const stamp=d=>new Date(d).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'});
@@ -107,7 +110,7 @@ async function openCommunity(post) {
  }});
 }
 async function loadPatients(){updatePending().catch(()=>{});const [list,inbox]=await Promise.all([rpc('crm_list'),rpc('patient_chat_inbox')]);patients=(list||[]).map(p=>({...p,unread:(inbox||[]).find(c=>c.id===p.id||c.patient_id===p.id)?.unread||0}));renderRail();}
-function leavePatient(){disposeProgressMotion();disposeChat?.();disposeChat=null;selected=null;detail=null;$('#patients-rail').classList.remove('open');}
+function leavePatient(){disposeChallenge?.();disposeChallenge=null;disposeProgressMotion();disposeChat?.();disposeChat=null;selected=null;detail=null;$('#patients-rail').classList.remove('open');}
 async function calendar(){leavePatient();const request=++epoch;history.replaceState({},'',location.pathname);renderRail();view.innerHTML=empty('Carregando calendário…');
  const range=calendarRange(anchor,mode);
  const contacts=await rows(()=>db.from('crm_contacts').select('id,enrollment_id,due_on,status,crm_enrollments!inner(id,patient_id,starts_on,ends_on,status)').gte('due_on',range.start).lte('due_on',range.end).in('status',['pending','completed']).order('due_on').order('id'));
@@ -132,7 +135,7 @@ async function getDetail(id){
  ]);
  return {profile,crm,records,water,goals,habitRows,visit,latestHabit,start,end};
 }
-async function openPatient(id){const request=++epoch;disposeProgressMotion();disposeChat?.();disposeChat=null;selected=id;tab='summary';$('#patients-rail').classList.remove('open');renderRail();view.innerHTML=empty('Carregando paciente…');history.replaceState({},'',`?patient=${id}`);const d=await getDetail(id);if(request!==epoch)return;detail=d;
+async function openPatient(id){const request=++epoch;disposeChallenge?.();disposeChallenge=null;disposeProgressMotion();disposeChat?.();disposeChat=null;selected=id;tab='summary';$('#patients-rail').classList.remove('open');renderRail();view.innerHTML=empty('Carregando paciente…');history.replaceState({},'',`?patient=${id}`);const d=await getDetail(id);if(request!==epoch)return;detail=d;
  view.innerHTML=`<div class="patient-workspace"><section class="patient-center"><header class="patient-header" id="patient-header"></header><section class="patient-panel" id="patient-panel"></section></section><aside class="chat-rail"><button class="chat-close secondary" data-action="close-chat" aria-label="Fechar chat">×</button><div id="fixed-chat" style="height:100%;min-height:0"></div></aside></div>`;
  renderHeader();renderPanel();disposeChat=await mountPatientChat($('#fixed-chat'),{patientId:id,admin:true,name:d.profile.full_name});rpc('clinic_open_patient',{p_patient:id}).catch(fail);
 }
@@ -156,7 +159,7 @@ function renderPanel(){disposeProgressMotion();const panel=$('#patient-panel');i
  <section class="card"><h2>Frequência e intensidade do treino</h2>${workoutChart(progress)}${exerciseOverview()}</section><section class="card"><h2>Evolução do peso</h2>${weightChart(progress,{staff:true})}</section>`;
  disposeProgressMotion=enhanceProgress(panel);
 }
-function exerciseOverview(){const records=detail.records.filter(r=>r.kind==='exercise'&&(r.payload.date||dateKey(new Date(r.occurred_at)))>=detail.start&&(r.payload.date||dateKey(new Date(r.occurred_at)))<=detail.end).reverse();return records.length?`<div class="horizontal-cards">${records.map(r=>`<article class="day-card exercise-card"><h3>${fmt(r.payload.date||r.occurred_at)}</h3><strong aria-hidden="true">${Number(r.payload.intensity)<=3?'🧸':'🏃'}</strong><p>${esc(r.payload.description||r.payload.modality||'Treino registrado')}</p>${r.payload.intensity?`<small>${esc(r.payload.intensity)}/10 · ${r.payload.intensity<=3?'FOFO':r.payload.intensity>=8?'Hiper pesado':'Moderado'}</small>`:''}<div><button class="text-button" data-edit-record="${r.id}">Editar</button><button class="text-button danger" data-archive="${r.id}">Apagar</button></div></article>`).join('')}</div>`:'';}
+function exerciseOverview(){const records=detail.records.filter(r=>r.kind==='exercise'&&(r.payload.date||dateKey(new Date(r.occurred_at)))>=detail.start&&(r.payload.date||dateKey(new Date(r.occurred_at)))<=detail.end).reverse();return records.length?`<div class="horizontal-cards">${records.map(r=>`<article class="day-card exercise-card"><h3>${fmt(r.payload.date||r.occurred_at)}</h3><strong aria-hidden="true">${Number(r.payload.intensity)<=3?'🧸':'🏃'}</strong><p>${esc(r.payload.description||r.payload.modality||'Treino registrado')}</p>${r.payload.workout_type?`<p>${esc(workoutName(r.payload))} · ${Number(r.payload.duration_minutes)||0} min</p>`:''}${r.payload.intensity?`<small>${esc(r.payload.intensity)}/10 · ${r.payload.intensity<=3?'FOFO':r.payload.intensity>=8?'Hiper pesado':'Moderado'}</small>`:''}<div><button class="text-button" data-edit-record="${r.id}">Editar</button><button class="text-button danger" data-archive="${r.id}">Apagar</button></div></article>`).join('')}</div>`:'';}
 function renderInformation(panel){const d=detail,p=d.profile,e=current(),assessment=d.records.find(r=>r.kind==='assessment'),a=assessment?.payload||{},goal=d.goals.find(g=>g.valid_from<=dateKey());
  panel.innerHTML=`<section class="card"><div class="card-heading"><h2>Cadastro</h2><button class="secondary" data-action="edit-patient">Editar</button></div>${payloadView({Telefone:p.phone,'E-mail':p.email,Nascimento:p.birth_date?fmt(p.birth_date):null,Login:p.username})}</section><section class="card"><div class="card-heading"><h2>Consulta e metas</h2><button class="secondary" data-action="assessment">Atualizar medidas</button><button class="secondary" data-action="goal">Meta de água</button></div>${payloadView({weight_kg:a.weight_kg,height_cm:a.height_cm,IMC:a.weight_kg&&a.height_cm?(a.weight_kg/(a.height_cm/100)**2).toFixed(1)+' kg/m²':null,'Meta diária de água':goal?.water_ml?goal.water_ml+' ml':null,objective:goal?.objective})}${assessment?`<button class="text-button" data-edit-record="${assessment.id}">Editar avaliação</button><button class="text-button danger" data-archive="${assessment.id}">Apagar avaliação</button>`:''}</section><section class="card"><div class="card-heading"><h2>Acompanhamento</h2><button class="secondary" data-action="${e?'edit-care':'start-care'}">${e?'Editar período':'Criar'}</button></div>${e?'<button class="text-button" data-action="team-notes">Observações da equipe</button>':''}${e?payloadView({Modalidade:categoryNames[e.category],Entrada:fmt(e.starts_on),Vencimento:fmt(e.ends_on),'Modo Babá':e.nanny_enabled?'Ativado':'Desativado',Observações:e.observations}):empty('Nenhum acompanhamento criado.')}</section><section class="card"><h2>Histórico de contatos</h2>${d.crm.contacts.length?d.crm.contacts.map(c=>`<p>${c.status==='completed'?'✓ Concluído por '+esc(c.completed_by||'Equipe')+' · '+stamp(c.completed_at):'Ciclo substituído por contato posterior'}<small style="display:block">Previsto para ${fmt(c.due_on)}${c.completion_note?' · '+esc(c.completion_note):''}</small></p>`).join(''):empty('Os contatos concluídos serão guardados aqui.')}</section>`;
 }
@@ -223,7 +226,17 @@ function editHabit(day,key){
    await refreshPatient();
  });
 }
-function editRecord(id){const r=detail.records.find(r=>r.id===id);if(r.kind==='assessment')return assessmentForm(r);if(r.kind==='checkin'&&r.payload.category==='weight_checkin'){
+function editRecord(id){const r=detail.records.find(r=>r.id===id);if(r.kind==='assessment')return assessmentForm(r);
+ if(r.kind==='exercise'){
+   const p=r.payload;
+   return modal('Editar treino',area('description','O que foi feito',p.description||'')+`<div class="form-grid">${select('workout_type','Categoria',[['','Sem categoria'],...WORKOUT_TYPES.map(t=>[t.id,t.label])],p.workout_type||'')}${field('duration_minutes','Duração deste treino (min)','number',p.duration_minutes||'','min="1" max="1440" step="1"')}${select('cardio_subtype','Atividade de cardio (se aplicável)',[['','Selecione'],...CARDIO_TYPES.map(t=>[t.id,t.label])],p.cardio_subtype||'')}${field('intensity','Intensidade percebida','number',p.intensity||5,'min="1" max="10" step="1" required')}</div><p class="muted">Categorize apenas o que foi informado pelo paciente. Um treino pertence a uma única categoria.</p>`,async fd=>{
+     const payload={...p,description:String(fd.get('description')||'').trim(),intensity:Number(fd.get('intensity'))};
+     delete payload.workout_type;delete payload.duration_minutes;delete payload.cardio_subtype;
+     Object.assign(payload,workoutDetails(fd.get('workout_type'),fd.get('duration_minutes'),fd.get('cardio_subtype')));
+     await rpc('edit_clinical_record',{p_id:id,p_payload:payload,p_occurred_at:r.occurred_at});await refreshPatient();
+   });
+ }
+ if(r.kind==='checkin'&&r.payload.category==='weight_checkin'){
   return modal('Editar peso registrado',field('weight_kg','Peso (kg)','number',r.payload.weight_kg,'required min="1" max="700" step="0.01"'),async fd=>{
     await rpc('edit_clinical_record',{p_id:id,p_payload:{...r.payload,weight_kg:Number(fd.get('weight_kg'))},p_occurred_at:r.occurred_at});
     await refreshPatient();
@@ -234,6 +247,11 @@ async function logs(append=false){if(actor.role!=='admin')return;const offset=ap
  const events=await query(q);$('#audit-list').insertAdjacentHTML('beforeend',events.map(r=>`<article class="audit-row"><strong>${esc(auditSentence(r))}</strong><time>${stamp(r.created_at)}</time>${r.before_data||r.after_data?`<details><summary>Ver alteração registrada</summary><pre>${esc(JSON.stringify({antes:r.before_data,depois:r.after_data},null,2))}</pre></details>`:''}</article>`).join('')||(!append?empty('As ações das secretárias aparecerão aqui a partir de agora.') :''));$('#audit-list').dataset.offset=offset+events.length;$('[data-action=more-logs]').hidden=events.length<50;
 }
 async function action(name){
+ if(name==='challenge'){
+   leavePatient();++epoch;renderRail();history.replaceState({},'',location.pathname+'?section=challenge');
+   view.innerHTML='<section class="calendar-page challenge-page"><header class="page-heading"><h1>Desafio</h1><button class="secondary" data-action="calendar">← Calendário</button></header><div id="clinic-challenge"></div></section>';
+   disposeChallenge=mountChallenge(document.getElementById('clinic-challenge'),actor);return;
+ }
  if(name==='community'||name==='unread-community')return openCommunity();
  if(name==='feed'){
    ++epoch;leavePatient();renderRail();history.replaceState({},'',location.pathname);
@@ -257,6 +275,10 @@ async function action(name){
  if(name==='complete-contact')return modal('Concluir contato','<p>Confirme depois de falar com o paciente no WhatsApp. A próxima data permanece ancorada ao início do acompanhamento.</p>'+area('note','Observação do contato'),async fd=>{await rpc('crm_complete_contact',{p_enrollment:current().id,p_note:fd.get('note')});await refreshPatient();toast('Contato concluído e registrado com sua autoria.');},{button:'Confirmar contato realizado'});
 }
 document.addEventListener('click',async event=>{const b=event.target.closest('button,[data-patient]');if(!b)return;try{
+ if(disposeChallenge&&(b.dataset.patient||b.dataset.action)&&!b.closest('#clinic-challenge')){
+   if(!disposeChallenge.canLeave())return;
+   disposeChallenge();disposeChallenge=null;
+ }
  if(b.hasAttribute('data-close-dialog'))return closeDialog();
  if(b.dataset.patient)return await openPatient(b.dataset.patient);if(b.dataset.filter){filter=b.dataset.filter;renderRail();return;}
  if(b.dataset.color){colorFilter=b.dataset.color;renderRail();return;}
@@ -269,7 +291,7 @@ document.addEventListener('click',async event=>{const b=event.target.closest('bu
  }catch(error){fail(error);}});
 $('#patient-search').oninput=renderRail;$('#add-patient').onclick=()=>patientForm();$('#toggle-patients').onclick=()=>$('#patients-rail').classList.toggle('open');
 window.addEventListener('beforeunload',e=>{if(dirty&&dialog.open){e.preventDefault();e.returnValue='';}});
-async function init(){try{const auth=await requireAuth({role:location.pathname.startsWith('/secretaria')?'secretary':'admin'});if(!auth)return;actor=auth.profile;$('#open-audit').hidden=actor.role!=='admin';await loadPatients();const params=new URLSearchParams(location.search),id=params.get('patient');if(id&&patients.some(p=>p.id===id)){await openPatient(id);}else await calendar();const job=sessionStorage.getItem('clinic-delete-job');if(job){const r=await edge('delete-client',{job_id:job});if(!r.cleanup_pending)sessionStorage.removeItem('clinic-delete-job');}
+async function init(){try{const auth=await requireAuth({role:location.pathname.startsWith('/secretaria')?'secretary':'admin'});if(!auth)return;actor=auth.profile;$('#open-audit').hidden=actor.role!=='admin';await loadPatients();const params=new URLSearchParams(location.search),id=params.get('patient');if(id&&patients.some(p=>p.id===id)){await openPatient(id);}else if(params.get('section')==='challenge')await action('challenge');else await calendar();const job=sessionStorage.getItem('clinic-delete-job');if(job){const r=await edge('delete-client',{job_id:job});if(!r.cleanup_pending)sessionStorage.removeItem('clinic-delete-job');}
  if(actor.role==='admin'){
    const checkCommunity=()=>{if(!document.hidden)refreshCommunityUnread().catch(()=>{});};
    checkCommunity();setInterval(checkCommunity,20000);document.addEventListener('visibilitychange',checkCommunity);

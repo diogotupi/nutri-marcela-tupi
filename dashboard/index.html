@@ -14,14 +14,14 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../app/app.css">
-  <link rel="stylesheet" href="./patient.css?v=20261118-historico">
+  <link rel="stylesheet" href="./patient.css?v=20261118-desafio">
   <link rel="stylesheet" href="/app/progress.css?v=20261114-story-weight">
   <link rel="stylesheet" href="./workout-story.css?v=20261116-story-drag">
   <link rel="stylesheet" href="./basiquito.css?v=20261117-preparo-livre">
   <link rel="stylesheet" href="/app/community.css?v=20261111-cardio">
   <link rel="stylesheet" href="/app/site-credit.css?v=20261109">
   <script src="../js/config.js"></script>
-<link rel="stylesheet" href="/app/fresh.css?v=20261030b"><link rel="stylesheet" href="/app/chat.css?v=20261030-chat"><link rel="stylesheet" href="/app/habits.css?v=20261114-story-weight"><link rel="stylesheet" href="/app/materials.css"><link rel="stylesheet" href="/app/progress-visual.css?v=20261114-checks"></head>
+<link rel="stylesheet" href="/app/fresh.css?v=20261030b"><link rel="stylesheet" href="/app/chat.css?v=20261030-chat"><link rel="stylesheet" href="/app/habits.css?v=20261114-story-weight"><link rel="stylesheet" href="/app/materials.css"><link rel="stylesheet" href="/app/progress-visual.css?v=20261114-checks"><link rel="stylesheet" href="/app/challenge.css?v=20261118-desafio"><link rel="stylesheet" href="/app/training-details.css?v=20261118-desafio"></head>
 <body class="app-body">
   <div class="app-shell" inert>
     <aside class="app-sidebar">
@@ -36,6 +36,7 @@
         <button type="button" class="dashboard-tab" data-tab="guides">Materiais</button>
         <button type="button" class="dashboard-tab" data-tab="evolution">Evolução</button>
         <button type="button" class="dashboard-tab" data-tab="community">Comunidade</button>
+        <button type="button" class="dashboard-tab" data-tab="ranking">Ranking</button>
         <button type="button" class="dashboard-tab" data-tab="account">Perfil</button>
       </nav>
       <div class="app-sidebar-footer">
@@ -55,6 +56,7 @@
             <p>Já fez o básico hoje?</p>
           </div>
         </div>
+        <section id="patient-challenge-invite" aria-label="Desafio Faz o Básico Club"></section>
         <section id="record-date-panel" class="app-card record-date-panel" aria-label="Data dos registros">
           <label for="record-date">Dia dos registros</label>
           <div class="record-date-controls">
@@ -134,6 +136,9 @@
         <div id="guides-grid"></div>
       </div>
 
+      <div class="dashboard-panel" id="panel-ranking" hidden>
+        <div id="patient-challenge"></div>
+      </div>
       <div class="dashboard-panel" id="panel-community" hidden>
         <div class="app-topbar"><h1>Comunidade</h1></div>
         <div id="patient-community"></div>
@@ -184,6 +189,6 @@
     </main>
   </div>
 
-  <script type="module" src="./dashboard.js?v=20261118-historico"></script>
+  <script type="module" src="./dashboard.js?v=20261118-desafio"></script>
 </body>
 </html>
