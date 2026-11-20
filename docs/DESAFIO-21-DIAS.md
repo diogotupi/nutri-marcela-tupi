@@ -2,6 +2,8 @@
 
 Período: **23/11/2026 a 13/12/2026**, inclusive, no horário de Brasília.
 
+Todos começam com **zero pontos** às 0h de 23/11. Antes disso, o ranking não exibe pódio nem posições. Hábitos, minutos e medalhas anteriores ao período não entram no desafio. Para medalhas automáticas, vale o primeiro dia em que a sequência necessária foi concluída, mesmo que o sistema só reconheça a conquista em um acesso posterior. A data das medalhas no histórico pessoal é preservada.
+
 ## Como a equipe começa
 
 1. Abra **Desafio · 21 dias** no painel da Marcela ou da equipe.
@@ -52,5 +54,6 @@ Em Pontuar, a equipe pode baixar CSV de ranking, lançamentos e minutos. As obse
 - `tests/challenge-browser-qa.cjs`: paciente, equipe, regras, celular, consentimento, pontuação, conflitos e exportação com dados fictícios.
 - `tests/training-details-browser-qa.cjs`: sessões, correções, reenvio e minutos por data.
 - `supabase/challenge-regression.sql`: permissões, classificação, medalhas, datas, auditoria e treino em transação revertida.
+- `supabase/challenge-start-regression.sql`: início zerado e exclusão de conquistas antigas reconhecidas mais tarde, em transação revertida.
 
 O contrato técnico está em [challenge-api.md](challenge-api.md).

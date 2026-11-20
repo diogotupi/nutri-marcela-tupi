@@ -1,7 +1,7 @@
 import {getRecordDate,formatRecordDate,lockRecordDate,mountRecordDate} from './record-date.js?v=20261118-historico';
 import {mountHabits} from './habits.js?v=20261118-historico';
 import {mountCommunity} from '../js/community.js?v=20261112-fotos';
-import {mountChallenge,mountChallengeInvite} from '../app/challenge.mjs?v=20261118-desafio';
+import {mountChallenge,mountChallengeInvite} from '../app/challenge.mjs?v=20261120-inicio';
 import {mountBasiquito} from './basiquito.js?v=20261117-preparo-livre';
 import {mountPatientChat} from '../js/patient-chat.js?v=20261030-team';
 import {

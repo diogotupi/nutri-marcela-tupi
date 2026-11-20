@@ -12,7 +12,7 @@ import {mountActivityCenter,pendingActivities} from './activity-center.mjs?v=202
 import {mountPatientFeed} from './patient-feed.mjs?v=20261113-mural';
 import {mountMaterialLibrary} from '../js/material-library.mjs';
 import {mountCommunity} from '../js/community.js?v=20261113-mural';
-import {mountChallenge} from '../app/challenge.mjs?v=20261118-desafio';
+import {mountChallenge} from '../app/challenge.mjs?v=20261120-inicio';
 import {WORKOUT_TYPES,CARDIO_TYPES,workoutName,workoutDetails} from '../js/workout-types.mjs?v=20261118-desafio';
 
 const db=getSupabase(),$=s=>document.querySelector(s),view=$('#clinic-view'),dialog=$('#clinic-dialog'),form=$('#clinic-form');

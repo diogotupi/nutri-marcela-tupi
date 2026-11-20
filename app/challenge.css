@@ -56,6 +56,8 @@
 .challenge-period>span { display:inline-block;color:var(--challenge-muted);font-size:.65rem;margin-left:.5rem; }
 .challenge-hero-phrase { font-size:.85rem;margin:1.15rem 0 1.25rem; }
 .challenge-hero-phrase em { font-family:'DM Serif Display',Georgia,serif;font-size:1.25rem;font-weight:400;color:#89513a; }
+.challenge-start-notice { padding:1rem;border:1px solid #c7b69b;border-radius:16px;background:#f2de9b80;font-size:.8rem;line-height:1.65; }
+.challenge-start-notice strong { display:block;margin-bottom:.2rem; }
 .challenge-progress { height:5px;background:#dacdb6;border-radius:4px;overflow:hidden; }
 .challenge-progress>span { display:block;width:var(--challenge-progress);height:100%;background:var(--challenge-terra);border-radius:4px;transition:width .6s ease; }
 .challenge-personal { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:1.25rem 0 0;gap:1rem; }
