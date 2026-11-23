@@ -14,14 +14,14 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../app/app.css">
-  <link rel="stylesheet" href="./patient.css?v=20261118-desafio">
+  <link rel="stylesheet" href="./patient.css?v=20261122-streak">
   <link rel="stylesheet" href="/app/progress.css?v=20261114-story-weight">
   <link rel="stylesheet" href="./workout-story.css?v=20261116-story-drag">
   <link rel="stylesheet" href="./basiquito.css?v=20261117-preparo-livre">
   <link rel="stylesheet" href="/app/community.css?v=20261111-cardio">
   <link rel="stylesheet" href="/app/site-credit.css?v=20261109">
   <script src="../js/config.js"></script>
-<link rel="stylesheet" href="/app/fresh.css?v=20261030b"><link rel="stylesheet" href="/app/chat.css?v=20261030-chat"><link rel="stylesheet" href="/app/habits.css?v=20261114-story-weight"><link rel="stylesheet" href="/app/materials.css"><link rel="stylesheet" href="/app/progress-visual.css?v=20261114-checks"><link rel="stylesheet" href="/app/challenge.css?v=20261120-inicio"><link rel="stylesheet" href="/app/training-details.css?v=20261118-desafio"></head>
+<link rel="stylesheet" href="/app/fresh.css?v=20261122-streak"><link rel="stylesheet" href="/app/chat.css?v=20261030-chat"><link rel="stylesheet" href="/app/habits.css?v=20261122-streak"><link rel="stylesheet" href="/app/materials.css"><link rel="stylesheet" href="/app/progress-visual.css?v=20261114-checks"><link rel="stylesheet" href="/app/challenge.css?v=20261122-streak"><link rel="stylesheet" href="/app/training-details.css?v=20261118-desafio"><link rel="stylesheet" href="/app/offensive.css?v=20261122-streak"></head>
 <body class="app-body">
   <div class="app-shell" inert>
     <aside class="app-sidebar">
@@ -102,18 +102,20 @@
 
         <section id="patient-habits" class="app-card habit-board" aria-label="Checks do dia"></section>
         <section id="patient-weekly-overview" class="weekly-overview" aria-label="Resumo da semana"></section>
-        <section class="app-card habit-board free-meal-entry" aria-labelledby="free-meal-heading">
-          <h2 id="free-meal-heading">Fez uma refeição livre hoje?</h2>
+        <dialog id="free-meal-dialog" class="free-meal-entry" aria-labelledby="free-meal-heading" aria-describedby="free-meal-date">
+          <header class="free-meal-dialog-heading"><h2 id="free-meal-heading">O que você comeu?</h2><button type="button" class="app-btn app-btn--ghost" data-close-meal aria-label="Fechar refeição livre">×</button></header>
+          <p id="free-meal-date"></p>
+          <p class="free-meal-hint">Conte como foi. Seu relato entra no resumo da semana.</p>
           <form id="meal-note" class="app-form">
-            <label for="meal-description">O que você comeu?</label>
-            <textarea id="meal-description" name="description" rows="2" required maxlength="1000" placeholder="Conte como foi sua refeição livre."></textarea>
+            <label class="sr-only" for="meal-description">O que você comeu?</label>
+            <textarea id="meal-description" name="description" rows="4" required maxlength="1000" placeholder="Conte como foi sua refeição livre."></textarea>
             <div class="habit-detail-actions">
               <button class="app-btn app-btn--primary" type="submit" disabled>Salvar relato</button>
               <button class="app-btn app-btn--ghost" type="button" data-remove-meal hidden>Excluir relato</button>
             </div>
             <p class="habit-status" role="status"></p>
           </form>
-        </section>
+        </dialog>
         <section id="patient-weight" class="app-card weight-checkin" aria-label="Check-in de peso"></section>
         <section id="patient-training" class="app-card patient-training" aria-label="Seu treino de hoje"></section>
         <section id="patient-workout-progress" class="app-card patient-chart" aria-label="Frequência e intensidade do treino"></section>
@@ -189,6 +191,6 @@
     </main>
   </div>
 
-  <script type="module" src="./dashboard.js?v=20261120-inicio"></script>
+  <script type="module" src="./dashboard.js?v=20261122-streak"></script>
 </body>
 </html>

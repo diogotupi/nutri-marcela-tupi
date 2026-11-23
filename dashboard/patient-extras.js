@@ -6,6 +6,9 @@ import {mountWeightCheckin} from './weight-checkin.js?v=20261118-historico';
 import {mountWorkoutProgress} from './workout-progress.js?v=20261111-cardio';
 import {mountPatientTraining} from './training-details.js?v=20261118-desafio';
 
+import {fetchOffensive,openOffensiveDialog} from '../app/offensive.mjs?v=20261122-streak';
+import {offensiveLevel,offensiveSvg} from '../js/offensive-model.mjs?v=20261122-streak';
+
 const db=()=>getSupabase();
 export const notifyPatientSaved=detail=>dispatchEvent(new CustomEvent('patient:record-saved',{detail}));
 export function bearSvg(strong=false) {
@@ -13,7 +16,7 @@ export function bearSvg(strong=false) {
 }
 const badgeCatalog=[
   {id:'steady21',title:'21 dias de cuidado',description:'Manteve atividades atualizadas por aqui por 21 dias.'},
-  {id:'meals3',title:'Rotina no prato',description:'Marcou “Gabaritei a dieta” em três dias seguidos.'},
+  {id:'meals3',title:'Streak',description:'Sua sequência de dias com “Gabaritei a dieta”.'},
   {id:'water3',title:'Hidratação em dia',description:'Atingiu sua meta de água em três dias seguidos.'},
   {id:'training7',title:'Movimento presente',description:'Registrou treino 7 dias seguidos.'},
   {id:'nutri_pride',title:'Orgulho da nutri',description:'Um reconhecimento da Marcela.'},
@@ -22,7 +25,7 @@ function badgeSvg(id) {
   const art={steady21:'<text x="50" y="61" text-anchor="middle" fill="#fff8d7" font-size="29" font-weight="800" font-family="sans-serif">21</text>',meals3:'<circle cx="50" cy="47" r="17" fill="none" stroke="#fff6ce" stroke-width="4"/><path d="M43 50q0-19 20-17-1 20-20 17m-11-17v32m-5-32v13m10-13v13" fill="none" stroke="#fff6ce" stroke-width="3"/>',water3:'<path d="M50 25C44 37 34 46 34 56a16 16 0 0032 0c0-10-10-19-16-31z" fill="#d3f4ef"/><path d="M42 53q-3 10 7 12" fill="none" stroke="#529b98" stroke-width="3"/>',training7:'<path d="M29 38v23m8-28v33m26-33v33m8-28v23M37 49h26" fill="none" stroke="#fff3c5" stroke-width="7" stroke-linecap="round"/>',nutri_pride:'<path d="M50 25l8 16 18 3-13 13 3 18-16-9-16 9 3-18-13-13 18-3z" fill="#fff1a8"/><path d="M45 52l5 5 11-13" fill="none" stroke="#96803c" stroke-width="3"/>'}[id];
   return `<svg viewBox="0 0 100 112" aria-hidden="true"><defs><linearGradient id="badge-${id}" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8e3a1"/><stop offset=".45" stop-color="#c79b45"/><stop offset="1" stop-color="#f7df8e"/></linearGradient><linearGradient id="badge-core-${id}" x2=".7" y2="1"><stop stop-color="#6da48c"/><stop offset="1" stop-color="#173e30"/></linearGradient></defs><path d="M23 78l-5 29 22-11 10 10 10-10 22 11-5-29" fill="#b58c45"/><path d="M50 4l35 17v39q0 25-35 38Q15 85 15 60V21z" fill="url(#badge-${id})"/><path d="M50 11l28 14v34q0 21-28 32Q22 80 22 59V25z" fill="url(#badge-core-${id})"/>${art}<path d="M28 25l19-9" stroke="#fff8db" stroke-width="2" opacity=".8"/><path d="M78 13v10m-5-5h10" stroke="#fff8db" stroke-width="2"/></svg>`;
 }
-export async function initPatientExtras(profile) {
+export async function initPatientExtras(profile,{onChat}={}) {
   mountWeeklyOverview(document.getElementById('patient-weekly-overview'),profile.id);
   mountWeightCheckin(document.getElementById('patient-weight'), profile.id);
   mountWorkoutProgress(document.getElementById('patient-workout-progress'),profile.id);
@@ -54,9 +57,29 @@ export async function initPatientExtras(profile) {
   const badges=document.getElementById('patient-badges');
   badges.innerHTML='<details open><summary>Minhas conquistas <span id="badge-count"></span></summary><div id="badge-list" class="badge-list"></div><p id="badge-description" role="status">Cada conquista celebra sua participação no acompanhamento.</p></details>';
   let badgeRequest=0;
-  async function refreshBadges(){const request=++badgeRequest;const {data,error}=await db().rpc('evaluate_badges');if(request!==badgeRequest)return;if(error){document.getElementById('badge-description').textContent='Não foi possível atualizar as conquistas. Tente novamente mais tarde.';return;}const earned=new Map((data||[]).map(row=>[row.id,row]));document.getElementById('badge-count').textContent=`${badgeCatalog.filter(b=>earned.get(b.id)?.earned_at).length}/${badgeCatalog.length}`;
-    document.getElementById('badge-list').innerHTML=badgeCatalog.map(b=>{const award=earned.get(b.id),unlocked=Boolean(award?.earned_at);return `<button class="patient-badge ${unlocked?'is-earned':'is-locked'}" type="button" data-badge="${b.id}" aria-label="${esc(b.title)}: ${unlocked?'conquistado':'a conquistar'}">${badgeSvg(b.id)}<span>${esc(b.title)}</span><small>${unlocked?'Conquistado':'A conquistar'}</small></button>`;}).join('');
-    badges.querySelectorAll('[data-badge]').forEach(button=>button.addEventListener('click',()=>{const b=badgeCatalog.find(v=>v.id===button.dataset.badge),award=earned.get(b.id);document.getElementById('badge-description').textContent=`${b.title}. ${b.description}${award?.earned_at?` Conquistado em ${new Date(award.earned_at).toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo'})}.`:''}`;}));
+  async function refreshBadges(){
+    const request=++badgeRequest;
+    const [awards,streakResult]=await Promise.allSettled([db().rpc('evaluate_badges'),fetchOffensive(profile.id)]);
+    if(request!==badgeRequest)return;
+    const {data,error}=awards.status==='fulfilled'?awards.value:{error:awards.reason};
+    if(error){document.getElementById('badge-description').textContent='Não foi possível atualizar as conquistas. Tente novamente mais tarde.';return;}
+    const streak=streakResult.status==='fulfilled'?streakResult.value:null,earned=new Map((data||[]).map(row=>[row.id,row]));
+    document.getElementById('badge-count').textContent=`${badgeCatalog.filter(b=>earned.get(b.id)?.earned_at).length}/${badgeCatalog.length}`;
+    document.getElementById('badge-list').innerHTML=badgeCatalog.map(b=>{
+      const unlocked=Boolean(earned.get(b.id)?.earned_at);
+      if(b.id==='meals3')return `<button class="patient-badge offensive-badge ${streak?.current_days?'is-earned':''}" type="button" data-badge="meals3" aria-label="Streak: ${streak?streak.current_days+' dias':'tentar carregar'}">${offensiveSvg(streak?.current_days||0,{small:true})}<span>Streak</span><small>${streak?`${streak.current_days} ${streak.current_days===1?'dia':'dias'} · ${esc(offensiveLevel(streak.current_days).title)}`:'Toque para carregar'}</small></button>`;
+      return `<button class="patient-badge ${unlocked?'is-earned':'is-locked'}" type="button" data-badge="${b.id}" aria-label="${esc(b.title)}: ${unlocked?'conquistado':'a conquistar'}">${badgeSvg(b.id)}<span>${esc(b.title)}</span><small>${unlocked?'Conquistado':'A conquistar'}</small></button>`;
+    }).join('');
+    badges.querySelectorAll('[data-badge]').forEach(button=>button.addEventListener('click',async()=>{
+      const b=badgeCatalog.find(v=>v.id===button.dataset.badge),award=earned.get(b.id);
+      if(b.id==='meals3'){
+        if(streak){openOffensiveDialog(streak,{opener:button,onChat});return;}
+        button.disabled=true;
+        try{openOffensiveDialog(await fetchOffensive(profile.id),{opener:button,onChat});}catch{document.getElementById('badge-description').textContent='Não foi possível carregar a Streak. Toque novamente para tentar.';}finally{button.disabled=false;}
+        return;
+      }
+      document.getElementById('badge-description').textContent=`${b.title}. ${b.description}${award?.earned_at?` Conquistado em ${new Date(award.earned_at).toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo'})}.`:''}`;
+    }));
   }
   refreshBadges();
   let timer;addEventListener('patient:record-saved',()=>{clearTimeout(timer);timer=setTimeout(()=>refreshBadges(),200);});

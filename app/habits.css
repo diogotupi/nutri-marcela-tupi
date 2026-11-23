@@ -15,6 +15,15 @@
 .free-meal-entry textarea { width:100%; resize:vertical; padding:.75em 1em; font:inherit; line-height:1.5; }
 .free-meal-entry textarea:placeholder-shown { text-align:center; padding-block:1.5em 0; }
 .free-meal-entry [hidden], .water-achievement[hidden] { display:none; }
+#free-meal-dialog { box-sizing:border-box; width:min(540px,calc(100% - 28px)); max-height:calc(100dvh - 40px); margin:auto; padding:clamp(1.1rem,4vw,1.65rem); overflow:auto; border:1.5px solid #718478; border-radius:24px; color:#244a3a; background:#fffaf1; box-shadow:5px 7px 0 #e8baaa; }
+#free-meal-dialog::backdrop { background:#183d32a8; backdrop-filter:blur(3px); }
+.free-meal-dialog-heading { display:flex; align-items:center; justify-content:space-between; gap:.75rem; }
+.free-meal-dialog-heading h2 { margin:0; font-size:clamp(1.2rem,5vw,1.6rem); }
+.free-meal-dialog-heading [data-close-meal] { flex:none; min-width:44px; min-height:44px; padding:.25rem; border-radius:50%; font-size:1.5rem; line-height:1; }
+#free-meal-date { margin:.6rem 0 .25rem; font-size:.84rem; font-weight:600; }
+.free-meal-hint { margin:.25rem 0 1rem; font-size:.83rem; line-height:1.5; color:#52675b; }
+#free-meal-dialog textarea { box-sizing:border-box; min-height:120px; border:1px solid #a9b79f; border-radius:14px; background:#fffefa; }
+#free-meal-dialog .habit-detail-actions>* { min-height:44px; }
 .habit-history p,.week-day-detail { overflow-wrap:anywhere; }
 .habit-detail-actions { display:flex; align-items:center; flex-wrap:wrap; gap:.6rem; }
 .water-achievement { display:inline-flex; gap:.5rem; align-items:center; margin:.45rem 0 .75rem; padding:.3rem .75rem .3rem .35rem; border-radius:2rem; background:#dcf3e8; color:#195744; font-weight:700; font-size:.88rem; }

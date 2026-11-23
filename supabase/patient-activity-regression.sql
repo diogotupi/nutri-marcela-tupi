@@ -71,8 +71,8 @@ begin
   perform pg_temp.assert_ok((select count(distinct a->>'kind')=11 from public.clinic_activity_feed() a
     where a->>'patient_id'=patient and a->>'kind' in ('visit','bowel','strength','cardio','water','exercise','weight',
     'chat','community_post','community_comment','community_coffee')),'Missing activity from a normal patient action');
-  perform pg_temp.assert_ok(not exists(select from public.clinic_activity_feed() a
-    where a->>'patient_id'=patient and a::text like '%private-message-regression%'),'Private chat text copied to feed');
+  perform pg_temp.assert_ok(exists(select from public.clinic_activity_feed() a
+    where a->>'patient_id'=patient and a->>'kind'='chat' and a->>'detail'='private-message-regression'),'Clinic team can read complete patient message');
   select a into strict post from public.clinic_activity_feed(null,null,'community_post') a
     where a->>'post_id'=current_setting('qa.post');
   perform pg_temp.assert_ok(not exists(select from public.clinic_activity_feed((post->>'occurred_at')::timestamptz,(post->>'id')::bigint) a

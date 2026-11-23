@@ -234,6 +234,7 @@ async (existingPage) => {
     if(table==='mark_patient_chat_read')data=null;
     if(table==='record_patient_visit')data=null;
     if(table==='set_profile_photo'){profile.photo_path=body.p_path;data=null;}
+    if(table==='get_patient_offensive')data={patient_id:pid,current_days:12,best_days:12,today_checked:true,status:'active',recoverable_date:null,can_recover:false,recoveries:[]};
     if(table==='evaluate_badges')data=[{id:'water3',title:'Hidratação em dia',description:'DEMONSTRAÇÃO: meta atingida em três dias',earned_at:new Date().toISOString()}];
     if(table==='appointments'||table==='care_notifications'||table==='my_active_tournaments') data=[];
     if(table==='care_notifications'&&url.searchParams.has('source_key')){
@@ -271,7 +272,7 @@ async (existingPage) => {
     await page.locator('#patient-weekly-overview .week-story').waitFor();
     await page.locator('#patient-weekly-overview').screenshot({path:'.playwright-mcp/weekly-in-patient-page.png'});
     assert(await page.locator('[data-care="anamnesis"]').count()===0,'Patient anamnesis form must be removed');
-    await page.locator('.patient-badge.is-earned').waitFor();
+    await page.locator('.patient-badge.is-earned[data-badge=water3]').waitFor();
     assert((await page.locator('#panel-today .app-topbar p').innerText())==='Já fez o básico hoje?','Patient greeting');
     for(const [key,caption] of [['training7','Registrou treino 7 dias seguidos.'],['steady21','Manteve atividades atualizadas por aqui por 21 dias.']]){
       await page.locator('[data-badge='+key+']').click();assert((await page.locator('#badge-description').innerText()).includes(caption),'Badge caption');
@@ -288,7 +289,9 @@ async (existingPage) => {
     assert(!/\bpontos?\b/i.test(await page.locator('#patient-habits').innerText()+' '+await week.innerText()),'Checks and weekly recap must have no score');
     for(const key of ['bowel','strength','cardio','diet'])await tile(key).click();
     await Promise.all([total('bowel',1),total('strength',1),total('diet',1)]);
-    assert(await tile('free_meal').count()===0 && await page.locator('.habit-grid button').count()===4,'Four daily checks, with the free meal reported separately');
+    assert(await tile('free_meal').count()===1 && await page.locator('.habit-grid button').count()===5,'The free-meal tile belongs beside the four daily checks');
+    assert(!await page.locator('#meal-description').isVisible(),'The free-meal form must start closed');
+    assert(await tile('free_meal').getAttribute('aria-haspopup')==='dialog','The free-meal tile opens its details');
     assert(await page.locator('[data-habit=alcohol],#habit-alcohol-level').count()===0 && await week.locator('[data-week-total=alcohol]').count()===0,'Alcohol controls and empty alcohol recap are hidden');
     const cardioInput=page.locator('#training-form').getByLabel('Minutos de aeróbico');
     const durationBox=await cardioInput.boundingBox();
@@ -296,17 +299,28 @@ async (existingPage) => {
     await cardioInput.fill('31');await page.getByRole('button',{name:'Salvar minutos de aeróbico'}).click();
     await page.locator('#training-form [role=status]').filter({hasText:'Minutos de aeróbico atualizados'}).waitFor();
     await total('cardio',31);
-    await page.getByLabel('O que você comeu?').fill('Relato da fixture');await page.getByRole('button',{name:'Salvar relato'}).click();
-    await page.getByRole('button',{name:'Atualizar relato'}).waitFor();
+    await tile('free_meal').click();
+    await page.getByRole('dialog',{name:'O que você comeu?'}).waitFor();
+    assert(await page.locator('#meal-description').evaluate(el=>el===document.activeElement),'Opening the meal dialog should focus the input');
+    await page.locator('#meal-description').fill('Rascunho da refeição');
+    await page.getByRole('button',{name:'Fechar refeição livre'}).click();
+    assert(await tile('free_meal').getAttribute('aria-pressed')==='false'&&mealWrites.length===0,'Closing a draft must not mark a meal or write a record');
+    await tile('free_meal').click();
+    assert(await page.locator('#meal-description').inputValue()==='Rascunho da refeição','Reopening keeps the unsaved meal draft');
+    await page.locator('#meal-description').fill('Relato da fixture');await page.getByRole('button',{name:'Salvar relato'}).click();
+    await page.locator('#free-meal-dialog').waitFor({state:'hidden'});
+    assert(await tile('free_meal').getAttribute('aria-pressed')==='true','Saving marks the free-meal tile');
     const counted=earlierMeals.length+1;
     await total('free-meal',counted);
     if(counted===4)await page.locator('#patient-reminders').getByText('Como foram suas refeições livres?').waitFor();
-    await page.getByLabel('O que você comeu?').fill('Relato editado');
+    await tile('free_meal').click();await page.locator('#meal-description').fill('Relato editado');
     await Promise.all([page.waitForResponse(response=>response.url().endsWith('/rpc/set_free_meal_note') && response.request().method()==='POST'),page.getByRole('button',{name:'Atualizar relato'}).click()]);
-    await page.reload();await page.getByRole('button',{name:'Atualizar relato'}).waitFor();
-    assert(await page.getByLabel('O que você comeu?').inputValue()==='Relato editado','Edit note in place');
+    await page.locator('#free-meal-dialog').waitFor({state:'hidden'});
+    await page.reload();await tile('free_meal').click();await page.getByRole('button',{name:'Atualizar relato'}).waitFor();
+    assert(await page.locator('#meal-description').inputValue()==='Relato editado','Edit note in place');
     await waitFor(()=>document.querySelector('#cardio-minutes')?.value==='31');
-    page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Excluir relato'}).click();await page.getByRole('button',{name:'Salvar relato'}).waitFor();
+    page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Excluir relato'}).click();await page.locator('#free-meal-dialog').waitFor({state:'hidden'});
+    assert(await tile('free_meal').getAttribute('aria-pressed')==='false','Deleting the report unmarks the free-meal tile');
     await page.locator('#patient-reminders').getByText('Como foram suas refeições livres?').waitFor({state:'hidden'});
     await total('free-meal',earlierMeals.length);
     await tile('bowel').click();await total('bowel',0);
@@ -733,14 +747,17 @@ async (existingPage) => {
     await page.locator('#h2o-amount').filter({hasText:'750 ml'}).waitFor();
     await waitFor(()=>document.querySelector('#cardio-minutes').value==='');
     assert(await tile('bowel').getAttribute('aria-pressed')==='true'&&await tile('strength').getAttribute('aria-pressed')==='false','Past checks must load their own state');
-    assert(await page.getByLabel('O que você comeu?').inputValue()==='Relato daquele dia','Past free meal should be editable');
+    assert(await tile('free_meal').getAttribute('aria-pressed')==='true','Past free meal should show its recorded state');
     await tile('strength').click();
     await tile('strength').filter({has:page.locator('.habit-tick')}).waitFor();
     await total('strength',1);
     assert(habitWrites.at(-1).p_day===historicalDay,'A historical check must not write to today');
-    await page.getByLabel('O que você comeu?').fill('Relato anterior corrigido');
+    await tile('free_meal').click();
+    assert(await page.locator('#meal-description').inputValue()==='Relato daquele dia','Past free meal should be editable');
+    assert((await page.locator('#free-meal-date').innerText()).includes(historicalDay.split('-').reverse().join('/')),'Dialog must identify the historical day');
+    await page.locator('#meal-description').fill('Relato anterior corrigido');
     await page.getByRole('button',{name:'Atualizar relato'}).click();
-    await page.locator('#meal-note [role=status]').filter({hasText:'salvo'}).waitFor();
+    await page.locator('#free-meal-dialog').waitFor({state:'hidden'});
     assert(mealWrites.at(-1).p_day===historicalDay,'A past free-meal edit must retain its date');
     await cardioInput.fill('42');
     await page.getByRole('button',{name:'Salvar minutos de aeróbico'}).click();
@@ -765,11 +782,11 @@ async (existingPage) => {
     await chooseDate(olderDay);
     await page.locator('#h2o-amount').filter({hasText:'125 ml'}).waitFor();
     await week.getByRole('heading',{name:'Na semana selecionada, você…'}).waitFor();
-    assert(await tile('strength').getAttribute('aria-pressed')==='false'&&await page.getByLabel('O que você comeu?').inputValue()==='','A different past day must not inherit checks or meal text');
+    assert(await tile('strength').getAttribute('aria-pressed')==='false'&&await page.locator('#meal-description').inputValue()==='','A different past day must not inherit checks or meal text');
     await chooseDate(historicalDay);
     await page.locator('#h2o-amount').filter({hasText:'1000 ml'}).waitFor();
     await waitFor(()=>document.querySelector('#cardio-minutes').value==='42');
-    assert(await page.getByLabel('O que você comeu?').inputValue()==='Relato anterior corrigido','Revisiting the date should restore its saved report');
+    assert(await page.locator('#meal-description').inputValue()==='Relato anterior corrigido','Revisiting the date should restore its saved report');
     await week.locator('[data-week-day="0"]').click();
     assert(await dateField.inputValue()===shift(monday,-7),'A calendar day must select the editable date');
     await page.locator('[data-record-today]').click();

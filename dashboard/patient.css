@@ -118,8 +118,10 @@
 
 .record-date-panel{padding:1rem 1.25rem;margin-bottom:1rem;scroll-margin-top:1rem}
 .record-date-panel>label{display:block;font-weight:700;margin-bottom:.65rem}
-.record-date-controls{display:grid;grid-template-columns:46px minmax(0,11rem) 46px;align-items:center;gap:.6rem}
-.record-date-controls input{box-sizing:border-box;min-width:0;width:100%;min-height:48px;padding:.6rem .7rem;border:1px solid #849780;border-radius:12px;background:#fffdf8;color:#294c40;font:inherit;font-weight:600;text-align:center}
+.record-date-controls{display:grid;grid-template-columns:46px minmax(0,1fr) 46px;width:100%;max-width:20rem;min-width:0;align-items:center;gap:.6rem}
+.record-date-controls input{display:block;box-sizing:border-box;min-width:0;width:100%;max-width:100%;min-height:48px;padding:.6rem .35rem;border:1px solid #849780;border-radius:12px;background:#fffdf8;color:#294c40;font:inherit;font-size:16px;font-weight:600;text-align:center;-webkit-appearance:none;appearance:none;overflow:hidden}
+.record-date-controls input::-webkit-date-and-time-value{min-width:0;text-align:center}
+.record-date-controls input::-webkit-datetime-edit{min-width:0;padding:0}
 .record-date-controls button{min-width:46px;min-height:48px;padding:.4rem .8rem;border:1px solid #849780;border-radius:12px;background:#e8efe4;color:#294c40;font:inherit;font-size:1.5rem;cursor:pointer}
 .record-date-controls [data-record-today]{grid-column:1/-1;justify-self:start;font-size:.8rem;font-weight:700;background:#cce0d5}
 .record-date-controls :disabled{opacity:.45;cursor:default}
@@ -131,8 +133,8 @@
 .tracking-banner p { margin-block: .65rem 1.2rem; }
 .tracking-banner[hidden], .dashboard-tab[hidden] { display: none; }
 @media(max-width:760px){
-  .app-sidebar .app-nav{grid-template-columns:repeat(6,minmax(0,1fr))}
-  .app-sidebar .app-nav .dashboard-tab{min-width:0;font-size:clamp(.64rem,2.5vw,.75rem);padding-inline:1px;letter-spacing:-.025em}
+  .app-sidebar #dashboard-nav{grid-template-columns:minmax(44px,.75fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.35fr) minmax(0,1fr) minmax(44px,.7fr);grid-auto-flow:row;gap:0}
+  .app-sidebar #dashboard-nav .dashboard-tab{min-width:0;min-height:48px;white-space:nowrap;font-size:clamp(.625rem,2.6vw,.75rem);padding:.6rem 1px;letter-spacing:-.025em}
 }
 .locked-features { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.4rem 0 0; padding: 1rem 0 0; border: 0; border-top: 1px solid #cdd8ce; }
 .locked-features button { padding: .55rem .75rem; color: #52675d; border: 1px solid #cad4c9; background: #edf0e9; border-radius: .7rem; }

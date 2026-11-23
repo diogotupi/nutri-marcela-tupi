@@ -8,11 +8,12 @@ import {listClinical,addClinical,getSignedAttachment} from '../js/clinical.js';
 import {mountPatientChat} from '../js/patient-chat.js';
 import {dateKey,subtractDays,datesInRange,isPatientInactive,patientState,stateNames,categoryNames,calendarRange,contactState,auditSentence} from './clinic-model.mjs?v=20261109-community';
 
-import {mountActivityCenter,pendingActivities} from './activity-center.mjs?v=20261108-club';
-import {mountPatientFeed} from './patient-feed.mjs?v=20261113-mural';
+import {mountActivityCenter,pendingActivities} from './activity-center.mjs?v=20261122-streak';
+import {mountPatientFeed} from './patient-feed.mjs?v=20261122-streak';
 import {mountMaterialLibrary} from '../js/material-library.mjs';
 import {mountCommunity} from '../js/community.js?v=20261113-mural';
-import {mountChallenge} from '../app/challenge.mjs?v=20261120-inicio';
+import {mountStaffOffensive} from '../app/offensive.mjs?v=20261122-streak';
+import {mountChallenge} from '../app/challenge.mjs?v=20261122-streak';
 import {WORKOUT_TYPES,CARDIO_TYPES,workoutName,workoutDetails} from '../js/workout-types.mjs?v=20261118-desafio';
 
 const db=getSupabase(),$=s=>document.querySelector(s),view=$('#clinic-view'),dialog=$('#clinic-dialog'),form=$('#clinic-form');
@@ -28,6 +29,7 @@ document.addEventListener('keydown', event => {
 });
 let disposeProgressMotion=()=>{};
 let disposeChallenge=null;
+let focusedDate=null;
 let actor,patients=[],selected=null,detail=null,tab='summary',filter='all',colorFilter='all',days=7,anchor=dateKey(),mode='week',epoch=0,disposeChat=null,dirty=false,saving=false;
 const fmt=d=>d?new Date(d.slice(0,10)+'T12:00:00Z').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'UTC'}):'—';
 const stamp=d=>new Date(d).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'});
@@ -123,7 +125,7 @@ async function calendar(){leavePatient();const request=++epoch;history.replaceSt
  view.innerHTML=`<section class="calendar-page"><header class="calendar-heading"><div><span class="kicker">CONTATOS DE ACOMPANHAMENTO</span><h1>${esc(month)}</h1></div><div class="calendar-tools"><button class="secondary icon-button" data-action="previous" aria-label="Período anterior">‹</button><button class="secondary icon-button" data-action="next" aria-label="Próximo período">›</button><button class="secondary ${mode==='week'?'selected':''}" data-mode="week">Semana</button><button class="secondary ${mode==='month'?'selected':''}" data-mode="month">Mês</button><button class="secondary" data-action="today">Hoje</button><button class="secondary" data-action="refresh">↻</button></div></header><div class="calendar-grid ${mode}">${[...events].map(([date,list])=>`<section class="calendar-day ${date===dateKey()?'today':''} ${date.slice(0,7)!==anchor.slice(0,7)?'other-month':''}" aria-label="${fmt(date)}"><div class="day-heading"><span>${new Date(date+'T12:00:00Z').toLocaleDateString('pt-BR',{weekday:'short',timeZone:'UTC'})}</span><strong>${Number(date.slice(-2))}</strong></div>${list.map(x=>`<button class="calendar-event ${x.state}" data-patient="${x.patient.id}"><i class="dot ${x.state}"></i><span>${esc(x.patient.full_name)}<small>${x.label}</small></span></button>`).join('')}</section>`).join('')}</div><p class="calendar-note">Os contatos são contados a partir do início do acompanhamento, a cada 7 dias. Após falar com o paciente no WhatsApp, marque o contato como concluído na ficha.</p></section>`;
 }
 async function getDetail(id){
- const end=dateKey(),start=subtractDays(end,days-1),historyStart=[start,start.slice(0,7)+'-01',subtractDays(end,6)].sort()[0];
+ const end=focusedDate||dateKey(),start=subtractDays(end,days-1),historyStart=[start,start.slice(0,7)+'-01',subtractDays(end,6)].sort()[0];
  const [profile,crm,records,water,goals,habitRows,visit,latestHabit]=await Promise.all([
    query(db.from('profiles').select('id,user_id,full_name,username,phone,email,birth_date,photo_path').eq('id',id).single()),
    rpc('crm_profile',{p_patient:id}),listClinical(id),
@@ -135,9 +137,9 @@ async function getDetail(id){
  ]);
  return {profile,crm,records,water,goals,habitRows,visit,latestHabit,start,end};
 }
-async function openPatient(id){const request=++epoch;disposeChallenge?.();disposeChallenge=null;disposeProgressMotion();disposeChat?.();disposeChat=null;selected=id;tab='summary';$('#patients-rail').classList.remove('open');renderRail();view.innerHTML=empty('Carregando paciente…');history.replaceState({},'',`?patient=${id}`);const d=await getDetail(id);if(request!==epoch)return;detail=d;
+async function openPatient(id,{date=null,chat=false}={}){focusedDate=/^\d{4}-\d{2}-\d{2}$/.test(date||'')&&date<=dateKey()?date:null;const request=++epoch;disposeChallenge?.();disposeChallenge=null;disposeProgressMotion();disposeChat?.();disposeChat=null;selected=id;tab='summary';$('#patients-rail').classList.remove('open');renderRail();view.innerHTML=empty('Carregando paciente…');history.replaceState({},'',`?patient=${id}`);const d=await getDetail(id);if(request!==epoch)return;detail=d;
  view.innerHTML=`<div class="patient-workspace"><section class="patient-center"><header class="patient-header" id="patient-header"></header><section class="patient-panel" id="patient-panel"></section></section><aside class="chat-rail"><button class="chat-close secondary" data-action="close-chat" aria-label="Fechar chat">×</button><div id="fixed-chat" style="height:100%;min-height:0"></div></aside></div>`;
- renderHeader();renderPanel();disposeChat=await mountPatientChat($('#fixed-chat'),{patientId:id,admin:true,name:d.profile.full_name});rpc('clinic_open_patient',{p_patient:id}).catch(fail);
+ renderHeader();renderPanel();disposeChat=await mountPatientChat($('#fixed-chat'),{patientId:id,admin:true,name:d.profile.full_name});rpc('clinic_open_patient',{p_patient:id}).catch(fail);if(chat){$('.chat-rail')?.classList.add('open');$('#fixed-chat textarea')?.focus({preventScroll:true});}else if(focusedDate){document.querySelector('[data-habit-history-date="'+focusedDate+'"]')?.scrollIntoView({block:'center'});}
 }
 function current(){return detail.crm.enrollments.find(e=>e.status==='active')||detail.crm.enrollments[0];}
 function renderHeader(){const p=detail.profile,row=patients.find(x=>x.id===p.id)||{},state=patientState(row),e=current();
@@ -155,9 +157,11 @@ function renderPanel(){disposeProgressMotion();const panel=$('#patient-panel');i
  ${e?.nanny_enabled?`<section class="card"><div class="card-heading"><h2>Modo Babá · Observações da equipe</h2><button class="secondary" data-action="team-notes">Abrir / editar</button></div><p class="muted">Privadas da equipe deste paciente.</p></section>`:''}
  <div class="range-buttons" aria-label="Período de análise">${[[1,'Hoje'],[7,'Últimos 7 dias'],[15,'Últimos 15 dias'],[30,'Últimos 30 dias'],[90,'Últimos 90 dias']].map(([n,label])=>`<button data-days="${n}" class="${days===n?'selected':''}" aria-pressed="${days===n}">${label}</button>`).join('')}</div>
  <section class="card"><div class="card-heading"><h2>Hidratação</h2><span class="muted">${d.water.length?(d.water.reduce((s,r)=>s+Number(r.amount_ml),0)/d.water.length/1000).toLocaleString('pt-BR',{maximumFractionDigits:1})+' L/dia registrado':''}</span></div>${hydrationChart(waterTimeline(d.water,d.goals,d.end,days))}</section>
- <section class="card"><h2>Checks de hábitos</h2>${habitHistory()}</section>
+ <section class="card"><h2>Checks de hábitos</h2>${focusedDate?`<p class="notice">Registros até ${fmt(focusedDate)} <button class="text-button" data-action="current-records">Voltar para hoje</button></p>`:''}${habitHistory()}</section>
+ <section class="card" data-patient-offensive></section>
  <section class="card"><h2>Frequência e intensidade do treino</h2>${workoutChart(progress)}${exerciseOverview()}</section><section class="card"><h2>Evolução do peso</h2>${weightChart(progress,{staff:true})}</section>`;
  disposeProgressMotion=enhanceProgress(panel);
+ mountStaffOffensive(panel.querySelector('[data-patient-offensive]'),selected);
 }
 function exerciseOverview(){const records=detail.records.filter(r=>r.kind==='exercise'&&(r.payload.date||dateKey(new Date(r.occurred_at)))>=detail.start&&(r.payload.date||dateKey(new Date(r.occurred_at)))<=detail.end).reverse();return records.length?`<div class="horizontal-cards">${records.map(r=>`<article class="day-card exercise-card"><h3>${fmt(r.payload.date||r.occurred_at)}</h3><strong aria-hidden="true">${Number(r.payload.intensity)<=3?'🧸':'🏃'}</strong><p>${esc(r.payload.description||r.payload.modality||'Treino registrado')}</p>${r.payload.workout_type?`<p>${esc(workoutName(r.payload))} · ${Number(r.payload.duration_minutes)||0} min</p>`:''}${r.payload.intensity?`<small>${esc(r.payload.intensity)}/10 · ${r.payload.intensity<=3?'FOFO':r.payload.intensity>=8?'Hiper pesado':'Moderado'}</small>`:''}<div><button class="text-button" data-edit-record="${r.id}">Editar</button><button class="text-button danger" data-archive="${r.id}">Apagar</button></div></article>`).join('')}</div>`:'';}
 function renderInformation(panel){const d=detail,p=d.profile,e=current(),assessment=d.records.find(r=>r.kind==='assessment'),a=assessment?.payload||{},goal=d.goals.find(g=>g.valid_from<=dateKey());
@@ -210,7 +214,7 @@ function accessForm(){const p=detail.profile;modal(p.user_id?'Alterar senha do p
 function deletePatient(){const p=detail.profile,active=detail.crm.enrollments.some(e=>e.status==='active'&&e.ends_on>dateKey());modal('Excluir paciente',`<p>Tem certeza de que deseja excluir <strong>${esc(p.full_name)}</strong>? Serão removidos o acesso, os acompanhamentos, os checks, as mensagens, os registros e os arquivos.</p>${active?'<div class="notice expired"><strong>Este paciente tem acompanhamento ativo ou agendado.</strong><label class="check-field"><input type="checkbox" name="active_ack" required>Entendo que esse acompanhamento também será excluído.</label>'+field('confirmation','Digite EXCLUIR para confirmar','text','','required pattern="EXCLUIR"')+'</div>':''}<label class="check-field"><input type="checkbox" name="confirmed" required>Tenho certeza de que desejo excluir este paciente.</label>`,async fd=>{const r=await edge('delete-client',{patient_id:p.id,name:p.full_name,confirmed:fd.has('confirmed'),active_ack:fd.has('active_ack'),confirmation:fd.get('confirmation')||''});if(!r.deleted)throw Error('A exclusão não foi confirmada.');if(r.cleanup_pending){sessionStorage.setItem('clinic-delete-job',r.job_id);toast('Cadastro removido. A limpeza de arquivos será retomada automaticamente.');}await loadPatients();await calendar();},{button:'Excluir definitivamente'});}
 function habitHistory(){
  const entries=[...groupHabits(detail.habitRows)].filter(([d])=>d>=detail.start).reverse();
- return entries.length?'<ul class="habit-history">'+entries.map(([day,h])=>`<li><strong>${fmt(day)}</strong><p>${habits.filter(item=>h[item.key]).map(item=>`<button class="secondary" type="button" data-edit-habit="${item.key}" data-habit-date="${day}">${habitLabel(item,h)}</button>`).join(' ')}</p>${h.mealDescription?`<p><strong>Refeição livre</strong> · ${esc(h.mealDescription)}</p>`:''}</li>`).join('')+'</ul>':empty('Ainda não há checks neste período.');
+ return entries.length?'<ul class="habit-history">'+entries.map(([day,h])=>`<li data-habit-history-date="${day}"><strong>${fmt(day)}</strong><p>${habits.filter(item=>h[item.key]).map(item=>`<button class="secondary" type="button" data-edit-habit="${item.key}" data-habit-date="${day}">${habitLabel(item,h)}</button>`).join(' ')}</p>${h.mealDescription?`<p><strong>Refeição livre</strong> · ${esc(h.mealDescription)}</p>`:''}</li>`).join('')+'</ul>':empty('Ainda não há checks neste período.');
 }
 function editHabit(day,key){
  const item=habits.find(h=>h.key===key),row=detail.habitRows.find(r=>r.habit_date===day&&r.habit===key),pid=selected;
@@ -263,6 +267,7 @@ async function action(name){
    paintCommunityUnread();
    return load;
  }
+ if(name==='current-records'){focusedDate=null;return refreshPatient();}
  if(name==='tracking-mode')return trackingDialog();
  if(name==='team-notes')return teamNotesDialog();
  if(name==='materials'){leavePatient();++epoch;renderRail();view.innerHTML='<section class="calendar-page material-page"><header class="page-heading"><h1>Materiais</h1><button class="secondary" data-action="calendar">← Calendário</button></header><div data-library></div></section>';return mountMaterialLibrary(view.querySelector('[data-library]'),{staff:true});}
@@ -291,7 +296,7 @@ document.addEventListener('click',async event=>{const b=event.target.closest('bu
  }catch(error){fail(error);}});
 $('#patient-search').oninput=renderRail;$('#add-patient').onclick=()=>patientForm();$('#toggle-patients').onclick=()=>$('#patients-rail').classList.toggle('open');
 window.addEventListener('beforeunload',e=>{if(dirty&&dialog.open){e.preventDefault();e.returnValue='';}});
-async function init(){try{const auth=await requireAuth({role:location.pathname.startsWith('/secretaria')?'secretary':'admin'});if(!auth)return;actor=auth.profile;$('#open-audit').hidden=actor.role!=='admin';await loadPatients();const params=new URLSearchParams(location.search),id=params.get('patient');if(id&&patients.some(p=>p.id===id)){await openPatient(id);}else if(params.get('section')==='challenge')await action('challenge');else await calendar();const job=sessionStorage.getItem('clinic-delete-job');if(job){const r=await edge('delete-client',{job_id:job});if(!r.cleanup_pending)sessionStorage.removeItem('clinic-delete-job');}
+async function init(){try{const auth=await requireAuth({role:location.pathname.startsWith('/secretaria')?'secretary':'admin'});if(!auth)return;actor=auth.profile;$('#open-audit').hidden=actor.role!=='admin';await loadPatients();const params=new URLSearchParams(location.search),id=params.get('patient');if(id&&patients.some(p=>p.id===id)){await openPatient(id,{date:params.get('date'),chat:params.get('tab')==='messages'});}else if(params.get('section')==='challenge')await action('challenge');else await calendar();const job=sessionStorage.getItem('clinic-delete-job');if(job){const r=await edge('delete-client',{job_id:job});if(!r.cleanup_pending)sessionStorage.removeItem('clinic-delete-job');}
  if(actor.role==='admin'){
    const checkCommunity=()=>{if(!document.hidden)refreshCommunityUnread().catch(()=>{});};
    checkCommunity();setInterval(checkCommunity,20000);document.addEventListener('visibilitychange',checkCommunity);

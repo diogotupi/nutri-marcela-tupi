@@ -1,7 +1,7 @@
 import {getRecordDate,formatRecordDate,lockRecordDate,mountRecordDate} from './record-date.js?v=20261118-historico';
-import {mountHabits} from './habits.js?v=20261118-historico';
+import {mountHabits} from './habits.js?v=20261122-streak';
 import {mountCommunity} from '../js/community.js?v=20261112-fotos';
-import {mountChallenge,mountChallengeInvite} from '../app/challenge.mjs?v=20261120-inicio';
+import {mountChallenge,mountChallengeInvite} from '../app/challenge.mjs?v=20261122-streak';
 import {mountBasiquito} from './basiquito.js?v=20261117-preparo-livre';
 import {mountPatientChat} from '../js/patient-chat.js?v=20261030-team';
 import {
@@ -18,7 +18,7 @@ import {
 import { initGuidesPanel } from './guides-panel.js?v=20261105-materials';
 import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js?v=20261113-stars';
 import { mountPatientStars } from './patient-stars.js?v=20261113-stars';
-import { initPatientExtras, notifyPatientSaved } from './patient-extras.js?v=20261118-desafio';
+import { initPatientExtras, notifyPatientSaved } from './patient-extras.js?v=20261122-streak';
 import { hydrationMeter } from './patient-model.mjs?v=20261030-water';
 
 import {checkTrackingAccess} from './access-state.mjs';
@@ -250,7 +250,7 @@ async function init() {
   mountRecordDate(document.getElementById('record-date-panel'));
 
   mountPatientChat(document.getElementById('patient-chat'),{patientId:profile.id}).catch(()=>{document.getElementById('patient-chat').textContent='Não foi possível abrir a conversa. Atualize a página.';});
-  mountBasiquito(draft=>{
+  const openNutriChat=draft=>{
     switchTab('today');
     const chat=document.getElementById('patient-chat');
     chat.scrollIntoView({block:'center'});
@@ -259,14 +259,15 @@ async function init() {
       if (!composer.value.trim()) { composer.value=draft; composer.dispatchEvent(new Event('input',{bubbles:true})); }
       composer.focus({preventScroll:true});
     }
-  });
+  };
+  mountBasiquito(openNutriChat);
   switchTab('today');
   mountPatientStars(document.getElementById('patient-stars'),profile.id);
   mountHabits(document.getElementById('patient-habits'),profile.id);
   const refreshReminders=()=>initPatientCare(profile).catch(error=>{document.getElementById('patient-reminders').textContent=error.message;});
   refreshReminders();
   addEventListener('patient:record-saved',event=>{if (event.detail?.habit==='free_meal') refreshReminders();});
-  initPatientExtras(profile).catch(error => { document.getElementById('patient-training').insertAdjacentHTML('beforeend',`<p role="status">${escapeHtml(error.message)}</p>`); });
+  initPatientExtras(profile,{onChat:openNutriChat}).catch(error => { document.getElementById('patient-training').insertAdjacentHTML('beforeend',`<p role="status">${escapeHtml(error.message)}</p>`); });
 
   await loadWater();
 }

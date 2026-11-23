@@ -194,7 +194,7 @@
 .challenge-scoring-intro p { max-width:710px;margin:0;color:var(--challenge-muted);font-size:.76rem; }
 .challenge-team-tag { padding:.3rem .6rem;border:1px solid #b7c29e;background:#e7edd8;color:#52683b;border-radius:8px;font-size:.6rem;white-space:nowrap; }
 .challenge-score-toolbar { display:flex;align-items:flex-end;gap:.8rem;margin:1rem 0; }
-.challenge-score-toolbar label,.challenge-management>label { display:grid;gap:.4rem;font-size:.7rem;font-weight:500; }
+.challenge-score-toolbar label,.challenge-management>label { display:grid;min-width:0;max-width:100%;gap:.4rem;font-size:.7rem;font-weight:500; }
 .challenge-score-toolbar input,.challenge-management input[type=search],.challenge-score-table textarea { border:1px solid #c4b59e;border-radius:10px;min-height:44px;padding:.55rem .7rem;color:var(--challenge-ink);background:#fffcf5;font:400 .75rem Poppins,sans-serif;max-width:100%; }
 .challenge-score-toolbar input[type=date] { width:170px; }
 .challenge-score-search { flex:1; }

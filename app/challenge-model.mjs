@@ -10,7 +10,7 @@ export const CHALLENGE_HABITS = Object.freeze([
   {key:'other_activity',label:'Outras atividades',title:'Demais atividades',points:4,icon:'✧',description:'Pelo menos 30 minutos de crossfit, yoga, pilates, futevôlei, vôlei, beach tennis, funcional, dança, lutas ou outros esportes.'},
   {key:'story',label:'Stories',title:'Resumo nos stories',points:3,icon:'☆',description:'Compartilhe nos stories o resumo gerado pela plataforma. Este extra vale uma vez por dia.'},
 ]);
-export const BADGE_NAMES = Object.freeze({steady21:'21 dias de cuidado',meals3:'Rotina no prato',water3:'Hidratação em dia',training7:'Movimento presente',nutri_pride:'Orgulho da nutri'});
+export const BADGE_NAMES = Object.freeze({steady21:'21 dias de cuidado',meals3:'Streak',water3:'Hidratação em dia',training7:'Movimento presente',nutri_pride:'Orgulho da nutri'});
 export const CHART_COLORS = ['#A0422F','#315F50','#916100','#7660A0','#297A8B','#B35179','#5D7134','#695344','#1D6A74','#8C5527'];
 
 export function challengeToday(now = new Date()) {

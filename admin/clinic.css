@@ -62,3 +62,9 @@
  .patient-feed-tools .range-buttons { flex-wrap:wrap; }
  .mobile-toolbar:has(#mobile-community:not([hidden])) button { padding:8px; }
 }
+
+.activity-category { display:flex; flex-wrap:wrap; align-items:center; gap:.6rem; margin:.7rem 0; color:#365344; font-weight:600; }
+.activity-category select { max-width:100%; padding:.6rem; border:1px solid #cbd8ce; border-radius:10px; background:white; color:#244433; }
+.activity-source-date { font-size:.8rem; color:#53695c; }
+.activity-row > .text-button { display:inline-block; margin-right:.7rem; }
+.patient-feed-tools { flex-wrap:wrap; }

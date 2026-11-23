@@ -8,7 +8,9 @@ const activity = {
   community_comment:['💬','Comentou na comunidade'], community_coffee:['☕','Deu um cafezinho'],
   profile_photo:['📷','Atualizou a foto de perfil'], profile:['✎','Atualizou o perfil'], support:['💬','Solicitou suporte'],
   badge:['🏅','Conquistou uma insígnia'],
+  report:['📝','Enviou um relato'], attachment:['📎','Enviou um arquivo'],
 };
+export const activityCategories = [['','Todos'],['chat','Mensagens'],['free_meal','Refeições livres'],['report','Relatos'],['attachment','Arquivos'],['diet','Dieta'],['water','Água'],['exercise','Treinos'],['strength','Força'],['cardio','Aeróbico'],['bowel','Intestino'],['alcohol','Álcool'],['weight','Peso'],['community_post','Publicações da comunidade'],['community_comment','Comentários'],['support','Suporte'],['visit','Acessos'],['badge','Insígnias'],['profile','Perfil'],['profile_photo','Foto de perfil'],['community_coffee','Cafezinhos']];
 const dayFormat = new Intl.DateTimeFormat('pt-BR',{day:'numeric',month:'long',year:'numeric',timeZone:'America/Sao_Paulo'});
 const timeFormat = new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});
 
@@ -16,9 +18,7 @@ export function mountPatientFeed(root,rpc,{openPost,postsOnly=false}={}) {
   root.innerHTML = `<section class="calendar-page patient-feed" aria-labelledby="patient-feed-title">
     <header class="page-heading"><h1 id="patient-feed-title">Mural de atividades</h1><button type="button" class="secondary" data-action="calendar">← Calendário</button></header>
     <div class="patient-feed-tools">
-      <div class="range-buttons" role="group" aria-label="Mostrar atividades">
-        <button type="button" data-feed-kind="">Todas</button><button type="button" data-feed-kind="community_post">Publicações da comunidade</button>
-      </div>
+      <label class="activity-category">Categoria<select data-feed-category>${activityCategories.map(([key,label])=>`<option value="${key}">${label}</option>`).join('')}</select></label>
       <button type="button" class="text-button" data-feed-refresh>Atualizar</button>
     </div>
     <button type="button" class="secondary feed-new" data-feed-new hidden>Mostrar novas atividades</button>
@@ -29,6 +29,8 @@ export function mountPatientFeed(root,rpc,{openPost,postsOnly=false}={}) {
   const more=section.querySelector('[data-feed-more]'), refresh=section.querySelector('[data-feed-refresh]'), status=section.querySelector('[role=status]');
   const recent=section.querySelector('[data-feed-new]');
   let kind=postsOnly?'community_post':null, cursor=null, newest=null, dayShown=null, request=0;
+  section.querySelector('[data-feed-category]').value=kind||'';
+  const signature=rows=>rows.map(row=>`${row.id}:${row.detail}`).join('|');
   const inFlightStars=new Set(), sentStars=new Set();
 
   function starLabel(button,sent) {
@@ -55,6 +57,12 @@ export function mountPatientFeed(root,rpc,{openPost,postsOnly=false}={}) {
         <p>${title}</p>${row.detail?`<p class="feed-detail">${esc(row.detail)}</p>`:''}
         <div class="feed-entry-actions"></div></div>`;
     const actions=entry.querySelector('.feed-entry-actions');
+    if(row.is_patient!==false) {
+      const link=document.createElement('a');
+      const date=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(timestamp);
+      link.className='text-button';link.href=`?patient=${encodeURIComponent(row.patient_id)}&date=${date}${row.kind==='chat'?'&tab=messages':''}`;
+      link.textContent=row.kind==='chat'?'Abrir conversa':'Ver paciente nesta data';actions.append(link);
+    }
     if(row.can_star || row.starred_at) {
       if(row.can_star) {
         const button=document.createElement('button');
@@ -103,10 +111,10 @@ export function mountPatientFeed(root,rpc,{openPost,postsOnly=false}={}) {
     try {
       const data=await rpc('clinic_activity_feed',{p_before_time:first?null:cursor.occurred_at,p_before_id:first?null:cursor.id,p_kind:kind});
       if(current!==request||!section.isConnected)return;
-      if(first){list.replaceChildren();cursor=null;dayShown=null;newest=data[0]?.id??null;recent.hidden=true;}
+      if(first){list.replaceChildren();cursor=null;dayShown=null;newest=signature(data);recent.hidden=true;}
       for(const row of data)addRow(row);
       if(data.length)cursor=data.at(-1);
-      status.textContent=!cursor?(kind?'Ainda não há publicações na comunidade.':'Ainda não há atividades registradas.'):'';
+      status.textContent=!cursor?'Nenhuma atividade nesta categoria.':'';
       more.hidden=data.length<30;
     } catch {
       if(current===request && section.isConnected) status.textContent='Não foi possível carregar as atividades. Tente novamente.';
@@ -114,11 +122,11 @@ export function mountPatientFeed(root,rpc,{openPost,postsOnly=false}={}) {
       if(current===request){refresh.disabled=more.disabled=false;list.removeAttribute('aria-busy');}
     }
   }
-  section.querySelectorAll('[data-feed-kind]').forEach(b=>{b.onclick=()=>{
-    const next=b.dataset.feedKind||null;
+  section.querySelector('[data-feed-category]').onchange=e=>{
+    const next=e.target.value||null;
     if(next===kind)return;
     kind=next;cursor=null;newest=null;dayShown=null;list.replaceChildren();recent.hidden=more.hidden=true;load();
-  };});
+  };
   refresh.onclick=recent.onclick=()=>load();
   more.onclick=()=>load(false);
   let checking=false;
@@ -129,7 +137,7 @@ export function mountPatientFeed(root,rpc,{openPost,postsOnly=false}={}) {
     const version=request;
     try {
       const latest=await rpc('clinic_activity_feed',{p_before_time:null,p_before_id:null,p_kind:kind});
-      if(version===request && section.isConnected && latest[0] && latest[0].id!==newest)recent.hidden=false;
+      if(version===request && section.isConnected && signature(latest)!==newest)recent.hidden=false;
     } catch { /* The manual refresh remains available. */ }
     finally {checking=false;}
   },30000);

@@ -68,6 +68,9 @@ button:not(.dashboard-tab,.patient-badge,.star), .app-btn, .link-btn { border-ra
 input:not([type=checkbox],[type=radio],[type=range]), select, textarea,
 .app-field input, .app-field select, .app-field textarea { border-color: #9da98d; background: #fffdf9; border-radius: 11px; color: var(--fresh-ink); }
 input[type=range], input[type=checkbox] { accent-color: #99654f; }
+/* Bound native date editors inside grid/flex tracks, including WebKit's intrinsic width. */
+input:is([type=date],[type=datetime-local],[type=time]) { box-sizing:border-box; min-width:0; max-width:100%; -webkit-appearance:none; appearance:none; }
+input:is([type=date],[type=datetime-local],[type=time])::-webkit-date-and-time-value { min-width:0; }
 th, .app-table th { background: #e7eee8; color: #4a5e3e; }
 td,th { border-color: #d5dbc8; }
 dialog, .app-modal__panel { border: 1.5px solid #688078; border-radius: 24px; background: #fffdf9; box-shadow: 7px 8px 0 #e8baaa; }

@@ -1,6 +1,6 @@
 import {getSupabase,escapeHtml as esc} from '../js/app-core.js';
 import {workoutName} from '../js/workout-types.mjs?v=20261118-desafio';
-import {CHALLENGE_HABITS,CHALLENGE_START,CHALLENGE_END,CHART_COLORS,BADGE_NAMES,challengeToday,challengeDay,dateOffset,scoreDay,numberLabel,formatDay,formatTimestamp,trendLabel,initials,createCsv,chartSeries} from './challenge-model.mjs?v=20261118-desafio';
+import {CHALLENGE_HABITS,CHALLENGE_START,CHALLENGE_END,CHART_COLORS,BADGE_NAMES,challengeToday,challengeDay,dateOffset,scoreDay,numberLabel,formatDay,formatTimestamp,trendLabel,initials,createCsv,chartSeries} from './challenge-model.mjs?v=20261122-streak';
 
 const instances=new WeakMap();
 let cachedOverview=null,cachedAt=0,cachedViewer=null,pendingOverview=null,pendingViewer=null,overviewRequest=0,instanceId=0;
