@@ -260,6 +260,17 @@ async (existingPage) => {
   try {
     await page.goto('http://127.0.0.1:8877/dashboard/?qa=demonstration');
     await page.locator('#training-form').waitFor({state:'attached'});
+    await page.evaluate(()=>document.fonts.ready);
+    for(const width of [320,390,430]) {
+      await page.setViewportSize({width,height:844});
+      const nav=await page.locator('#dashboard-nav').evaluate(el=>({
+        columns:getComputedStyle(el).gridTemplateColumns,
+        items:[...el.querySelectorAll('button')].map(b=>{const r=b.getBoundingClientRect();return {label:b.textContent.trim(),top:r.top,left:r.left,right:r.right,width:r.width,height:r.height,clipped:b.scrollWidth>b.clientWidth};})
+      }));
+      assert(nav.items.length===6&&new Set(nav.items.map(b=>b.top)).size===1,'Six patient tabs must share a row after all CSS/init: '+width+' '+JSON.stringify(nav));
+      assert(nav.items.every(b=>b.width>=44&&b.height>=44&&!b.clipped&&b.left>=0&&b.right<=width),'Patient tab sizing: '+width+' '+JSON.stringify(nav));
+    }
+    await page.setViewportSize({width:390,height:844});
     const stars=page.locator('#patient-stars');
     await stars.locator('summary').getByText('1 nova',{exact:true}).waitFor();
     assert((await stars.locator('summary').innerText()).includes('Estrelinhas da nutri'),'Patient star panel heading');

@@ -101,8 +101,7 @@
 .account-identity small { color: #52665a; }
 .account-identity [role="status"]:empty { margin: 0; }
 @media (max-width: 760px) {
-  #dashboard-nav.app-nav { grid-template-columns: .8fr 1fr .95fr 1.35fr .7fr; }
-  #dashboard-nav .dashboard-tab { padding-inline: 1px; font-size: clamp(.65rem, 2.7vw, .78rem); }
+  /* The shared dashboard navigation is owned by dashboard/patient.css. */
   .community-toolbar { gap: .5rem; }
   .community-post > header, .community .community-actions { padding-inline: .7rem; }
 }

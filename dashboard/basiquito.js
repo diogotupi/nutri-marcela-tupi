@@ -1,5 +1,6 @@
 import {requestFoodAI} from './food-ai-client.js?v=20261109-care';
 import {preparePhotoUpload} from '../js/media-upload.js';
+import {makeBasiquitoDraggable} from './basiquito-position.js?v=20261123-drag';
 
 const avatar='<span class="basiquito-avatar" aria-hidden="true"><img class="cup-body" src="/assets/basiquito.webp" alt=""><img class="cup-steam" src="/assets/basiquito.webp" alt=""><img class="cup-thinking" src="/assets/basiquito-pensando.webp" alt=""></span>';
 const greeting='Fala pra mim! O que você quer substituir hoje?';
@@ -8,7 +9,8 @@ const hints={source_preparation:'Escreva como foi preparado…',source_quantity:
 export function mountBasiquito(openNutri) {
   const root=document.createElement('div');
   root.className='basiquito';
-  root.innerHTML=`<button type="button" class="basiquito-launcher" aria-label="Conversar com o Basiquito" aria-expanded="false" aria-controls="basiquito-panel">${avatar}<span>Basiquito</span></button>
+  root.innerHTML=`<button type="button" class="basiquito-launcher" aria-label="Conversar com o Basiquito" aria-expanded="false" aria-controls="basiquito-panel" aria-describedby="basiquito-move-hint" title="Arraste para mover. Toque para conversar.">${avatar}<span>Basiquito</span></button>
+    <span id="basiquito-move-hint" class="sr-only">Arraste para mover. No teclado, use Alt e as setas para mover ou Home para voltar à posição inicial.</span>
     <section class="basiquito-panel" id="basiquito-panel" role="dialog" aria-labelledby="basiquito-title" tabindex="-1" hidden>
       <header>${avatar}<div><h2 id="basiquito-title">Basiquito</h2><small>Assistente de trocas</small></div><button type="button" data-close aria-label="Minimizar conversa">−</button></header>
       <div class="basiquito-feed" role="log" aria-label="Conversa com o Basiquito" aria-live="polite"></div>
@@ -104,6 +106,7 @@ export function mountBasiquito(openNutri) {
     return deliver();
   }
   launcher.onclick=()=>panel.hidden?open():close();
+  makeBasiquitoDraggable(launcher);
   find('[data-close]').onclick=close;
   find('[data-new]').onclick=()=>{start();input.focus();};
   retry.onclick=deliver;
