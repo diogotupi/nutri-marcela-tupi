@@ -4,7 +4,7 @@ import {readHabits,groupHabits,saveCardioMinutes} from '../js/daily-habits.mjs?v
 import {WORKOUT_TYPES,CARDIO_TYPES,workoutDetails,workoutName} from '../js/workout-types.mjs?v=20261118-desafio';
 import {getRecordDate,lockRecordDate,formatRecordDate} from './record-date.js?v=20261118-historico';
 import {celebrateWorkout} from './workout-celebration.js?v=20261108-habits';
-import {openWorkoutStory} from './workout-story.js?v=20261118-historico';
+import {openWorkoutStory} from './workout-story.js?v=20261123-story';
 import {intensityLabel} from './patient-model.mjs';
 
 export function mountPatientTraining(root,profile,{bearSvg,notifyPatientSaved}) {

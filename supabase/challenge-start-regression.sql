@@ -47,8 +47,8 @@ end $$;
 reset role;
 -- Simulate day 3. Only days beginning at the start and no later than today count.
 update private.challenge_campaigns set start_date=(now()at time zone 'America/Sao_Paulo')::date-2,end_date=(now()at time zone 'America/Sao_Paulo')::date+18 where id='faz-o-basico-21-2026';
-insert into private.challenge_entries(campaign_id,patient_id,day,strength,vegetable,cardio,water,other_activity,story)
- select 'faz-o-basico-21-2026',current_setting('qa.challenge_start_patient')::uuid,(now()at time zone 'America/Sao_Paulo')::date+i,true,true,true,true,true,true from unnest(array[-3,1])i;
+insert into private.challenge_entries(campaign_id,patient_id,day,strength,vegetable,cardio,water,other_activity,story,cardio_minutes)
+ select 'faz-o-basico-21-2026',current_setting('qa.challenge_start_patient')::uuid,(now()at time zone 'America/Sao_Paulo')::date+i,true,true,true,true,true,true,500 from unnest(array[-3,1])i;
 set local role authenticated;
 do $$declare v jsonb;begin
  v:=public.challenge_overview();

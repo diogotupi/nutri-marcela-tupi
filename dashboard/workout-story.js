@@ -3,33 +3,14 @@ import {getLocalDateString, getSupabase, showToast} from '../js/app-core.js';
 import {getRecordDate,formatRecordDate} from './record-date.js?v=20261118-historico';
 import {createCommunityPhotoDraft} from '../js/community.js?v=20261112-fotos';
 import {weeklyRange} from '../js/weekly-summary.mjs?v=20261114-story-weight';
-import {loadPatientWeek, loadStoryWeight} from './weekly-data.js?v=20261114-story-weight';
-import {DEFAULT_STORY_POSITION, drawWorkoutStory, loadStoryImage, prepareStoryPhoto, storyBadges, storyWeekLabel, weeklyStoryBadges} from './workout-story-art.mjs?v=20261116-story-drag';
+import {loadPatientWeek} from './weekly-data.js?v=20261114-story-weight';
+import {DEFAULT_STORY_POSITION, drawWorkoutStory, loadStoryImage, prepareStoryPhoto, storyBadges, storyWeekLabel, weeklyStoryBadges} from './workout-story-art.mjs?v=20261123-story-checks';
 
 const exampleUrl = '/assets/story-fundo-exemplo.jpg';
 let openEditor;
 
 async function readDay(patientId, day, signal) {
-  const db = getSupabase();
-  const midnight = new Date(day + 'T00:00:00-03:00');
-  const nextMidnight = new Date(midnight.getTime() + 86400000);
-  const water = db.from('patient_water_logs').select('amount_ml')
-    .eq('patient_id', patientId).eq('log_date', day).abortSignal(signal).maybeSingle();
-  const flags = readHabits(db,patientId,day,day,signal).then(data=>({data})).catch(error=>({error}));
-  const workout = db.from('clinical_records')
-    .select('intensity:payload->>intensity')
-    .eq('patient_id', patientId).eq('kind', 'exercise').is('archived_at', null)
-    .gte('occurred_at', midnight.toISOString()).lt('occurred_at', nextMidnight.toISOString())
-    .order('occurred_at', {ascending: false}).order('id', {ascending: false})
-    .limit(1).abortSignal(signal).maybeSingle();
-
-  const [hydration, checked, latest] = await Promise.all([water, flags, workout]);
-  return {
-    waterMl: Number(hydration.data?.amount_ml),
-    ...groupHabits(checked.data).get(day),
-    intensity: Number(latest.data?.intensity),
-    incomplete: Boolean(hydration.error || checked.error || latest.error)
-  };
+  return groupHabits(await readHabits(getSupabase(),patientId,day,day,signal)).get(day)||{};
 }
 
 const editorMarkup = `
@@ -73,9 +54,8 @@ const editorMarkup = `
     <div class="story-settings">
       <fieldset>
         <legend>O que mostrar na foto?</legend>
-        <p class="story-hint">Marque os dados que quer incluir.</p>
+        <p class="story-hint">Marque os treinos que quer incluir. O cardio aparece quando há minutos registrados.</p>
         <div class="story-choices" data-badges></div>
-        <p class="story-hint story-weight-note" data-weight-note></p>
         <p class="story-feedback" data-stats-status role="status"></p>
         <button type="button" class="story-text-button" data-retry-stats hidden>Recarregar registros</button>
       </fieldset>
@@ -398,24 +378,16 @@ export function openWorkoutStory(patientId, initialPeriod = 'day', day = getReco
     badges = week ? [] : storyBadges({});
     renderChoices();
     find('#workout-story-title').textContent = week ? 'Story da semana' : 'Story do treino';
-    find('[data-weight-note]').textContent = '';
     find('[data-example-label]').hidden = Boolean(photo);
     canvas.hidden = true;
     const status = find('[data-stats-status]');
     status.textContent = week ? 'Buscando os registros da semana…' : 'Buscando seus registros de hoje…';
     find('[data-retry-stats]').hidden = true;
     redraw();
-    let nextBadges, weightNote = '', incomplete = false;
+    let nextBadges, incomplete = false;
     try {
       if (week) {
-        const [totals, weight] = await Promise.allSettled([
-          loadPatientWeek(patientId, today, offset, request.signal), loadStoryWeight(patientId, week.until, request.signal)
-        ]);
-        incomplete = totals.status === 'rejected' || weight.status === 'rejected';
-        nextBadges = weeklyStoryBadges(totals.value, weight.value);
-        if (weight.status === 'fulfilled') {
-          weightNote = nextBadges.find(b => b.key === 'weight')?.note || 'O percentual de peso aparece com pesagens em dois dias diferentes.';
-        }
+        nextBadges = weeklyStoryBadges(await loadPatientWeek(patientId,today,offset,request.signal));
       } else {
         const result = await readDay(patientId, day, request.signal);
         nextBadges = storyBadges(result);
@@ -427,8 +399,7 @@ export function openWorkoutStory(patientId, initialPeriod = 'day', day = getReco
     statsRequest = null;
     if (nextBadges) badges = nextBadges;
     renderChoices();
-    find('[data-weight-note]').textContent = weightNote;
-    status.textContent = incomplete ? 'Alguns registros não carregaram.' : !badges.length ? 'Ainda não há dados para mostrar neste período.' : '';
+    status.textContent = incomplete ? 'Alguns registros não carregaram.' : !badges.length ? 'Ainda não há treino de força ou minutos de cardio registrados neste período.' : '';
     find('[data-retry-stats]').hidden = !incomplete;
     redraw();
   }

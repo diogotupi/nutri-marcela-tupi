@@ -1,10 +1,10 @@
-import {mountWeeklyOverview} from './weekly-overview.js?v=20261118-historico';
+import {mountWeeklyOverview} from './weekly-overview.js?v=20261123-story';
 import { getSupabase, escapeHtml as esc } from '../js/app-core.js';
 import { addClinical, uploadAttachment, getSignedAttachment } from '../js/clinical.js';
 import { preparePhotoUpload } from '../js/media-upload.js?v=20261109-mural-jpg';
 import {mountWeightCheckin} from './weight-checkin.js?v=20261118-historico';
 import {mountWorkoutProgress} from './workout-progress.js?v=20261111-cardio';
-import {mountPatientTraining} from './training-details.js?v=20261118-desafio';
+import {mountPatientTraining} from './training-details.js?v=20261123-story';
 
 import {fetchOffensive,openOffensiveDialog} from '../app/offensive.mjs?v=20261122-streak';
 import {offensiveLevel,offensiveSvg} from '../js/offensive-model.mjs?v=20261122-streak';

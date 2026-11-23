@@ -1,7 +1,7 @@
 import {getRecordDate,formatRecordDate,lockRecordDate,mountRecordDate} from './record-date.js?v=20261118-historico';
 import {mountHabits} from './habits.js?v=20261122-streak';
 import {mountCommunity} from '../js/community.js?v=20261112-fotos';
-import {mountChallenge,mountChallengeInvite} from '../app/challenge.mjs?v=20261122-streak';
+import {mountChallenge,mountChallengeInvite} from '../app/challenge.mjs?v=20261123-cardio';
 import {mountBasiquito} from './basiquito.js?v=20261123-drag';
 import {mountPatientChat} from '../js/patient-chat.js?v=20261030-team';
 import {
@@ -18,7 +18,7 @@ import {
 import { initGuidesPanel } from './guides-panel.js?v=20261105-materials';
 import { initPatientCare, loadEvolution, exportPatientData } from './patient-care.js?v=20261113-stars';
 import { mountPatientStars } from './patient-stars.js?v=20261113-stars';
-import { initPatientExtras, notifyPatientSaved } from './patient-extras.js?v=20261122-streak';
+import { initPatientExtras, notifyPatientSaved } from './patient-extras.js?v=20261123-story';
 import { hydrationMeter } from './patient-model.mjs?v=20261030-water';
 
 import {checkTrackingAccess} from './access-state.mjs';

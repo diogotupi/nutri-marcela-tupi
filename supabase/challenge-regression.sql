@@ -1,5 +1,7 @@
 -- Run after the migration. Synthetic identities and temporary campaign dates are rolled back.
 begin;
+-- Isolate the fixed campaign within this rollback transaction, even after real enrollment.
+update private.challenge_participants set active=false where campaign_id='faz-o-basico-21-2026';
 select set_config('qa.challenge_admin_user',gen_random_uuid()::text,true),set_config('qa.challenge_admin',gen_random_uuid()::text,true),
  set_config('qa.challenge_staff_user',gen_random_uuid()::text,true),set_config('qa.challenge_staff',gen_random_uuid()::text,true),
  set_config('qa.challenge_user',gen_random_uuid()::text,true),set_config('qa.challenge_patient',gen_random_uuid()::text,true),
@@ -85,8 +87,8 @@ select set_config('request.jwt.claims',json_build_object('sub',current_setting('
 set local role authenticated;
 do $$ declare a uuid:=current_setting('qa.challenge_patient')::uuid; b uuid:=current_setting('qa.challenge_other')::uuid; day date:=(now()at time zone 'America/Sao_Paulo')::date-3; rows jsonb; data jsonb; n int; begin
  perform public.set_cardio_minutes(b,day,60);
- rows:=jsonb_build_array(jsonb_build_object('patient_id',a,'revision',0,'strength',true,'vegetable',true,'cardio',true,'water',true,'other_activity',true,'story',true,'notes','PRIVATE QA note'),
- jsonb_build_object('patient_id',b,'revision',0,'strength',true,'vegetable',true,'cardio',true,'water',true,'other_activity',true,'story',true,'notes',''));
+ rows:=jsonb_build_array(jsonb_build_object('patient_id',a,'revision',0,'strength',true,'vegetable',true,'cardio',true,'water',true,'other_activity',true,'story',true,'cardio_minutes',45,'notes','PRIVATE QA note'),
+ jsonb_build_object('patient_id',b,'revision',0,'strength',true,'vegetable',true,'cardio',true,'water',true,'other_activity',true,'story',true,'cardio_minutes',60,'notes',''));
  data:=public.challenge_save_day(day,rows);n:=jsonb_array_length(data->'audit');
  data:=public.challenge_save_day(day,rows);
  if jsonb_array_length(data->'audit')<>n then raise exception 'Score retry duplicated audit';end if;
@@ -104,6 +106,9 @@ do $$ declare a uuid:=current_setting('qa.challenge_patient')::uuid; b uuid:=cur
  if (select count(*)from jsonb_array_elements(data->'timeline')e where e->>'kind'='badge')<>2 or (select count(*)from jsonb_array_elements(data->'timeline')e where e->>'kind'='full_day')<>2 then raise exception 'Timeline incorrect';end if;
  perform public.set_cardio_minutes(b,day,45);
  data:=public.challenge_overview();
+ if (data->'ranking'->0->>'patient_id')<>b::text or (data->'ranking'->0->>'cardio_minutes')::int<>60 then raise exception 'Patient-declared duration changed verified ranking';end if;
+ perform public.challenge_save_day(day,jsonb_build_array((rows->1)||jsonb_build_object('revision',1,'cardio_minutes',45)));
+ data:=public.challenge_overview();
  if (data->'ranking'->0->>'rank')::int<>1 or (data->'ranking'->1->>'rank')::int<>1 then raise exception 'True tie was assigned arbitrary winner';end if;
  perform public.challenge_set_participant(a,false);
  if jsonb_array_length(public.challenge_overview()->'ranking')<>1 then raise exception 'Removed participant visible';end if;
@@ -111,13 +116,13 @@ do $$ declare a uuid:=current_setting('qa.challenge_patient')::uuid; b uuid:=cur
  data:=public.challenge_staff_day(day);
  if not exists(select 1 from jsonb_array_elements(data->'rows')r where r->>'patient_id'=a::text and r->>'notes'='PRIVATE QA note' and (r->>'total')::int=36)then raise exception 'Removal lost score history';end if;
  data:=public.challenge_export();
- if jsonb_array_length(data->'ranking')<>2 or jsonb_array_length(data->'entries')<>2 or jsonb_array_length(data->'minutes')<>42 then raise exception 'CSV export incomplete';end if;
+ if jsonb_array_length(data->'ranking')<>2 or (select count(*) from jsonb_array_elements(data->'entries') r where r->>'patient_id' in(a::text,b::text))<>2 or (select count(*) from jsonb_array_elements(data->'minutes') r where r->>'patient_id' in(a::text,b::text))<>42 then raise exception 'CSV export incomplete';end if;
  -- Missing one category reduces daily score and removes the obsolete full-day event.
- perform public.challenge_save_day(day,jsonb_build_array(jsonb_build_object('patient_id',a,'revision',1,'strength',true,'vegetable',false,'cardio',true,'water',true,'other_activity',true,'story',true,'notes','corrected')));
+ perform public.challenge_save_day(day,jsonb_build_array(jsonb_build_object('patient_id',a,'revision',1,'strength',true,'vegetable',false,'cardio',true,'water',true,'other_activity',true,'story',true,'cardio_minutes',45,'notes','corrected')));
  if (select count(*)from jsonb_array_elements(public.challenge_overview()->'timeline')e where e->>'kind'='full_day')<>1 then raise exception 'Invalid full-day survived correction';end if;
  -- All 21 full days: 756 habit points, medal premium separate.
  for n in 0..20 loop
-  perform public.challenge_save_day((now()at time zone 'America/Sao_Paulo')::date-20+n,jsonb_build_array(jsonb_build_object('patient_id',a,'revision',case when n=17 then 2 else 0 end,'strength',true,'vegetable',true,'cardio',true,'water',true,'other_activity',true,'story',true,'notes','')));
+  perform public.challenge_save_day((now()at time zone 'America/Sao_Paulo')::date-20+n,jsonb_build_array(jsonb_build_object('patient_id',a,'revision',case when n=17 then 2 else 0 end,'strength',true,'vegetable',true,'cardio',true,'water',true,'other_activity',true,'story',true,'cardio_minutes',45,'notes','')));
  end loop;
  if not exists(select 1 from jsonb_array_elements(public.challenge_overview()->'ranking')r where r->>'patient_id'=a::text and (r->>'habit_points')::int=756 and (r->>'points')::int=759)then raise exception '21-day maximum incorrect';end if;
 end $$;

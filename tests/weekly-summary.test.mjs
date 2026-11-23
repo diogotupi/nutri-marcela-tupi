@@ -51,8 +51,8 @@ test('empty days make no claims, and private habits never appear in the public S
   assert.doesNotMatch(weeklyMarkup(s),/álcool/i);
   assert.match(weekDayDescription(s.days[0]),/Nenhum registro neste dia/);
   assert.deepEqual(storyBadges({bowel:1,alcohol:10}),[]);
-  assert.deepEqual(storyBadges({strength:1,cardio:1,diet:1}).map(b=>b.key),['strength','diet','cardio']);
-  assert.deepEqual(storyBadges({cardio:1}).map(b=>b.key),['cardio']);
+  assert.deepEqual(storyBadges({strength:1,cardio:1,diet:1}).map(b=>b.key),['strength']);
+  assert.deepEqual(storyBadges({cardio:1}),[]);
 });
 
 test('cardio uses recorded minutes; a free meal counts once per day and stays off the Story',()=>{
@@ -70,9 +70,9 @@ test('cardio uses recorded minutes; a free meal counts once per day and stays of
   const cardioCard=html.match(/<article [^>]*data-week-total="cardio">[\s\S]*?<\/article>/)[0];
   assert.match(cardioCard,/data-progress-number="340"/);
   assert.match(cardioCard,/Duração informada em 2 de 3 dias de cardio/);
-  assert.deepEqual(badges.find(b=>b.key==='cardio'),{key:'cardio',label:'cardio: 340 min',selected:true});
+  assert.deepEqual(badges.find(b=>b.key==='cardio'),{key:'cardio',label:'cardio: 340 minutos',selected:true});
   const past=weeklySummary({today,offset:-1,habits,records});
-  assert.equal(weeklyStoryBadges(past).find(b=>b.key==='cardio').label,'cardio: 80 min');
+  assert.equal(weeklyStoryBadges(past).find(b=>b.key==='cardio').label,'cardio: 80 minutos');
   const report=progressSeries(records,'2026-11-04',today,habits);
   assert.equal(report.cardioMinutes,200);assert.match(workoutChart(report),/Duração informada em 1 de 2 dias de cardio/);
   assert.doesNotMatch(workoutChart(progressSeries(records,today,today,[habit('cardio')])),/Tempo de cardio/);
@@ -86,13 +86,19 @@ test('charts expose exact values, keep empty days off the table, and escape inte
   assert.doesNotMatch(progressPlot([{day:'2026-11-02',value:5}],{label:'<script>',unit:'" onfocus="bad',min:0,max:10}),/<script>|unit=".*onfocus=/);
 });
 
-test('weekly Story uses recorded Monday-to-date totals and accurately labels sessions and days', () => {
+test('Stories show only recorded strength and cardio minutes, never other metrics or invented durations', () => {
   const summary = weeklySummary({today, records:[exercise('2026-11-02'),exercise('2026-11-02'),exercise('2026-11-05')],
     water:[{log_date:'2026-11-02',amount_ml:2050},{log_date:today,amount_ml:1500},{log_date:'2026-11-08',amount_ml:3000}],
     goals:[{valid_from:'2026-10-01',water_ml:2000}], habits:[habit('strength'),habit('cardio'),habit('diet') ]});
   const badges = weeklyStoryBadges(summary);
-  assert.deepEqual(badges.filter(b => b.selected).map(b => b.label), ['4 treinos','1 dia de dieta','3,55 L de água','1 dia de cardio']);
-  assert.equal(badges.find(b => b.key === 'goal').label,'Meta de água em 1 dia');
+  assert.deepEqual(badges,[{key:'strength',label:'Treino de força',selected:true}]);
+  assert.deepEqual(storyBadges({strength:1,cardio:1,cardioMinutes:35,waterMl:2050,diet:1,intensity:10}),[
+    {key:'cardio',label:'cardio: 35 minutos',selected:true},{key:'strength',label:'Treino de força',selected:true}
+  ]);
+  assert.deepEqual(storyBadges({cardio:0,cardioMinutes:35,waterMl:2050,diet:1,intensity:10}),[]);
+  for(const duration of [undefined,null,0,-1,NaN,Infinity])assert.deepEqual(storyBadges({cardio:1,cardioMinutes:duration}),[]);
+  assert.equal(storyBadges({cardio:1,cardioMinutes:1})[0].label,'cardio: 1 minuto');
+  assert.deepEqual(weeklyStoryBadges({sessions:4,cardioDays:3,dietDays:6,water:3000,intensity:8}),[]);
   assert.deepEqual(weeklyStoryBadges(weeklySummary({today})), []);
   assert.equal(storyWeekLabel(weeklyRange('2027-01-01')), '28 dez 2026 — 01 jan 2027');
   assert.equal(storyWeekLabel(weeklyRange('2026-11-02')), '02 nov');
@@ -105,12 +111,11 @@ test('cumulative weight uses the first valid measurement and the latest as of th
     weight('2026-09-01T12:00Z',0),weight('2026-11-02T02:59Z',76),weight('2026-10-30T12:00Z',701)];
   const change = weightChangeThrough(rows, '2026-11-01');
   assert.deepEqual(change, {from:'2026-10-01',to:'2026-11-01',percent:-5});
-  const badge = weeklyStoryBadges(null, change)[0];
-  assert.deepEqual(badge, {key:'weight',selected:false,label:'5% abaixo do peso inicial',note:'Pesagens de 01/10/2026 e 01/11/2026'});
+  assert.deepEqual(weeklyStoryBadges(null,change),[],'Weight remains available in reports but is no longer part of the Story');
   assert.equal(weightChangeThrough([baseline,weight('2026-10-01T20:00Z',77)],today),null);
   assert.equal(weightChangeThrough([baseline], '2026-09-30'),null);
-  for (const [last, label] of [[82,'2,5% acima do peso inicial'],[80,'Peso · 0% de variação'],[79.99,'<0,1% abaixo do peso inicial']]) {
+  for (const [last, percent] of [[82,2.5],[80,0],[79.99,-.0125]]) {
     const value = weightChangeThrough([baseline,weight('2026-11-05T12:00Z',last)],today);
-    assert.equal(weeklyStoryBadges(null, value)[0].label,label);
+    assert.ok(Math.abs(value.percent-percent)<1e-10);
   }
 });

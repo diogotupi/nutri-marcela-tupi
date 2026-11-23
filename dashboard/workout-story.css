@@ -142,8 +142,6 @@
 .story-settings fieldset { margin: 0; padding: 0; border: none; min-width: 0; }
 .story-settings fieldset + fieldset { margin-top: 22px; }
 .story-settings .story-hint { margin: -3px 0 10px; }
-.story-settings .story-weight-note { margin: 9px 0 0; }
-.story-weight-note:empty { display: none; }
 .story-choices label {
   display: inline-flex;
   align-items: center;
