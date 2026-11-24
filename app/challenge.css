@@ -212,6 +212,7 @@
 .challenge-cardio-minutes { display:grid;gap:3px;margin:5px auto 0;max-width:80px;font-size:.61rem;color:var(--challenge-ink); }
 .challenge-cardio-minutes input { box-sizing:border-box;min-width:0;width:100%;min-height:44px;padding:6px;border:1px solid #bba98f;border-radius:9px;background:#fffdf5;color:inherit;font:inherit;font-size:.78rem;text-align:center; }
 .challenge-cardio-review { display:block;color:#91442f;font-size:.58rem;margin-top:4px; }
+.challenge-cardio-rule { display:block;margin:5px auto 0;max-width:88px;font-size:.55rem;line-height:1.4;color:#655746; }
 .challenge-patient-context { display:flex;flex-wrap:wrap;gap:3px 6px;margin:5px 0;font-size:.6rem;font-weight:400;line-height:1.5;color:#655746; }
 .challenge-patient-context .is-active { color:#2e634d; }
 .challenge-patient-context .is-inactive { color:#91442f; }

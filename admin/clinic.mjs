@@ -13,7 +13,7 @@ import {mountPatientFeed} from './patient-feed.mjs?v=20261122-streak';
 import {mountMaterialLibrary} from '../js/material-library.mjs';
 import {mountCommunity} from '../js/community.js?v=20261113-mural';
 import {mountStaffOffensive} from '../app/offensive.mjs?v=20261122-streak';
-import {mountChallenge} from '../app/challenge.mjs?v=20261123-cardio';
+import {mountChallenge} from '../app/challenge.mjs?v=20261124-cardio-short';
 import {WORKOUT_TYPES,CARDIO_TYPES,workoutName,workoutDetails} from '../js/workout-types.mjs?v=20261118-desafio';
 
 const db=getSupabase(),$=s=>document.querySelector(s),view=$('#clinic-view'),dialog=$('#clinic-dialog'),form=$('#clinic-form');

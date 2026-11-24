@@ -75,17 +75,35 @@ async (existingPage) => {
   for(const habit of ['strength','vegetable','cardio','water','other_activity','story'])await row.locator('[data-challenge-habit="'+habit+'"]').locator('..').click();
   assert((await row.locator('[data-challenge-row-total]').innerText())==='36','All six checks total exactly 36');
   await row.locator('[data-challenge-notes]').fill('Comprovações conferidas no WhatsApp.');
+  await row.locator('[data-challenge-cardio-minutes]').fill('3');
+  assert(await row.locator('[data-challenge-habit=cardio]').isChecked(),'Partial typing must not erase manual cardio check');
+  await row.locator('[data-challenge-cardio-minutes]').fill('30');
+  assert(await row.locator('[data-challenge-habit=cardio]').isChecked(),'Completing 30 preserves manual check');
+  for(const invalid of ['-1','1441','1.5']){
+    await row.locator('[data-challenge-cardio-minutes]').fill(invalid);
+    await page.locator('[data-challenge-save]').click();
+    assert(await page.evaluate(()=>window.__state.ops.filter(o=>o.name==='challenge_save_day').length)===0,'Invalid minutes must still block save: '+invalid);
+  }
   await row.locator('[data-challenge-cardio-minutes]').fill('20');
+  await page.locator('[data-challenge-score-row=p3] [data-challenge-habit=water]').locator('..').click();
+  await page.locator('[data-challenge-score-row=p4] [data-challenge-habit=cardio]').locator('..').click();
+  await page.locator('[data-challenge-score-row=p4] [data-challenge-notes]').fill('Sem duração informada.');
   await page.locator('[data-challenge-save]').click();
-  assert(await page.evaluate(()=>window.__state.ops.filter(o=>o.name==='challenge_save_day').length)===0,'Under 30 checked cardio must not save');
+  await page.waitForFunction(()=>document.querySelector('[data-challenge-status]').textContent.includes('Dia salvo'));
+  const normalized=await page.evaluate(()=>window.__state.ops.filter(o=>o.name==='challenge_save_day').at(-1).args.p_rows);
+  assert(normalized.length===3&&normalized.find(r=>r.patient_id==='p1').cardio===false&&normalized.find(r=>r.patient_id==='p1').cardio_minutes===20,'Checked20 normalizes without blocking batch');
+  assert(normalized.find(r=>r.patient_id==='p3').water&&normalized.find(r=>r.patient_id==='p4').cardio===false&&normalized.find(r=>r.patient_id==='p4').cardio_minutes===null,'Other patient and checked-null preserve batch');
+  assert(await row.locator('[data-challenge-row-total]').innerText()==='30','Sub30 removes only the six cardio points');
   await row.locator('[data-challenge-cardio-minutes]').fill('45');
+  assert(!await row.locator('[data-challenge-habit=cardio]').isChecked(),'Valid duration never automatically grants manual check');
+  await row.locator('[data-challenge-habit=cardio]').locator('..').click();
   page.once('dialog',dialog=>dialog.dismiss());
   assert(!await page.evaluate(()=>window.__dispose.canLeave()),'Unsaved changes block leaving when patient cancels');
   await page.locator('[data-challenge-save]').click();
   await page.waitForFunction(()=>document.querySelector('[data-challenge-status]').textContent.includes('Dia salvo'));
   const save=await page.evaluate(()=>window.__state.ops.filter(o=>o.name==='challenge_save_day').at(-1));
   assert(save.args.p_date==='2026-11-25'&&save.args.p_rows.length===1,'Save sends selected day and changed rows only');
-  assert(save.args.p_rows[0].revision===0&&save.args.p_rows[0].notes.includes('WhatsApp'),'Save preserves revision and note');
+  assert(save.args.p_rows[0].revision===1&&save.args.p_rows[0].notes.includes('WhatsApp'),'Save preserves revision and note');
   assert(save.args.p_rows[0].cardio_minutes===45,'Staff cardio sent independently of workouts');
   await row.locator('[data-challenge-cardio-minutes]').fill('46');
   page.once('dialog',dialog=>dialog.dismiss());

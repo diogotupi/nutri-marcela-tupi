@@ -45,9 +45,30 @@ do $$ declare a uuid:=current_setting('qa.challenge_patient')::uuid; b uuid:=cur
  foreach bad in array array['-1'::jsonb,'1.5'::jsonb,'1441'::jsonb,'"30"'::jsonb,'true'::jsonb,'{}'::jsonb,'100000000000'::jsonb] loop
   begin perform public.challenge_save_day(d,jsonb_build_array(rowa||jsonb_build_object('cardio_minutes',bad)));raise exception 'Malformed duration accepted: %',bad;exception when invalid_parameter_value then null;end;
  end loop;
- foreach bad in array array['null'::jsonb,'0'::jsonb,'29'::jsonb] loop
-  begin perform public.challenge_save_day(d,jsonb_build_array(rowa||jsonb_build_object('cardio',true,'cardio_minutes',bad)));raise exception 'Below threshold accepted';exception when invalid_parameter_value then null;end;
+ -- Isolated subtransactions exercise the reported batch failure without changing the next fixtures.
+ foreach bad in array array['null'::jsonb,'0'::jsonb,'20'::jsonb,'29'::jsonb] loop
+  begin
+   rowa:=rowa||jsonb_build_object('strength',true,'vegetable',true,'cardio',true,'water',true,'other_activity',true,'story',true,'cardio_minutes',bad);
+   rowb:=rowa||jsonb_build_object('patient_id',b,'strength',false,'vegetable',false,'water',false,'other_activity',false,'story',false,'cardio_minutes',30,'notes','');
+   data:=public.challenge_save_day(d-1,jsonb_build_array(rowa,rowb));
+   if not exists(select 1 from jsonb_array_elements(data->'rows') r where r->>'patient_id'=a::text and (r->>'total')::int=30
+    and not (r->>'cardio')::bool and r->'cardio_minutes'=bad and (r->>'strength')::bool and (r->>'vegetable')::bool
+    and (r->>'water')::bool and (r->>'other_activity')::bool and (r->>'story')::bool and r->>'notes'='only verified')then raise exception 'Short cardio blocked or corrupted remaining habits: %',bad;end if;
+   if not exists(select 1 from jsonb_array_elements(data->'rows') r where r->>'patient_id'=b::text and (r->>'total')::int=6 and (r->>'cardio')::bool and (r->>'cardio_minutes')::int=30)then raise exception 'Other patient in batch was not saved';end if;
+   if not exists(select 1 from jsonb_array_elements(data->'audit') r where r->>'patient_id'=a::text and r->>'action'='score'
+    and not (r->'after'->>'cardio')::bool and r->'after'->'cardio_minutes'=bad and (r->'after'->>'total')::int=30)then raise exception 'Audit missed normalized result';end if;
+   before_audit:=jsonb_array_length(data->'audit');
+   data:=public.challenge_save_day(d-1,jsonb_build_array(rowa,rowb));
+   if jsonb_array_length(data->'audit')<>before_audit or exists(select 1 from jsonb_array_elements(data->'rows') r where (r->>'revision')::int<>1)then raise exception 'Stale normalized retry was not idempotent';end if;
+   -- A duration at the threshold must not invent a manual check; explicitly checking it grants six.
+   data:=public.challenge_save_day(d-1,jsonb_build_array(rowa||jsonb_build_object('revision',1,'cardio',false,'cardio_minutes',30)));
+   if not exists(select 1 from jsonb_array_elements(data->'rows') r where r->>'patient_id'=a::text and (r->>'total')::int=30 and not (r->>'cardio')::bool)then raise exception 'Unchecked 30 minutes automatically scored';end if;
+   data:=public.challenge_save_day(d-1,jsonb_build_array(rowa||jsonb_build_object('revision',2,'cardio',true,'cardio_minutes',30)));
+   if not exists(select 1 from jsonb_array_elements(data->'rows') r where r->>'patient_id'=a::text and (r->>'total')::int=36 and (r->>'cardio')::bool)then raise exception 'Checked threshold failed to score';end if;
+   raise exception 'Roll back this successful short-cardio fixture only' using errcode='ZX001';
+  exception when sqlstate 'ZX001' then null; end;
  end loop;
+ rowa:=jsonb_build_object('patient_id',a,'revision',0,'strength',false,'vegetable',false,'cardio',false,'water',false,'other_activity',false,'story',false,'cardio_minutes',null,'notes','only verified');
  data:=public.challenge_save_day(d,jsonb_build_array(rowa||jsonb_build_object('cardio_minutes',20)));
  if not exists(select 1 from jsonb_array_elements(data->'rows') r where r->>'patient_id'=a::text and (r->>'total')::int=0 and (r->>'cardio_minutes')::int=20)then raise exception 'Verified short cardio scored habit or disappeared';end if;
  rowa:=rowa||jsonb_build_object('revision',1,'cardio',true,'cardio_minutes',300);
