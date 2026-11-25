@@ -3,9 +3,8 @@ import {fittedDimensions, validatePhoto} from '../js/media-sizing.mjs?v=20261108
 const WIDTH = 1080;
 const HEIGHT = 1920;
 const FONT = '"Plus Jakarta Sans", Arial, sans-serif';
-const SERIF = 'Georgia, "Times New Roman", serif';
 const INK = '#203e32';
-const PAPER = '#fff8ea';
+const PAPER = '#ffffff';
 const CARD_INSET = 12;
 export const DEFAULT_STORY_POSITION = Object.freeze({x:.12, y:.87});
 const backdrops = new WeakMap();
@@ -26,7 +25,14 @@ function workoutBadges(strength, cardioMinutes) {
   return badges;
 }
 export function weeklyStoryBadges(summary) {
-  return workoutBadges(summary?.strengthDays>0,summary?.cardioMinutes);
+  const badges=[];
+  if (Number.isInteger(summary?.workoutDays)&&summary.workoutDays>=0&&summary.workoutDays<=7) {
+    badges.push({key:'strength',label:'TREINO '+summary.workoutDays+'/7',selected:true});
+  }
+  if (Number.isFinite(summary?.cardioMinutes)&&summary.cardioMinutes>=0) {
+    badges.push({key:'cardio',label:'CARDIO: '+number.format(summary.cardioMinutes)+' min',note:'acumulados',selected:true});
+  }
+  return badges;
 }
 export function storyBadges({strength,cardio,cardioMinutes}) {
   return workoutBadges(Boolean(strength),cardio?cardioMinutes:null);
@@ -130,63 +136,58 @@ function paintLine(ctx, line, center, baseline, available) {
   ctx.restore();
 }
 
-function metricLine(ctx, {key, label}) {
-  const normal = '400 32px ' + FONT;
-  const parts = /^(cardio: )(\d+(?:[.,]\d+)*)(.*)$/u.exec(label);
-  const runs = parts ? [[normal, parts[1] || ''], ['700 32px ' + FONT, parts[2]], [normal, parts[3]]] : [[normal, label]];
-  return {key, ...textLine(ctx, runs)};
+function metricLine(ctx, {key, label, note}) {
+  return {key,note,...textLine(ctx,[['700 34px '+FONT,label]])};
+}
+
+function trackedText(ctx,text,font,spacing) {
+  ctx.font=font;
+  const parts=[];let width=0;
+  for(const letter of text){parts.push({font,text:letter,x:width});width+=ctx.measureText(letter).width+spacing;}
+  return {parts,width:Math.max(0,width-spacing)};
 }
 
 function fraction(value, fallback) {
   return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : fallback;
 }
 
-export function drawWorkoutStory(canvas,{photo,badges,fit='cover',position=.5,overlayPosition=DEFAULT_STORY_POSITION}) {
+export function drawWorkoutStory(canvas,{photo,badges=[],fit='cover',position=.5,overlayPosition=DEFAULT_STORY_POSITION,transparent=false}) {
   if (canvas.width!==WIDTH) canvas.width=WIDTH;
   if (canvas.height!==HEIGHT) canvas.height=HEIGHT;
   const ctx=canvas.getContext('2d');
   ctx.save();
   ctx.imageSmoothingQuality='high';
-  paintPhoto(ctx,photo,fit,position);
+  ctx.clearRect(0,0,WIDTH,HEIGHT);
+  if (!transparent) paintPhoto(ctx,photo,fit,position);
 
-  const brand = textLine(ctx, [['bold 66px ' + SERIF, 'Faz o '], ['italic bold 66px ' + SERIF, 'Básico']]);
-  const signature = textLine(ctx, [['600 22px ' + FONT, 'C L U B'], ['400 24px ' + SERIF, '  ·  por Nutri Marcela Tupi']]);
-  const metrics = badges.filter(badge=>badge.key==='cardio'||badge.key==='strength').map(badge=>metricLine(ctx,badge));
-  const padding = 34, rowHeight = 48, checkboxSize = 27, checkboxGap = 15;
-  const metricWidth = Math.max(0,...metrics.map(line=>line.width))+checkboxSize+checkboxGap;
-  const width = Math.min(WIDTH - 2 * CARD_INSET, Math.max(metrics.length ? 604 : 460,
-    2 * padding + Math.max(brand.width, signature.width, metrics.length?metricWidth:0)));
-  const height = metrics.length ? 164 + metrics.length * rowHeight : 151;
+  const brand=textLine(ctx,[['700 54px '+FONT,'FAZ O BÁSICO '],['italic 700 54px '+FONT,'CLUB']]);
+  const signature=trackedText(ctx,'Nutri Marcela Tupi','400 27px '+FONT,3.2);
+  const metrics=['strength','cardio'].map(key=>badges.find(badge=>badge.key===key)).filter(Boolean).map(badge=>metricLine(ctx,badge));
+  const padding=16,gap=48;
+  const metricWidth=metrics.reduce((total,line)=>total+line.width,0)+(metrics.length>1?gap:0);
+  const width=Math.min(WIDTH-2*CARD_INSET,2*padding+Math.max(brand.width,signature.width,metricWidth));
+  const hasNote=metrics.some(line=>line.key==='cardio'&&line.note);
+  const height=metrics.length?(hasNote?206:170):115;
   const maxX = WIDTH - width - CARD_INSET, maxY = HEIGHT - height - CARD_INSET;
   const x = CARD_INSET + fraction(overlayPosition?.x, DEFAULT_STORY_POSITION.x) * (maxX - CARD_INSET);
   const y = CARD_INSET + fraction(overlayPosition?.y, DEFAULT_STORY_POSITION.y) * (maxY - CARD_INSET);
 
   ctx.translate(x,y);
-  const glass = ctx.createLinearGradient(0,0,width,height);
-  glass.addColorStop(0,'rgba(53,44,35,.72)');
-  glass.addColorStop(1,'rgba(36,31,27,.67)');
-  ctx.beginPath(); ctx.roundRect(1,1,width-2,height-2,26);
-  ctx.fillStyle = glass; ctx.fill();
-  ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,244,218,.27)'; ctx.stroke();
-
-  const inner = width - padding * 2;
-  const center = width / 2;
-  ctx.fillStyle = PAPER;
-  ctx.textBaseline = 'alphabetic';
-  paintLine(ctx,brand,center,82,inner);
-  paintLine(ctx,signature,center,118,inner);
-  const blockLeft = (width-Math.min(inner,metricWidth))/2;
+  const inner=width-padding*2,center=width/2;
+  ctx.fillStyle=PAPER;ctx.textBaseline='alphabetic';
+  // Text is the entire stamp: a restrained shadow keeps white lettering legible
+  // without adding any backing rectangle, border, pill or checkbox.
+  ctx.shadowColor='rgba(0,0,0,.38)';ctx.shadowBlur=4;ctx.shadowOffsetX=0;ctx.shadowOffsetY=1.5;
+  paintLine(ctx,brand,center,62,inner);
+  paintLine(ctx,signature,center,96,inner);
+  const available=metrics.length>1?(inner-gap)/2:inner;
   metrics.forEach((line,index)=>{
-    const baseline = 181 + index*rowHeight, top = baseline-24;
-    ctx.save();
-    ctx.strokeStyle = PAPER; ctx.lineWidth = 2.2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.roundRect(blockLeft,top,checkboxSize,checkboxSize,3); ctx.stroke();
-    ctx.lineWidth = 2.8;
-    ctx.beginPath(); ctx.moveTo(blockLeft+6,top+13); ctx.lineTo(blockLeft+11,top+19); ctx.lineTo(blockLeft+21,top+7); ctx.stroke();
-    const available=inner-checkboxSize-checkboxGap, scale=Math.min(1,available/line.width);
-    ctx.translate(blockLeft+checkboxSize+checkboxGap,baseline); ctx.scale(scale,1); ctx.textAlign='left';
-    for(const part of line.parts){ctx.font=part.font;ctx.fillText(part.text,part.x,0);}
-    ctx.restore();
+    const middle=metrics.length>1?padding+available/2+index*(available+gap):center;
+    paintLine(ctx,line,middle,153,available);
+    if(line.key==='cardio'&&line.note){
+      const note=textLine(ctx,[['400 31px '+FONT,line.note]]);
+      paintLine(ctx,note,middle,190,available);
+    }
   });
   ctx.restore();
   return {x, y, width, height, minX:CARD_INSET, minY:CARD_INSET, maxX, maxY};

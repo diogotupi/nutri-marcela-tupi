@@ -137,6 +137,8 @@
 .story-period input { width: 14px; height: 14px; }
 .story-source-actions, .story-choices, .story-export-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .story-source-actions .app-btn, .story-export-actions .app-btn { min-height: 42px; justify-content: center; }
+.story-source [data-sticker] { min-height: 42px; margin-top: 14px; }
+.story-source [data-sticker][aria-disabled="true"] { opacity: .55; pointer-events: none; }
 .story-hint, .story-feedback { margin: 8px 0 0; font-size: .76rem; line-height: 1.55; color: #526659; }
 .story-feedback:empty { display: none; }
 .story-settings fieldset { margin: 0; padding: 0; border: none; min-width: 0; }

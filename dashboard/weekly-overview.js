@@ -1,7 +1,7 @@
 import {getLocalDateString} from '../js/app-core.js';
 import {weeklyMarkup,weekDayDescription,weeklyRange} from '../js/weekly-summary.mjs?v=20261114-story-weight';
 import {loadPatientWeek} from './weekly-data.js?v=20261114-story-weight';
-import {openWorkoutStory} from './workout-story.js?v=20261123-story';
+import {openWorkoutStory} from './workout-story.js?v=20261124-weekly-stamp';
 import {enhanceProgress} from '../js/progress-motion.mjs?v=20261106-visual';
 import {getRecordDate,setRecordDate} from './record-date.js?v=20261118-historico';
 

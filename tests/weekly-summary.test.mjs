@@ -70,9 +70,9 @@ test('cardio uses recorded minutes; a free meal counts once per day and stays of
   const cardioCard=html.match(/<article [^>]*data-week-total="cardio">[\s\S]*?<\/article>/)[0];
   assert.match(cardioCard,/data-progress-number="340"/);
   assert.match(cardioCard,/Duração informada em 2 de 3 dias de cardio/);
-  assert.deepEqual(badges.find(b=>b.key==='cardio'),{key:'cardio',label:'cardio: 340 minutos',selected:true});
+  assert.deepEqual(badges.find(b=>b.key==='cardio'),{key:'cardio',label:'CARDIO: 340 min',note:'acumulados',selected:true});
   const past=weeklySummary({today,offset:-1,habits,records});
-  assert.equal(weeklyStoryBadges(past).find(b=>b.key==='cardio').label,'cardio: 80 minutos');
+  assert.equal(weeklyStoryBadges(past).find(b=>b.key==='cardio').label,'CARDIO: 80 min');
   const report=progressSeries(records,'2026-11-04',today,habits);
   assert.equal(report.cardioMinutes,200);assert.match(workoutChart(report),/Duração informada em 1 de 2 dias de cardio/);
   assert.doesNotMatch(workoutChart(progressSeries(records,today,today,[habit('cardio')])),/Tempo de cardio/);
@@ -86,12 +86,12 @@ test('charts expose exact values, keep empty days off the table, and escape inte
   assert.doesNotMatch(progressPlot([{day:'2026-11-02',value:5}],{label:'<script>',unit:'" onfocus="bad',min:0,max:10}),/<script>|unit=".*onfocus=/);
 });
 
-test('Stories show only recorded strength and cardio minutes, never other metrics or invented durations', () => {
+test('Weekly Stories count distinct workout days out of seven and accumulated personal minutes', () => {
   const summary = weeklySummary({today, records:[exercise('2026-11-02'),exercise('2026-11-02'),exercise('2026-11-05')],
     water:[{log_date:'2026-11-02',amount_ml:2050},{log_date:today,amount_ml:1500},{log_date:'2026-11-08',amount_ml:3000}],
     goals:[{valid_from:'2026-10-01',water_ml:2000}], habits:[habit('strength'),habit('cardio'),habit('diet') ]});
   const badges = weeklyStoryBadges(summary);
-  assert.deepEqual(badges,[{key:'strength',label:'Treino de força',selected:true}]);
+  assert.deepEqual(badges,[{key:'strength',label:'TREINO 3/7',selected:true},{key:'cardio',label:'CARDIO: 0 min',note:'acumulados',selected:true}]);
   assert.deepEqual(storyBadges({strength:1,cardio:1,cardioMinutes:35,waterMl:2050,diet:1,intensity:10}),[
     {key:'cardio',label:'cardio: 35 minutos',selected:true},{key:'strength',label:'Treino de força',selected:true}
   ]);
@@ -99,9 +99,23 @@ test('Stories show only recorded strength and cardio minutes, never other metric
   for(const duration of [undefined,null,0,-1,NaN,Infinity])assert.deepEqual(storyBadges({cardio:1,cardioMinutes:duration}),[]);
   assert.equal(storyBadges({cardio:1,cardioMinutes:1})[0].label,'cardio: 1 minuto');
   assert.deepEqual(weeklyStoryBadges({sessions:4,cardioDays:3,dietDays:6,water:3000,intensity:8}),[]);
-  assert.deepEqual(weeklyStoryBadges(weeklySummary({today})), []);
+  assert.deepEqual(weeklyStoryBadges(weeklySummary({today})), [
+    {key:'strength',label:'TREINO 0/7',selected:true},
+    {key:'cardio',label:'CARDIO: 0 min',note:'acumulados',selected:true}
+  ]);
   assert.equal(storyWeekLabel(weeklyRange('2027-01-01')), '28 dez 2026 — 01 jan 2027');
   assert.equal(storyWeekLabel(weeklyRange('2026-11-02')), '02 nov');
+});
+
+test('Story workout fraction includes cardio-only and log-only days without counting sessions twice',()=>{
+  const summary=weeklySummary({today,habits:[habit('strength',1,'2026-11-02'),{...habit('cardio',1,'2026-11-02'),cardio_minutes:30},habit('cardio',1,'2026-11-03'),habit('strength',1,'2026-11-07')],
+    records:[exercise('2026-11-02'),exercise('2026-11-02'),exercise('2026-11-04'),exercise('2026-11-05',7,{archived_at:today}),exercise('2026-11-07')]});
+  assert.equal(summary.workoutDays,3);
+  assert.equal(summary.cardioMinutes,30);
+  assert.equal(weeklyStoryBadges(summary)[0].label,'TREINO 3/7');
+  for(const invalid of [-1,8,1.5,NaN,null,undefined])assert.equal(weeklyStoryBadges({workoutDays:invalid}).length,0);
+  const complete=weeklySummary({today:'2026-11-08',habits:Array.from({length:7},(_,i)=>habit('strength',1,'2026-11-0'+(i+2)))});
+  assert.equal(weeklyStoryBadges(complete)[0].label,'TREINO 7/7');
 });
 
 test('cumulative weight uses the first valid measurement and the latest as of that week, in São Paulo', () => {

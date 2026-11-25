@@ -4,7 +4,7 @@ import {readHabits,groupHabits,saveCardioMinutes} from '../js/daily-habits.mjs?v
 import {WORKOUT_TYPES,CARDIO_TYPES,workoutDetails,workoutName} from '../js/workout-types.mjs?v=20261118-desafio';
 import {getRecordDate,lockRecordDate,formatRecordDate} from './record-date.js?v=20261118-historico';
 import {celebrateWorkout} from './workout-celebration.js?v=20261108-habits';
-import {openWorkoutStory} from './workout-story.js?v=20261123-story';
+import {openWorkoutStory} from './workout-story.js?v=20261124-weekly-stamp';
 import {intensityLabel} from './patient-model.mjs';
 
 export function mountPatientTraining(root,profile,{bearSvg,notifyPatientSaved}) {
@@ -32,7 +32,7 @@ export function mountPatientTraining(root,profile,{bearSvg,notifyPatientSaved}) 
       <button type="button" class="app-btn app-btn--ghost" data-training-cancel hidden>Cancelar edição</button><p role="status"></p>
     </form>
     <section class="training-day-sessions" aria-label="Treinos deste dia"><h3>Treinos registrados neste dia</h3><div data-sessions-list><p>Carregando…</p></div><p data-sessions-status role="status"></p></section>
-    <section class="workout-story-invite" aria-labelledby="story-invite-title"><img class="story-invite-cover" src="/assets/story-club-preview.jpg" alt="" loading="lazy" width="180" height="320"><div><h3 id="story-invite-title">Faz o Básico Club</h3><p>Sua foto do treino com os registros do dia ou da semana.</p><button type="button" class="app-btn app-btn--primary" data-create-workout-story>Criar Story do treino <span aria-hidden="true">↗</span></button></div></section>`;
+    <section class="workout-story-invite" aria-labelledby="story-invite-title"><img class="story-invite-cover" src="/assets/story-club-preview.jpg" alt="" loading="lazy" width="180" height="320"><div><h3 id="story-invite-title">Faz o Básico Club</h3><p>Sua foto do treino com os dias de treino e o cardio acumulado na semana.</p><button type="button" class="app-btn app-btn--primary" data-create-workout-story>Criar Story do treino <span aria-hidden="true">↗</span></button></div></section>`;
 
   const form=root.querySelector('form'), fields=form.elements;
   const minutes=fields.cardio_minutes, type=fields.workout_type, duration=fields.duration_minutes, subtype=fields.cardio_subtype;
