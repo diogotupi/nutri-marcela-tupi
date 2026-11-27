@@ -12,6 +12,12 @@ Todos começam com **zero pontos** às 0h de 23/11. Antes disso, o ranking não 
 4. Em **Data da atividade**, escolha o dia em que os hábitos foram realizados, confira o dia da semana, marque os hábitos comprovados e salve a pontuação dessa data. É possível lançar e corrigir dias anteriores; não é possível pontuar dias futuros.
 5. Use **Dia anterior** e **Próximo dia** para percorrer o desafio. Cada data carrega seus próprios checks e minutos. **Atualizar esta data** apenas busca novamente os registros do dia selecionado; não avança o calendário nem apaga os pontos.
 
+O preenchimento é guardado automaticamente como **rascunho privado da pessoa da equipe**. O rascunho pode ser retomado depois de fechar o navegador e ainda não soma pontos. **Salvar e fechar** confirma os lançamentos no ranking; um dia também pode ser fechado sem nenhum check.
+
+Ao retornar ao sistema, a equipe vê as datas com **registros em aberto**, os dias anteriores **sem lançamentos** e a data atual, podendo escolher o que preencher. “Sem lançamentos” significa que não há apuração registrada, não que o paciente deixou de cumprir os hábitos. Trocar de data preserva o rascunho para retomada.
+
+Um novo dia sem lançamentos abre com checks desmarcados, minutos em branco e observações vazias. Registros já feitos naquela data são carregados. Dias salvos continuam disponíveis para consulta e correção; editar um dia anterior não altera os demais. Se a tela estiver acompanhando hoje quando o dia virar em Brasília, ela oferece a nova data e mantém qualquer apuração pendente identificada na data de origem.
+
 Cada pessoa da equipe usa a própria conta habilitada. Pacientes não recebem permissão de lançar pontos. O histórico mostra autoria, horário e o que mudou. Se duas pessoas editarem a mesma linha, o sistema pede recarregamento em vez de sobrescrever a alteração de outra pessoa. Um reenvio idêntico não duplica pontos nem histórico.
 
 ## Pontos

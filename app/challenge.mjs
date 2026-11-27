@@ -86,11 +86,11 @@ export function mountChallenge(root,profile,{initialTab='ranking'}={}){
   if(!root)return ()=>{};
   instances.get(root)?.();
   const prefix='challenge-'+(++instanceId);
-  const state={data:null,tab:initialTab,day:null,staffDay:null,drafts:new Map(),dirty:new Set(),busy:false,loading:false,disposed:false,request:0,dayRequest:0,selected:new Set(),chartDay:1,chartInitialized:false,search:'',participantsSearch:'',status:'',statusError:false};
+  const state={data:null,tab:initialTab,day:null,followToday:true,staffDay:null,drafts:new Map(),dirty:new Set(),busy:false,loading:false,disposed:false,request:0,dayRequest:0,selected:new Set(),chartDay:1,chartInitialized:false,search:'',participantsSearch:'',status:'',statusError:false,workdays:null,draftRevision:0,draftSaved:'[]',draftPromise:null,draftTimer:null,draftError:'',draftConflict:false};
   root.classList.add('challenge-app');
   root.innerHTML=loading();
   const alive=()=>!state.disposed&&root.isConnected;
-  const canLeave=()=>!state.busy&&(!state.dirty.size||confirm('Há pontos, minutos ou observações ainda não salvos. Deseja sair e descartar essas alterações?'));
+  const canLeave=()=>!state.busy&&(!draftPending()||confirm('O rascunho ainda não foi guardado online. A cópia de recuperação fica neste navegador. Deseja sair?'));
   function feedback(message,error=false){state.status=message;state.statusError=error;const el=root.querySelector('[data-challenge-status]');if(el){el.textContent=message;el.classList.toggle('is-error',error);}}
   function shell(){
     if(!alive()||!state.data)return;
@@ -109,16 +109,14 @@ export function mountChallenge(root,profile,{initialTab='ranking'}={}){
     renderTab();
   }
   function content(){return root.querySelector('[data-challenge-content]');}
-  function switchTab(tab){
-    if(tab===state.tab)return;
-    if(state.tab==='score'&&!canLeave())return;
-    if(state.dirty.size){state.dirty.clear();state.staffDay=null;}
-    state.tab=tab;state.status='';shell();
+  async function switchTab(tab){
+    if(tab===state.tab||state.busy||state.loading)return;
+    state.busy=true;lockInputs();try{if(state.tab==='score'&&!await flushDraft())return;if(!alive())return;state.tab=tab;state.status='';}finally{state.busy=false;if(alive())shell();}
   }
   function renderTab(){
     const panel=content();if(!panel)return;
     if(state.tab==='rules'){panel.innerHTML=challengeRules();return;}
-    if(state.tab==='score'){renderScore();if(!state.staffDay)loadDay();return;}
+    if(state.tab==='score'){if(followCurrentDay())return;renderScore();if(!state.staffDay)loadDay();return;}
     renderRanking();
   }
   function renderRanking(){
@@ -162,27 +160,98 @@ export function mountChallenge(root,profile,{initialTab='ranking'}={}){
   }
   function scoreRow(row){return state.drafts.get(row.patient_id)||row;}
   const scoreDateLabel=()=>new Date(state.day+'T12:00:00Z').toLocaleDateString('pt-BR',{timeZone:'UTC',day:'2-digit',month:'2-digit'});
-  const saveDateLabel=()=>`Salvar ${scoreDateLabel()}`;
-  function syncDayControls(){const start=state.data.challenge?.start_date||CHALLENGE_START,end=state.data.challenge?.end_date||CHALLENGE_END,today=state.data.challenge?.today||challengeToday(),locked=state.busy||state.loading;root.querySelector('[data-challenge-prev-day]')?.toggleAttribute('disabled',locked||state.day<=start);root.querySelector('[data-challenge-next-day]')?.toggleAttribute('disabled',locked||state.day>=end||state.day>=today);root.querySelector('[data-challenge-date]')?.toggleAttribute('disabled',locked||today<start);root.querySelector('[data-challenge-reload]')?.toggleAttribute('disabled',locked);const input=root.querySelector('[data-challenge-date]');if(input)input.max=today<end?today:end;}
-  function markDirty(id){const original=state.staffDay.rows.find(row=>row.patient_id===id),draft=state.drafts.get(id);if(!original||!draft)return;const changed=CHALLENGE_HABITS.some(habit=>Boolean(draft[habit.key])!==Boolean(original[habit.key]))||String(draft.notes||'')!==String(original.notes||'')||String(draft.cardio_minutes??'')!==String(original.cardio_minutes??'');if(changed)state.dirty.add(id);else state.dirty.delete(id);const save=root.querySelector('[data-challenge-save]');if(save)save.textContent=state.dirty.size?`${saveDateLabel()} · ${state.dirty.size} ${state.dirty.size===1?'paciente alterado':'pacientes alterados'}`:saveDateLabel();const hint=root.querySelector('[data-challenge-dirty]');if(hint)hint.textContent=state.dirty.size?'Alterações ainda não salvas.':'Tudo salvo neste dia.';}
+  const saveDateLabel=()=>`Salvar e fechar ${scoreDateLabel()}`;
+  const currentScoreDay=()=>[state.data?.challenge?.start_date||CHALLENGE_START,state.data?.challenge?.today||challengeToday(),state.data?.challenge?.end_date||CHALLENGE_END].sort()[1];
+  const draftKey=day=>`challenge-draft:${profile.id}:${state.data?.challenge?.id||'faz-o-basico-21-2026'}:${day}`;
+  const canonical=row=>({patient_id:row.patient_id,revision:row.revision??0,cardio_minutes:row.cardio_minutes??null,notes:row.notes||'',...Object.fromEntries(CHALLENGE_HABITS.map(h=>[h.key,Boolean(row[h.key])]))});
+  const draftRows=()=>[...state.dirty].sort().map(id=>canonical(state.drafts.get(id)));
+  const hasDraftContext=()=>Boolean(state.staffDay&&state.staffDay.date===state.day&&!state.loading);
+  const draftPending=()=>hasDraftContext()&&Boolean(state.draftPromise||state.draftError||JSON.stringify(draftRows())!==state.draftSaved);
+  function rememberDraft(){if(!alive()||!hasDraftContext())return false;try{const rows=draftRows();if(rows.length||JSON.stringify(rows)!==state.draftSaved)localStorage.setItem(draftKey(state.day),JSON.stringify({revision:state.draftRevision,rows}));else localStorage.removeItem(draftKey(state.day));return true;}catch{state.draftError='Não foi possível guardar a recuperação neste navegador. Mantenha esta página aberta até o rascunho ser guardado online.';return false;}}
+  function readRecovery(day){try{const value=JSON.parse(localStorage.getItem(draftKey(day)));return value&&Array.isArray(value.rows)&&Number.isInteger(value.revision)?value:null;}catch{return null;}}
+  const hasOpenDraft=()=>Boolean(state.dirty.size||state.draftConflict||state.draftSaved!=='[]'||readRecovery(state.day)?.rows.length);
+  const dayCaption=()=>state.dirty.size?'Rascunho ainda não pontuado.':state.workdays?.days?.find(d=>d.date===state.day)?.status==='saved'?'Dia salvo. Você pode corrigir os registros e salvar novamente.':'Dia ainda não fechado.';
+  function draftHint(){return state.draftConflict?'Há conflito de versões. Seu rascunho foi preservado; confira os registros antes de continuar.':state.draftError|| (state.draftPromise?'Guardando rascunho…':JSON.stringify(draftRows())!==state.draftSaved?'Aguardando guardar rascunho…':state.dirty.size?'Rascunho guardado. Ainda não pontuou no ranking.':'Sem alterações em rascunho.');}
+  function updateDraftHint(){if(!alive())return;const el=root.querySelector('[data-challenge-draft-status]');if(el)el.textContent=draftHint();const retry=root.querySelector('[data-challenge-draft-retry]');if(retry)retry.hidden=!state.draftError;const discard=root.querySelector('[data-challenge-draft-discard]');if(discard)discard.hidden=!hasOpenDraft();const hint=root.querySelector('[data-challenge-dirty]');if(hint)hint.textContent=dayCaption();}
+  function scheduleDraft(){rememberDraft();clearTimeout(state.draftTimer);state.draftTimer=setTimeout(()=>flushDraft(),400);updateDraftHint();}
+  async function flushDraft(){
+    clearTimeout(state.draftTimer);if(state.draftPromise)return state.draftPromise;if(!state.staffDay||state.loading)return true;if(state.draftConflict)return false;
+    if(JSON.stringify(draftRows())===state.draftSaved){state.draftError='';rememberDraft();updateDraftHint();return true;}
+    state.draftError='';
+    state.draftPromise=(async()=>{await Promise.resolve();try{
+      while(alive()){
+        if(JSON.stringify(draftRows())===state.draftSaved){await refreshWorkdays();if(JSON.stringify(draftRows())===state.draftSaved)return true;}
+        const day=state.day,rows=draftRows(),signature=JSON.stringify(rows);
+        if(rows.some(r=>r.cardio_minutes!=null&&(!Number.isInteger(r.cardio_minutes)||r.cardio_minutes<0||r.cardio_minutes>1440)))throw Error('Corrija os minutos para guardar o rascunho: use um inteiro de 0 a 1440.');
+        const result=await rpc('challenge_store_draft',{p_date:day,p_rows:rows,p_revision:state.draftRevision});
+        if(!alive())return false;
+        state.draftRevision=result.revision;state.draftSaved=signature;rememberDraft();
+      }
+      return false;
+    }catch(error){state.draftError=errorText(error);state.draftConflict=error.code==='40001';rememberDraft();return false;}finally{state.draftPromise=null;updateDraftHint();}})();updateDraftHint();return state.draftPromise;
+  }
+  async function refreshWorkdays(){try{const result=await rpc('challenge_workdays');if(alive()){state.workdays=result;renderWorkdays();}}catch{/* Keep the last known calendar if a background request fails. */}}
+  function installWorkspace(result,{recover=true}={}){
+    state.staffDay=result;state.workdays=result.workdays||state.workdays;state.draftRevision=result.draft?.revision??0;state.draftError='';state.draftConflict=false;
+    const remote=result.draft?.rows||[];state.draftSaved=JSON.stringify([...remote].sort((a,b)=>a.patient_id.localeCompare(b.patient_id)).map(canonical));
+    const local=recover?readRecovery(state.day):null;let edits=remote;
+    if(local){if(JSON.stringify(local.rows)===state.draftSaved){try{localStorage.removeItem(draftKey(state.day));}catch{}}else{edits=local.rows;if(local.revision!==state.draftRevision){state.draftConflict=true;state.draftError='O rascunho online mudou em outra aba. A recuperação local foi preservada.';}}}
+    state.drafts=new Map((result.rows||[]).map(row=>[row.patient_id,{...row}]));state.dirty.clear();
+    for(const edit of edits){const base=state.drafts.get(edit.patient_id);if(!base||Number(base.revision??0)!==Number(edit.revision??0)){state.draftConflict=true;state.draftError='Os pontos desta data mudaram desde o rascunho. Confira as diferenças antes de continuar.';}state.drafts.set(edit.patient_id,{...base,...edit});state.dirty.add(edit.patient_id);}
+    if(state.draftConflict)rememberDraft();
+    if(local&&!state.draftConflict&&JSON.stringify(draftRows())!==state.draftSaved)scheduleDraft();
+  }
+  function renderWorkdays(){
+    const target=root.querySelector('[data-challenge-workdays]');if(!target)return;const days=state.workdays?.days||[],today=state.data?.challenge?.today||challengeToday();
+    if(!days.length){target.innerHTML='<p>Consultando as datas do desafio…</p>';return;}
+    const items=days.map(day=>({...day,status:(readRecovery(day.date)?.rows.length?'open':day.status)}));
+    const started=items.find(d=>d.status!=='empty'||d.draft_revision>0)?.date||items[0]?.date;
+    const pending=items.filter(d=>d.date<today&&d.date>=started&&d.status!=='saved');
+    const choices=[...pending,...items.filter(d=>d.date===today)];
+    const dayLabel=date=>new Date(date+'T12:00:00Z').toLocaleDateString('pt-BR',{timeZone:'UTC',weekday:'short',day:'2-digit',month:'2-digit'});
+    const label={open:'Em aberto',saved:'Salvo',empty:'Sem lançamentos'};
+    target.innerHTML=`${pending.length?`<div class="challenge-pending"><strong>Existem registros em aberto ou datas sem lançamentos</strong><p>Qual data você quer preencher? Rascunhos não entram no ranking.</p><div>${choices.map(d=>`<button type="button" data-challenge-workday="${d.date}" class="challenge-button challenge-button--light">${dayLabel(d.date)}${d.date===today?' · Hoje':''} · ${label[d.status]} · ${d.status==='open'?'Retomar':'Preencher'}</button>`).join('')}</div></div>`:''}<details class="challenge-days-calendar" ><summary>Ver todos os dias · ${items.filter(d=>d.status==='open').length} em aberto</summary><div>${items.map(d=>`<button type="button" data-challenge-workday="${d.date}" data-workday-status="${d.status}" aria-current="${d.date===state.day?'date':'false'}" ${d.date>today?'disabled':''}><strong>${formatDay(d.date)}${d.date===today?' · Hoje':''}</strong><span>${d.date>today?'Ainda não chegou':label[d.status]}</span></button>`).join('')}</div></details>`;
+    target.querySelectorAll('[data-challenge-workday]').forEach(button=>button.onclick=()=>changeScoreDay(button.dataset.challengeWorkday));
+  }
+  function lockInputs(){root.querySelectorAll('input,textarea,button').forEach(el=>el.disabled=true);}
+  async function changeScoreDay(next){
+    const start=state.data.challenge?.start_date||CHALLENGE_START,end=state.data.challenge?.end_date||CHALLENGE_END,today=state.data.challenge?.today||challengeToday();
+    if(state.busy||state.loading||!next||next<start||next>end||next>today||next===state.day){const input=root.querySelector('[data-challenge-date]');if(input)input.value=state.day;return;}
+    state.busy=true;lockInputs();let changed=false;
+    try{if(!await flushDraft()){feedback('O rascunho foi preservado. Resolva o aviso antes de trocar de data.',true);return;}if(!alive())return;
+      feedback('');state.followToday=next===currentScoreDay();state.day=next;state.dirty.clear();state.drafts.clear();state.staffDay=null;changed=true;
+    }finally{state.busy=false;if(alive()){if(changed){renderScore();loadDay();}else shell();}}
+  }
+  async function reloadWorkspace(){if(state.busy||state.loading)return;state.busy=true;lockInputs();try{if(state.draftConflict)rememberDraft();else if(!await flushDraft())return;if(alive())await loadDay();}finally{state.busy=false;if(alive())shell();}}
+  async function discardDraft(){
+    if(state.busy||state.loading||!confirm('Descartar somente seu rascunho desta data? Os pontos já salvos serão mantidos.'))return;
+    state.busy=true;lockInputs();const day=state.day;clearTimeout(state.draftTimer);
+    try{if(state.draftPromise)await state.draftPromise;if(!alive())return;await rpc('challenge_store_draft',{p_date:day,p_rows:[],p_revision:state.draftRevision});try{localStorage.removeItem(draftKey(day));}catch{}await loadDay();}catch(error){feedback(errorText(error),true);}finally{state.busy=false;if(alive())shell();}
+  }
+  function followCurrentDay(){
+    if(!alive()||state.tab!=='score'||!state.data?.is_staff||!state.followToday||!state.day||state.day===currentScoreDay()||state.busy||state.loading||draftPending())return false;
+    state.day=currentScoreDay();state.staffDay=null;state.dirty.clear();state.drafts.clear();feedback('');shell();return true;
+  }
+  function syncDayControls(){const start=state.data.challenge?.start_date||CHALLENGE_START,end=state.data.challenge?.end_date||CHALLENGE_END,today=state.data.challenge?.today||challengeToday(),locked=state.busy||state.loading;const phase=challengeDay(today,start,end),pill=root.querySelector('.challenge-day-pill'),progress=root.querySelector('.challenge-progress');if(pill)pill.innerHTML=`${star} ${esc(phase.label)}`;if(progress){progress.setAttribute('aria-label',`${phase.day} de 21 dias`);progress.querySelector('span')?.style.setProperty('--challenge-progress',`${phase.day/21*100}%`);}root.querySelector('[data-challenge-prev-day]')?.toggleAttribute('disabled',locked||state.day<=start);root.querySelector('[data-challenge-next-day]')?.toggleAttribute('disabled',locked||state.day>=end||state.day>=today);root.querySelector('[data-challenge-date]')?.toggleAttribute('disabled',locked||today<start);root.querySelector('[data-challenge-reload]')?.toggleAttribute('disabled',locked);const input=root.querySelector('[data-challenge-date]');if(input)input.max=today<end?today:end;const notice=root.querySelector('[data-challenge-rollover]');if(notice){notice.hidden=!state.followToday||state.day===currentScoreDay();notice.querySelector('[data-challenge-rollover-text]').textContent=`Hoje é ${formatDay(today)}. Você está finalizando ${scoreDateLabel()}. O rascunho será mantido ao escolher outra data.`;notice.querySelector('button').disabled=locked;}}
+  function markDirty(id){const original=state.staffDay.rows.find(row=>row.patient_id===id),draft=state.drafts.get(id);if(!original||!draft)return;const changed=CHALLENGE_HABITS.some(habit=>Boolean(draft[habit.key])!==Boolean(original[habit.key]))||String(draft.notes||'')!==String(original.notes||'')||String(draft.cardio_minutes??'')!==String(original.cardio_minutes??'');if(changed)state.dirty.add(id);else state.dirty.delete(id);const save=root.querySelector('[data-challenge-save]');if(save)save.textContent=state.dirty.size?`${saveDateLabel()} · ${state.dirty.size} ${state.dirty.size===1?'paciente alterado':'pacientes alterados'}`:saveDateLabel();const hint=root.querySelector('[data-challenge-dirty]');if(hint)hint.textContent=state.dirty.size?'Rascunho não pontuado.':'Nenhuma alteração nos pontos.';scheduleDraft();}
   function renderScore(){
     const panel=content();if(!panel)return;
     const today=state.data.challenge?.today||challengeToday(),start=state.data.challenge?.start_date||CHALLENGE_START,end=state.data.challenge?.end_date||CHALLENGE_END;
     state.day=state.day||[start,today,end].sort()[1];
-    panel.innerHTML=`<section class="challenge-scoring-intro"><div><span class="challenge-kicker">BASTIDORES DO DESAFIO</span><h2>Cada registro, um incentivo.</h2><p>Confira as fotos enviadas no grupo do WhatsApp e marque os hábitos realizados. Informe os minutos conferidos no campo Cardio; marque o check de 6 pontos apenas com pelo menos 30 minutos contínuos. Minutos validados contam no desempate mesmo sem o check. O prazo é para a comprovação; o lançamento pode ser feito depois.</p></div><span class="challenge-team-tag">Somente equipe</span></section><div class="challenge-selected-day" data-challenge-selected-day><strong>${esc(new Date(state.day+'T12:00:00Z').toLocaleDateString('pt-BR',{timeZone:'UTC',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'}))}</strong><span>Dia ${Math.round((Date.parse(state.day)-Date.parse(start))/86400000)+1} de 21</span></div><p class="challenge-day-help">Escolha a data em que a atividade aconteceu. Para pontuar outro dia, mude a data. Os registros de cada dia ficam separados.</p><div class="challenge-day-navigation"><button type="button" class="challenge-button challenge-button--light" data-challenge-prev-day>← Dia anterior</button><button type="button" class="challenge-button challenge-button--light" data-challenge-next-day>Próximo dia →</button></div><div class="challenge-score-toolbar"><label>Data da atividade<input type="date" data-challenge-date value="${state.day}" min="${start}" max="${today<end?today:end}"></label><label class="challenge-score-search">Buscar participante<input type="search" data-challenge-search placeholder="Nome do paciente…" value="${esc(state.search)}"></label><button type="button" class="challenge-button challenge-button--light" data-challenge-reload>Atualizar esta data</button></div><div data-challenge-day-body>${state.staffDay?scoreTable():loading()}</div><div data-challenge-management>${state.staffDay?managementHtml():''}</div>`;
-    const changeDay=next=>{const start=state.data.challenge?.start_date||CHALLENGE_START,end=state.data.challenge?.end_date||CHALLENGE_END,today=state.data.challenge?.today||challengeToday();if(state.busy||state.loading||!next||next<start||next>end||next>today||next===state.day||!canLeave()){panel.querySelector('[data-challenge-date]').value=state.day;return;}feedback('');state.day=next;state.dirty.clear();state.drafts.clear();state.staffDay=null;renderScore();loadDay();};
-    panel.querySelector('[data-challenge-date]').onchange=event=>changeDay(event.currentTarget.value);
-    panel.querySelector('[data-challenge-prev-day]').onclick=()=>changeDay(dateOffset(state.day,-1));
-    panel.querySelector('[data-challenge-next-day]').onclick=()=>changeDay(dateOffset(state.day,1));
+    panel.innerHTML=`<section class="challenge-scoring-intro"><div><span class="challenge-kicker">BASTIDORES DO DESAFIO</span><h2>Cada registro, um incentivo.</h2><p>Confira as fotos enviadas no grupo do WhatsApp e marque os hábitos realizados. Informe os minutos conferidos no campo Cardio; marque o check de 6 pontos apenas com pelo menos 30 minutos contínuos. Minutos validados contam no desempate mesmo sem o check. O prazo é para a comprovação; o lançamento pode ser feito depois.</p></div><span class="challenge-team-tag">Somente equipe</span></section><div data-challenge-workdays></div><div class="challenge-selected-day" data-challenge-selected-day><strong>${esc(new Date(state.day+'T12:00:00Z').toLocaleDateString('pt-BR',{timeZone:'UTC',weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'}))}</strong><span>Dia ${Math.round((Date.parse(state.day)-Date.parse(start))/86400000)+1} de 21</span></div><p class="challenge-day-help">Escolha a data em que a atividade aconteceu. Para pontuar outro dia, mude a data. Os registros de cada dia ficam separados.</p><div class="challenge-rollover" data-challenge-rollover hidden role="status"><p data-challenge-rollover-text></p><button type="button" class="challenge-button challenge-button--light" data-challenge-today>Ir para hoje</button></div><div class="challenge-day-navigation"><button type="button" class="challenge-button challenge-button--light" data-challenge-prev-day>← Dia anterior</button><button type="button" class="challenge-button challenge-button--light" data-challenge-next-day>Próximo dia →</button></div><div class="challenge-score-toolbar"><label>Data da atividade<input type="date" data-challenge-date value="${state.day}" min="${start}" max="${today<end?today:end}"></label><label class="challenge-score-search">Buscar participante<input type="search" data-challenge-search placeholder="Nome do paciente…" value="${esc(state.search)}"></label><button type="button" class="challenge-button challenge-button--light" data-challenge-reload>Atualizar esta data</button></div><div data-challenge-day-body>${state.staffDay?scoreTable():loading()}</div><div data-challenge-management>${state.staffDay?managementHtml():''}</div>`;
+    panel.querySelector('[data-challenge-date]').onchange=event=>changeScoreDay(event.currentTarget.value);
+    panel.querySelector('[data-challenge-prev-day]').onclick=()=>changeScoreDay(dateOffset(state.day,-1));
+    panel.querySelector('[data-challenge-next-day]').onclick=()=>changeScoreDay(dateOffset(state.day,1));
+    panel.querySelector('[data-challenge-today]').onclick=()=>changeScoreDay(currentScoreDay());
     panel.querySelector('[data-challenge-search]').oninput=event=>{state.search=event.target.value;filterScoreRows();};
-    panel.querySelector('[data-challenge-reload]').onclick=()=>{if(state.busy||state.loading||!canLeave())return;state.dirty.clear();loadDay();};
-    bindScore();syncDayControls();
+    panel.querySelector('[data-challenge-reload]').onclick=reloadWorkspace;
+    bindScore();syncDayControls();renderWorkdays();updateDraftHint();
     if(state.day>today)feedback('O desafio ainda não chegou a esta data. Você pode consultar os participantes, mas os pontos só poderão ser lançados no dia ou depois.');
   }
   function participantContext(row){return `<span class="challenge-patient-context"><span class="${row.patient_active===true?'is-active':row.patient_active===false?'is-inactive':''}">${({active:'Ativo',inactive:'Inativo',upcoming:'A iniciar',none:'Sem acompanhamento'})[row.acompanhamento_status]||(row.patient_active===true?'Ativo':row.patient_active===false?'Inativo':'Situação não informada')}</span><span>${esc(row.plan_name||'Sem plano informado')}</span></span>`;}
   function scoreTable(){
     const rows=state.staffDay.rows||[],future=state.day>(state.data.challenge?.today||challengeToday());
-    return `${rows.length?`<div class="challenge-score-scroll" tabindex="0" role="region" aria-label="Tabela de pontuação. Role para os lados para ver todas as categorias."><table class="challenge-score-table"><thead><tr><th scope="col">Participante</th>${CHALLENGE_HABITS.map(habit=>`<th scope="col">${esc(habit.label)}<span>${habit.points} pts</span></th>`).join('')}<th scope="col">Dia<span>até ${CHALLENGE_DAILY_MAX} pts</span></th><th scope="col">Registros para consulta</th><th scope="col">Observação da equipe</th></tr></thead><tbody>${rows.map(original=>{const row=scoreRow(original);return `<tr data-challenge-score-row="${esc(row.patient_id)}"><th scope="row"><strong>${esc(row.full_name||row.first_name)}</strong>${participantContext(row)}<small data-challenge-row-state>${state.dirty.has(row.patient_id)?'Não salvo':''}</small></th>${CHALLENGE_HABITS.map(habit=>`<td><label class="challenge-score-check"><input type="checkbox" data-challenge-habit="${habit.key}" data-challenge-pid="${esc(row.patient_id)}" ${row[habit.key]?'checked':''} ${future?'disabled':''} aria-label="${esc(habit.label)}: ${habit.points} pontos para ${esc(row.full_name||row.first_name)}"><span aria-hidden="true">✓</span></label>${habit.key==='cardio'?`<label class="challenge-cardio-minutes">Minutos<input type="number" inputmode="numeric" min="0" max="1440" step="1" data-challenge-cardio-minutes="${esc(row.patient_id)}" value="${esc(row.cardio_minutes??'')}" aria-label="Minutos de cardio validados para ${esc(row.full_name||row.first_name)}" placeholder="—" ${future?'disabled':''}></label><small class="challenge-cardio-rule">Minutos contam no desempate. 6 pts só a partir de 30 min.</small>${row.cardio_review_required?'<small class="challenge-cardio-review">Conferir minutos</small>':''}`:''}</td>`).join('')}<td class="challenge-score-total"><strong data-challenge-row-total>${scoreDay(row)}</strong><small>${(original.medals||[]).length?`+${original.medals.length*3} medalhas`:''}</small></td><td class="challenge-score-readonly">${workoutsHtml(original)}</td><td><textarea rows="2" maxlength="1500" data-challenge-notes="${esc(row.patient_id)}" aria-label="Observação para ${esc(row.full_name||row.first_name)}" placeholder="Opcional · só a equipe vê" ${future?'disabled':''}>${esc(row.notes||'')}</textarea></td></tr>`;}).join('')}</tbody></table></div><p class="challenge-score-no-match" hidden data-challenge-no-match>Nenhum participante encontrado com esse nome.</p><div class="challenge-save-bar"><div><strong>Conferiu as comprovações?</strong><span data-challenge-dirty>${state.dirty.size?'Alterações ainda não salvas.':'Tudo salvo neste dia.'}</span></div><button type="button" class="challenge-button" data-challenge-save ${future?'disabled':''}>${saveDateLabel()}</button></div>`:'<div class="challenge-card challenge-empty"><h3>Vamos reunir a turma?</h3><p>Adicione os pacientes abaixo para começar a pontuar.</p></div>'}`;
+    return `${rows.length?`<div class="challenge-score-scroll" tabindex="0" role="region" aria-label="Tabela de pontuação. Role para os lados para ver todas as categorias."><table class="challenge-score-table"><thead><tr><th scope="col">Participante</th>${CHALLENGE_HABITS.map(habit=>`<th scope="col">${esc(habit.label)}<span>${habit.points} pts</span></th>`).join('')}<th scope="col">Dia<span>até ${CHALLENGE_DAILY_MAX} pts</span></th><th scope="col">Registros para consulta</th><th scope="col">Observação da equipe</th></tr></thead><tbody>${rows.map(original=>{const row=scoreRow(original);return `<tr data-challenge-score-row="${esc(row.patient_id)}"><th scope="row"><strong>${esc(row.full_name||row.first_name)}</strong>${participantContext(row)}<small data-challenge-row-state>${state.dirty.has(row.patient_id)?'Não salvo':''}</small></th>${CHALLENGE_HABITS.map(habit=>`<td><label class="challenge-score-check"><input type="checkbox" data-challenge-habit="${habit.key}" data-challenge-pid="${esc(row.patient_id)}" ${row[habit.key]?'checked':''} ${future?'disabled':''} aria-label="${esc(habit.label)}: ${habit.points} pontos para ${esc(row.full_name||row.first_name)}"><span aria-hidden="true">✓</span></label>${habit.key==='cardio'?`<label class="challenge-cardio-minutes">Minutos<input type="number" inputmode="numeric" min="0" max="1440" step="1" data-challenge-cardio-minutes="${esc(row.patient_id)}" value="${esc(row.cardio_minutes??'')}" aria-label="Minutos de cardio validados para ${esc(row.full_name||row.first_name)}" placeholder="—" ${future?'disabled':''}></label><small class="challenge-cardio-rule">Minutos contam no desempate. 6 pts só a partir de 30 min.</small>${row.cardio_review_required?'<small class="challenge-cardio-review">Conferir minutos</small>':''}`:''}</td>`).join('')}<td class="challenge-score-total"><strong data-challenge-row-total>${scoreDay(row)}</strong><small>${(original.medals||[]).length?`+${original.medals.length*3} medalhas`:''}</small></td><td class="challenge-score-readonly">${workoutsHtml(original)}</td><td><textarea rows="2" maxlength="1500" data-challenge-notes="${esc(row.patient_id)}" aria-label="Observação para ${esc(row.full_name||row.first_name)}" placeholder="Opcional · só a equipe vê" ${future?'disabled':''}>${esc(row.notes||'')}</textarea></td></tr>`;}).join('')}</tbody></table></div><p class="challenge-score-no-match" hidden data-challenge-no-match>Nenhum participante encontrado com esse nome.</p><div class="challenge-draft-panel">${state.draftConflict?`<details open><summary>Conferir rascunho preservado e pontos atuais</summary><p>O rascunho não foi aplicado. Descarte-o somente se quiser manter os registros atuais.</p><ul>${draftRows().map(edit=>{const saved=state.staffDay.rows.find(r=>r.patient_id===edit.patient_id);return `<li><strong>${esc(saved?.full_name||saved?.first_name||'Paciente indisponível')}</strong> · Rascunho: ${CHALLENGE_HABITS.filter(h=>edit[h.key]).map(h=>h.label).join(', ')||'sem checks'}; ${edit.cardio_minutes??'—'} min; ${esc(edit.notes)}<br>Salvo: ${saved?CHALLENGE_HABITS.filter(h=>saved[h.key]).map(h=>h.label).join(', ')||'sem checks':'não está disponível nesta data'}; ${saved?.cardio_minutes??'—'} min; ${esc(saved?.notes||'')}</li>`;}).join('')}</ul></details>`:''}<p data-challenge-draft-status role="status"></p><button type="button" class="challenge-button challenge-button--light" data-challenge-draft-retry hidden>Tentar guardar novamente</button><button type="button" class="challenge-button challenge-button--light" data-challenge-draft-discard ${hasOpenDraft()?'':'hidden'}>Descartar meu rascunho</button></div><div class="challenge-save-bar"><div><strong>Conferiu as comprovações?</strong><span data-challenge-dirty>${dayCaption()}</span></div><button type="button" class="challenge-button" data-challenge-save ${future?'disabled':''}>${saveDateLabel()}</button></div>`:'<div class="challenge-card challenge-empty"><h3>Vamos reunir a turma?</h3><p>Adicione os pacientes abaixo para começar a pontuar.</p></div>'}`;
   }
   function workoutsHtml(row){
     const workouts=row.workouts||[],medals=row.medals||[];
@@ -208,13 +277,15 @@ export function mountChallenge(root,profile,{initialTab='ranking'}={}){
     root.querySelectorAll('[data-challenge-cardio-minutes]').forEach(input=>input.oninput=()=>{const id=input.dataset.challengeCardioMinutes;state.drafts.get(id).cardio_minutes=input.value===''?null:Number(input.value);input.setCustomValidity('');markDirty(id);input.closest('tr').querySelector('[data-challenge-row-state]').textContent=state.dirty.has(id)?'Não salvo':'';});
     root.querySelectorAll('[data-challenge-notes]').forEach(input=>input.oninput=()=>{const id=input.dataset.challengeNotes;state.drafts.get(id).notes=input.value;markDirty(id);input.closest('tr').querySelector('[data-challenge-row-state]').textContent=state.dirty.has(id)?'Não salvo':'';});
     root.querySelector('[data-challenge-save]')?.addEventListener('click',saveDay);
+    root.querySelector('[data-challenge-draft-retry]')?.addEventListener('click',()=>{if(!state.draftConflict)flushDraft();else feedback('Use Atualizar esta data para conferir o conflito, ou descarte seu rascunho explicitamente.',true);});
+    root.querySelector('[data-challenge-draft-discard]')?.addEventListener('click',discardDraft);
     root.querySelector('[data-challenge-participant-search]')?.addEventListener('input',event=>{state.participantsSearch=event.target.value;filterCandidates();});
     root.querySelectorAll('[data-challenge-enroll]').forEach(button=>button.onclick=async()=>{
-      if(!canLeave())return;
+      if(state.busy||state.loading)return;
       const id=button.dataset.challengeEnroll,active=button.dataset.challengeActive!=='true',name=state.staffDay.participants.find(row=>row.patient_id===id)?.full_name||'este paciente';
       if(!active&&!confirm(`Remover ${name} do ranking? Os lançamentos serão preservados.`))return;
       state.busy=true;root.querySelectorAll('input,textarea,button').forEach(el=>el.disabled=true);feedback(active?'Adicionando participante…':'Removendo participante…');
-      try{await rpc('challenge_set_participant',{p_patient:id,p_active:active});state.dirty.clear();await loadDay();await refresh(true,{render:false});feedback(active?'Participante adicionado.':'Participante removido do ranking.');}catch(error){feedback(errorText(error),true);}finally{state.busy=false;shell();}
+      try{if(!await flushDraft()||!alive())return;await rpc('challenge_set_participant',{p_patient:id,p_active:active});state.dirty.clear();await loadDay();await refresh(true,{render:false});feedback(active?'Participante adicionado.':'Participante removido do ranking.');}catch(error){feedback(errorText(error),true);}finally{state.busy=false;shell();}
     });
     root.querySelectorAll('[data-challenge-export]').forEach(button=>button.onclick=()=>exportData(button.dataset.challengeExport,button));
     filterScoreRows();filterCandidates();
@@ -225,31 +296,31 @@ export function mountChallenge(root,profile,{initialTab='ranking'}={}){
     const body=root.querySelector('[data-challenge-day-body]');if(body)body.innerHTML=loading();
     const management=root.querySelector('[data-challenge-management]');if(management)management.innerHTML='';
     try{
-      const result=await rpc('challenge_staff_day',{p_date:day});
+      const result=await rpc('challenge_staff_workspace',{p_date:day});
       if(!alive()||sequence!==state.dayRequest)return;
-      state.staffDay=result;state.drafts=new Map((result.rows||[]).map(row=>[row.patient_id,{...row}]));state.dirty.clear();
+      installWorkspace(result);
       if(state.tab==='score')renderScore();
-    }catch(error){if(!alive()||sequence!==state.dayRequest)return;const body=root.querySelector('[data-challenge-day-body]');if(body)body.innerHTML=`<div class="challenge-card challenge-empty"><p>${esc(errorText(error))}</p><button type="button" class="challenge-button" data-challenge-day-retry>Tentar novamente</button></div>`;root.querySelector('[data-challenge-day-retry]')?.addEventListener('click',loadDay);feedback(errorText(error),true);}finally{if(sequence===state.dayRequest){state.loading=false;syncDayControls();}}
+    }catch(error){if(!alive()||sequence!==state.dayRequest)return;const body=root.querySelector('[data-challenge-day-body]');if(body)body.innerHTML=`<div class="challenge-card challenge-empty"><p>${esc(errorText(error))}</p><button type="button" class="challenge-button" data-challenge-day-retry>Tentar novamente</button></div>`;root.querySelector('[data-challenge-day-retry]')?.addEventListener('click',loadDay);feedback(errorText(error),true);}finally{if(sequence===state.dayRequest){state.loading=false;if(!followCurrentDay())syncDayControls();}}
   }
   async function saveDay(){
     if(state.busy||state.loading)return;
-    if(!state.dirty.size){feedback('Nenhuma alteração para salvar.');return;}
+    if(state.draftConflict){updateDraftHint();return;}
     const changedIds=[...state.dirty];
     for(const id of changedIds){const row=state.drafts.get(id),minutes=row.cardio_minutes;const input=root.querySelector(`[data-challenge-cardio-minutes="${CSS.escape(id)}"]`);const invalid=input?.validity.badInput||(minutes!=null&&(!Number.isInteger(minutes)||minutes<0||minutes>1440));if(invalid){const message='Informe minutos inteiros entre 0 e 1440.';input?.setCustomValidity(message);input?.reportValidity();feedback(message,true);return;}}
     // Normalize on save, never while typing the first digit of 30 or 45.
     let normalizedCardio=false;
     for(const id of changedIds){const row=state.drafts.get(id);if(row.cardio&&(row.cardio_minutes==null||row.cardio_minutes<30)){row.cardio=false;normalizedCardio=true;markDirty(id);const tr=root.querySelector(`[data-challenge-score-row="${CSS.escape(id)}"]`);tr.querySelector('[data-challenge-habit="cardio"]').checked=false;tr.querySelector('[data-challenge-row-total]').textContent=scoreDay(row);tr.querySelector('[data-challenge-row-state]').textContent=state.dirty.has(id)?'Não salvo':'';}}
-    if(!state.dirty.size){feedback('Sem alterações para salvar. Cardio sem duração ou abaixo de 30 minutos fica sem os 6 pontos.');return;}
-    state.busy=true;
-    const day=state.day,rows=[...state.dirty].map(id=>{const row=state.drafts.get(id);return {patient_id:id,revision:row.revision,cardio_minutes:row.cardio_minutes??null,notes:row.notes||'',...Object.fromEntries(CHALLENGE_HABITS.map(habit=>[habit.key,Boolean(row[habit.key])]))};});
-    root.querySelectorAll('input,textarea,button').forEach(el=>el.disabled=true);feedback('Salvando os lançamentos do dia…');
+    const day=state.day;state.busy=true;lockInputs();
     try{
-      const result=await rpc('challenge_save_day',{p_date:day,p_rows:rows});
+    if(!await flushDraft()||!alive())return;
+    const rows=[...state.dirty].map(id=>{const row=state.drafts.get(id);return {patient_id:id,revision:row.revision,cardio_minutes:row.cardio_minutes??null,notes:row.notes||'',...Object.fromEntries(CHALLENGE_HABITS.map(habit=>[habit.key,Boolean(row[habit.key])]))};});
+    root.querySelectorAll('input,textarea,button').forEach(el=>el.disabled=true);feedback('Salvando os lançamentos do dia…');
+      const result=await rpc('challenge_submit_day',{p_date:day,p_rows:rows,p_draft_revision:state.draftRevision});
       if(!alive())return;
-      state.staffDay=result;state.drafts=new Map((result.rows||[]).map(row=>[row.patient_id,{...row}]));state.dirty.clear();
+      try{localStorage.removeItem(draftKey(day));}catch{}installWorkspace(result,{recover:false});
       await refresh(true,{render:false});renderScore();feedback(normalizedCardio?'Dia salvo. Os minutos foram mantidos; Cardio sem duração ou abaixo de 30 minutos ficou sem os 6 pontos.':'Dia salvo. Ranking, gráfico e conquistas foram atualizados.');
       dispatchEvent(new CustomEvent('challenge:updated'));
-    }catch(error){if(alive())feedback(errorText(error),true);}finally{state.busy=false;if(alive())shell();}
+    }catch(error){if(alive()){if(error.code==='40001'){state.draftConflict=true;state.draftError=errorText(error);rememberDraft();}feedback(errorText(error),true);}}finally{state.busy=false;if(alive()&&!followCurrentDay())shell();}
   }
   async function exportData(kind,button){
     button.disabled=true;feedback('Preparando o arquivo…');
@@ -268,13 +339,16 @@ export function mountChallenge(root,profile,{initialTab='ranking'}={}){
     try{
       const data=await overview(profile.id,force);if(!alive()||request!==state.request)return;
       state.data=data;
-      if(render){if(state.tab==='score'&&state.staffDay){/* Update date limits without replacing unsaved staff inputs. */syncDayControls();}else shell();}
+      if(data.is_staff)await refreshWorkdays();
+      if(!alive()||request!==state.request)return;
+      if(render&&(state.busy||state.loading)){syncDayControls();}
+      else if(render&&!followCurrentDay()){if(state.tab==='score'&&state.staffDay){/* Update date limits without replacing unsaved staff inputs. */syncDayControls();}else shell();}
     }catch(error){if(!alive()||request!==state.request)return;if(!state.data){root.innerHTML=`<section class="challenge-card challenge-empty"><h2>Não foi possível abrir o desafio</h2><p>${esc(errorText(error))}</p><button type="button" class="challenge-button" data-challenge-retry>Tentar novamente</button></section>`;root.querySelector('[data-challenge-retry]').onclick=()=>refresh(true);}else feedback(errorText(error),true);}finally{if(button?.isConnected)button.disabled=false;}
   }
   const onRefresh=()=>{if(alive()&&!document.hidden&&!state.busy)refresh(true);};
-  const onBeforeUnload=event=>{if(state.dirty.size||state.busy){event.preventDefault();event.returnValue='';}};
+  const onBeforeUnload=event=>{if(!state.data?.is_staff||!state.day)return;rememberDraft();if(draftPending()||state.busy){event.preventDefault();event.returnValue='';}};
   const timer=setInterval(onRefresh,45000);
-  addEventListener('focus',onRefresh);addEventListener('challenge:updated',onRefresh);addEventListener('patient:record-saved',onRefresh);addEventListener('beforeunload',onBeforeUnload);
-  const dispose=()=>{state.disposed=true;state.request++;state.dayRequest++;clearInterval(timer);removeEventListener('focus',onRefresh);removeEventListener('challenge:updated',onRefresh);removeEventListener('patient:record-saved',onRefresh);removeEventListener('beforeunload',onBeforeUnload);instances.delete(root);};
+  document.addEventListener('visibilitychange',onRefresh);addEventListener('focus',onRefresh);addEventListener('challenge:updated',onRefresh);addEventListener('patient:record-saved',onRefresh);addEventListener('beforeunload',onBeforeUnload);
+  const dispose=()=>{if(state.data?.is_staff&&state.day)rememberDraft();clearTimeout(state.draftTimer);state.disposed=true;state.request++;state.dayRequest++;clearInterval(timer);document.removeEventListener('visibilitychange',onRefresh);removeEventListener('focus',onRefresh);removeEventListener('challenge:updated',onRefresh);removeEventListener('patient:record-saved',onRefresh);removeEventListener('beforeunload',onBeforeUnload);instances.delete(root);};
   dispose.canLeave=canLeave;instances.set(root,dispose);refresh();return dispose;
 }

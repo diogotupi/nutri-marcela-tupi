@@ -68,3 +68,29 @@
 .activity-source-date { font-size:.8rem; color:#53695c; }
 .activity-row > .text-button { display:inline-block; margin-right:.7rem; }
 .patient-feed-tools { flex-wrap:wrap; }
+
+/* Days size to their contents; a busy agenda must never spill into the next date. */
+.calendar-grid { align-content:start; grid-auto-rows:max-content; }
+.calendar-grid.week .calendar-day { min-height:0; }
+.calendar-day-events { min-width:0; display:grid; align-content:start; gap:8px; }
+.calendar-day-events .calendar-event { min-width:0; margin:0; }
+.calendar-event-copy { flex:1; min-width:0; }
+.calendar-event-copy strong { display:block; font-size:inherit; line-height:1.45; overflow-wrap:anywhere; }
+.calendar-event-status { line-height:1.4; }
+.calendar-day-empty { margin:0; padding:8px 0; color:#7b877e; font-size:10px; text-align:center; }
+.calendar-today-label { color:#355e51; font-size:10px; font-weight:700; }
+.patients-rail > :is(.rail-challenge,.rail-feed,.rail-community,.rail-notifications) { flex-shrink:0; width:100%; min-height:42px; margin:0 0 10px; }
+.patients-rail > .rail-notifications { margin-bottom:16px; }
+@media(max-width:760px) {
+ .calendar-page:has(> .calendar-grid) { min-height:0; overflow:hidden; }
+ .calendar-heading,.calendar-note { flex-shrink:0; }
+ .calendar-grid { display:block; overflow:auto; overscroll-behavior:contain; }
+ .calendar-day,.calendar-grid.week .calendar-day { display:grid; grid-template-columns:44px minmax(0,1fr); gap:12px; min-height:0!important; padding:15px 10px; align-items:start; }
+ .calendar-day .day-heading { grid-row:auto; gap:5px; margin:0; padding-top:2px; }
+ .calendar-day-events .calendar-event { grid-column:auto; padding:11px 10px; gap:9px; min-height:58px; font-size:13px; }
+ .calendar-event .dot { width:8px; height:8px; margin-top:5px; }
+ .calendar-event-status { display:inline-block!important; margin-top:6px!important; padding:3px 7px; border-radius:6px; background:#ffffff70; font-size:11px!important; }
+ .calendar-day-empty { padding:7px 0; text-align:left; font-size:12px; }
+ .calendar-tools { gap:6px; }
+ .calendar-tools button { min-height:38px; }
+}

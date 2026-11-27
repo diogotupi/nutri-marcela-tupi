@@ -385,3 +385,21 @@
 .challenge-day-help { font-size:.8rem;line-height:1.6;color:var(--challenge-muted);margin:.5rem 0 1rem; }
 .challenge-day-navigation { display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem; }
 .challenge-day-navigation button { flex:1;min-width:0; }
+
+.challenge-rollover:not([hidden]) { display:flex;align-items:center;flex-wrap:wrap;gap:.6rem 1rem;padding:1rem;margin-bottom:1rem;border:1px solid #c8ad70;border-radius:14px;background:#fff3d5; }
+.challenge-rollover p { flex:1;min-width:180px;margin:0;font-size:.8rem;line-height:1.6; }
+
+.challenge-pending { padding:1rem;border:1px solid #c6a267;border-radius:14px;background:#fff3d8;margin:1rem 0; }
+.challenge-pending p,.challenge-draft-panel p { font-size:.8rem;line-height:1.6; }
+.challenge-pending>div { display:flex;flex-wrap:wrap;gap:.6rem; }
+.challenge-pending button { white-space:normal;text-align:left; }
+.challenge-days-calendar { margin:1rem 0;padding:1rem;border:1px solid var(--challenge-line);border-radius:14px; }
+.challenge-days-calendar>div { display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.5rem;margin-top:1rem; }
+.challenge-days-calendar button { display:grid;gap:.35rem;border:1px solid var(--challenge-line);border-radius:10px;padding:.7rem;background:#fffdf6;color:var(--challenge-ink);font:inherit;font-size:.7rem;text-align:left;cursor:pointer; }
+.challenge-days-calendar button[aria-current=date] { outline:2px solid var(--challenge-terra); }
+.challenge-days-calendar button[data-workday-status=open] { background:#fff0cb; }
+.challenge-days-calendar button[data-workday-status=saved] { background:#e5eddf; }
+.challenge-days-calendar button:disabled { opacity:.5;cursor:default; }
+.challenge-draft-panel { padding:1rem 0;display:flex;flex-wrap:wrap;gap:.6rem;align-items:center; }
+.challenge-draft-panel p,.challenge-draft-panel details { width:100%;margin:.3rem 0; }
+.challenge-draft-panel li { font-size:.75rem;line-height:1.6;overflow-wrap:anywhere;margin:.6rem 0; }
