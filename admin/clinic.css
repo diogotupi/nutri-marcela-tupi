@@ -69,8 +69,10 @@
 .activity-row > .text-button { display:inline-block; margin-right:.7rem; }
 .patient-feed-tools { flex-wrap:wrap; }
 
-/* The challenge grows with its forms; the calendar alone uses a fixed-height frame. */
-.calendar-page.challenge-page { height:auto; min-height:100%; }
+.challenge-page { padding:24px; }
+@media(max-width:1200px) {
+ .challenge-page { padding:18px; }
+}
 
 /* Days size to their contents; a busy agenda must never spill into the next date. */
 .calendar-grid { align-content:start; grid-auto-rows:max-content; }
@@ -85,6 +87,7 @@
 .patients-rail > :is(.rail-challenge,.rail-feed,.rail-community,.rail-notifications) { flex-shrink:0; width:100%; min-height:42px; margin:0 0 10px; }
 .patients-rail > .rail-notifications { margin-bottom:16px; }
 @media(max-width:760px) {
+ .challenge-page { padding:15px 10px; }
  .calendar-page:has(> .calendar-grid) { min-height:0; overflow:hidden; }
  .calendar-heading,.calendar-note { flex-shrink:0; }
  .calendar-grid { display:block; overflow:auto; overscroll-behavior:contain; }

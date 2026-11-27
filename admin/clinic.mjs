@@ -253,7 +253,13 @@ async function logs(append=false){if(actor.role!=='admin')return;const offset=ap
 async function action(name){
  if(name==='challenge'){
    leavePatient();++epoch;renderRail();history.replaceState({},'',location.pathname+'?section=challenge');
-   view.innerHTML='<section class="calendar-page challenge-page"><header class="page-heading"><h1>Desafio</h1><button class="secondary" data-action="calendar">← Calendário</button></header><div id="clinic-challenge"></div></section>';
+   view.innerHTML=`<section class="challenge-page">
+     <header class="page-heading">
+       <h1>Desafio</h1>
+       <button class="secondary" data-action="calendar">← Calendário</button>
+     </header>
+     <div id="clinic-challenge"></div>
+   </section>`;
    disposeChallenge=mountChallenge(document.getElementById('clinic-challenge'),actor);return;
  }
  if(name==='community'||name==='unread-community')return openCommunity();
