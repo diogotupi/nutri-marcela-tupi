@@ -9,7 +9,10 @@ export const CHALLENGE_HABITS = Object.freeze([
   {key:'water',label:'Água',title:'Sua meta de água',points:5,icon:'◒',description:'Bata a sua meta diária de água: a que está no seu plano ou no perfil da plataforma.'},
   {key:'other_activity',label:'Outras atividades',title:'Demais atividades',points:4,icon:'✧',description:'Pelo menos 30 minutos de crossfit, yoga, pilates, futevôlei, vôlei, beach tennis, funcional, dança, lutas ou outros esportes.'},
   {key:'story',label:'Stories',title:'Resumo nos stories',points:3,icon:'☆',description:'Compartilhe nos stories o resumo gerado pela plataforma. Este extra vale uma vez por dia.'},
+  {key:'reading',label:'Leitura',title:'Leitura de livro',points:2,icon:'▤',description:'Leia um trecho de um livro e envie a comprovação no grupo do WhatsApp para a equipe conferir. Vale uma vez por dia.'},
 ]);
+export const CHALLENGE_DAILY_MAX = CHALLENGE_HABITS.reduce((total, habit) => total + habit.points, 0);
+export const CHALLENGE_TOTAL_MAX = CHALLENGE_DAILY_MAX * CHALLENGE_DAYS;
 export const BADGE_NAMES = Object.freeze({steady21:'21 dias de cuidado',meals3:'Streak',water3:'Hidratação em dia',training7:'Movimento presente',nutri_pride:'Orgulho da nutri'});
 export const CHART_COLORS = ['#A0422F','#315F50','#916100','#7660A0','#297A8B','#B35179','#5D7134','#695344','#1D6A74','#8C5527'];
 

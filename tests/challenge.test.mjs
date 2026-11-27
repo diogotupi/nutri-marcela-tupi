@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {CHALLENGE_HABITS,challengeToday,challengeDay,dateOffset,scoreDay,trendLabel,csvCell,createCsv,chartSeries} from '../app/challenge-model.mjs';
+import {CHALLENGE_HABITS,CHALLENGE_DAILY_MAX,CHALLENGE_TOTAL_MAX,challengeToday,challengeDay,dateOffset,scoreDay,trendLabel,csvCell,createCsv,chartSeries} from '../app/challenge-model.mjs';
 
 test('challenge civil dates use Brasília at both boundaries',()=>{
   assert.equal(challengeToday(new Date('2026-11-23T02:59:59Z')),'2026-11-22');
@@ -11,13 +11,16 @@ test('challenge civil dates use Brasília at both boundaries',()=>{
   assert.equal(challengeDay('2026-12-14').phase,'finished');
   assert.equal(dateOffset('2026-11-23',20),'2026-12-13');
 });
-test('the six daily habits total 36 and medal bonuses remain separate',()=>{
+test('the seven daily habits total 38 and medal bonuses remain separate',()=>{
   const complete=Object.fromEntries(CHALLENGE_HABITS.map(habit=>[habit.key,true]));
-  assert.equal(scoreDay(complete),36);
-  assert.equal(scoreDay(complete)*21,756);
-  assert.equal(scoreDay({...complete,story:false}),33);
+  assert.equal(scoreDay(complete),38);
+  assert.equal(scoreDay(complete)*21,798);
+  assert.equal(scoreDay({...complete,story:false}),35);
   assert.equal(scoreDay({strength:true,cardio:true,medal_points:3}),16);
   assert.equal(scoreDay({strength:'true'}),0);
+  assert.equal(CHALLENGE_DAILY_MAX,38);assert.equal(CHALLENGE_TOTAL_MAX,798);
+  assert.equal(scoreDay({reading:true}),2);assert.equal(scoreDay({reading:false}),0);
+  assert.equal(scoreDay({...complete,cardio:false}),32);
 });
 test('ranking movement is based on positions and an unknown past rank is not movement',()=>{
   assert.equal(trendLabel({rank:2,previous_rank:5}).text,'↑ 3');

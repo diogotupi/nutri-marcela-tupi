@@ -23,8 +23,9 @@ Cada pessoa da equipe usa a própria conta habilitada. Pacientes não recebem pe
 | Água | 5 | Atingir a meta individual |
 | Demais atividades | 4 | Pelo menos 30 minutos |
 | Stories | 3 | Compartilhar o resumo da plataforma |
+| Leitura | 2 | Ler um trecho de um livro e enviar a comprovação no grupo |
 
-Cada categoria pontua uma vez por dia. O total é **36 pontos por dia**, **756 em 21 dias**, mais **3 por medalha nova** conquistada no período. Medalhas anteriores não são zeradas nem concedidas novamente. Retirar e conceder a mesma medalha não cria bônus repetido.
+Cada categoria pontua uma vez por dia. O total é **38 pontos por dia**, **798 em 21 dias**, mais **3 por medalha nova** conquistada no período. A leitura não exige um mínimo de páginas ou minutos; a equipe confere o registro. A inclusão dessa categoria não concede pontos automaticamente aos registros existentes. Medalhas anteriores não são zeradas nem concedidas novamente. Retirar e conceder a mesma medalha não cria bônus repetido.
 
 Um treino pertence a uma única categoria. Crossfit conta como demais atividades. Atividades diferentes podem somar. Os checks comuns do painel continuam sem pontuação; o placar do desafio usa os lançamentos da equipe e os bônus de medalhas.
 
@@ -32,7 +33,7 @@ Um treino pertence a uma única categoria. Crossfit conta como demais atividades
 
 O registro de treino aceita tipo, duração e, no cardio, modalidade. Cada sessão entra uma vez. O total diário antigo de aeróbico continua funcionando quando não há sessões detalhadas de cardio naquele dia; ele nunca é somado novamente sobre as sessões. Treinos antigos sem duração não recebem minutos estimados.
 
-Os pacientes podem corrigir os próprios registros de treino e completar dias anteriores. Para o desempate, a comprovação continua sendo a foto do tempo no aparelho enviada ao grupo, conforme as regras do desafio. A equipe consegue conferir e corrigir os registros no consultório.
+Os pacientes podem corrigir os próprios registros de treino e completar dias anteriores. Esses minutos pessoais ficam separados do desafio. Para o desempate, valem apenas os minutos que a equipe informa em Pontuar após conferir a foto do tempo no aparelho enviada ao grupo. Durações abaixo de 30 minutos podem ser salvas e contam no desempate, mas não concedem os 6 pontos do hábito Cardio.
 
 O ranking ordena pelos pontos e depois pelos minutos de cardio acumulados no período. Se os dois valores forem iguais, a posição permanece empatada. As setas comparam o acumulado atual com o acumulado até o dia anterior, considerando as correções existentes; não representam uma fotografia congelada do que a equipe já havia lançado ontem.
 

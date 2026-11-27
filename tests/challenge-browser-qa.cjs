@@ -16,10 +16,10 @@ async (existingPage) => {
     const series=(n)=>Array.from({length:21},(_,i)=>i<3?(i+1)*n:null);
     window.__state={role:'patient',enrolled:true,today:'2026-11-25',phase:'active',day:3,photo:false,failSave:false,ops:[],opened:0};
     window.__ranking=Array.from({length:7},(_,i)=>({patient_id:'p'+(i+1),first_name:['Ana','Bia','Carla','Duda','Elisa','Fernanda','Gabi'][i],photo_path:null,rank:i+1,previous_rank:i===0?2:i===1?1:i+1,points:108-i*9,habit_points:105-i*9,medal_points:3,medals:1,cardio_minutes:330-i*30,total_minutes:450-i*30,daily_points:series(36-i*3)}));
-    window.__rows=window.__ranking.map(r=>({...r,full_name:r.first_name+' Demonstração',strength:false,vegetable:false,cardio:false,water:false,other_activity:false,story:false,total:0,notes:'',revision:0,workouts:[{id:'w'+r.patient_id,type:'cardio',description:'Esteira',minutes:30,cardio_minutes:30}],medals:[{badge_id:'water3',title:'Hidratação em dia',earned_at:'2026-11-25T15:00:00Z',points:3}]}));
+    window.__rows=window.__ranking.map(r=>({...r,full_name:r.first_name+' Demonstração',strength:false,vegetable:false,cardio:false,water:false,other_activity:false,story:false,reading:false,total:0,notes:'',revision:0,workouts:[{id:'w'+r.patient_id,type:'cardio',description:'Esteira',minutes:30,cardio_minutes:30}],medals:[{badge_id:'water3',title:'Hidratação em dia',earned_at:'2026-11-25T15:00:00Z',points:3}]}));
     window.__rows.forEach((r,i)=>Object.assign(r,{cardio_minutes:null,reported_cardio_minutes:30,reported_total_minutes:70,patient_active:i!==1,plan_name:i===1?'Sem plano ativo':'Trimestral',tracking_state:i===1?'expired':'open'}));
     window.__audit=[];
-    const overview=()=>({challenge:{id:'faz-o-basico-21-2026',title:'Desafio 21 Dias – Faz o Básico Club',start_date:'2026-11-23',end_date:'2026-12-13',timezone:'America/Sao_Paulo',total_days:21,today:window.__state.today,phase:window.__state.phase,day:window.__state.day},is_staff:window.__state.role!=='patient',participant:window.__state.enrolled,viewer_id:'p7',updated_at:'2026-11-25T18:30:00Z',photo_visible:window.__state.photo,photo_available:true,me:window.__ranking[6],ranking:window.__state.enrolled||window.__state.role!=='patient'?window.__ranking:[],timeline:window.__state.phase==='upcoming'?[]:[{id:'e1',kind:'badge',patient_id:'p1',first_name:'Ana',date:'2026-11-25',created_at:'2026-11-25T17:00:00Z',points:3,badge_id:'water3',badge_name:'Hidratação em dia',text:'Ana ganhou a medalha Hidratação em dia! +3 pontos'},{id:'e2',kind:'full_day',patient_id:'p2',first_name:'Bia',date:'2026-11-25',created_at:'2026-11-25T16:00:00Z',points:36,text:'Bia fez dia completo (+36)'},{id:'e3',kind:'cardio',patient_id:'p1',first_name:'Ana',date:'2026-11-25',created_at:'2026-11-25T14:00:00Z',minutes:300,text:'Ana passou de 300 min de cardio no desafio'}]});
+    const overview=()=>({challenge:{id:'faz-o-basico-21-2026',title:'Desafio 21 Dias – Faz o Básico Club',start_date:'2026-11-23',end_date:'2026-12-13',timezone:'America/Sao_Paulo',total_days:21,today:window.__state.today,phase:window.__state.phase,day:window.__state.day},is_staff:window.__state.role!=='patient',participant:window.__state.enrolled,viewer_id:'p7',updated_at:'2026-11-25T18:30:00Z',photo_visible:window.__state.photo,photo_available:true,me:window.__ranking[6],ranking:window.__state.enrolled||window.__state.role!=='patient'?window.__ranking:[],timeline:window.__state.phase==='upcoming'?[]:[{id:'e1',kind:'badge',patient_id:'p1',first_name:'Ana',date:'2026-11-25',created_at:'2026-11-25T17:00:00Z',points:3,badge_id:'water3',badge_name:'Hidratação em dia',text:'Ana ganhou a medalha Hidratação em dia! +3 pontos'},{id:'e2',kind:'full_day',patient_id:'p2',first_name:'Bia',date:'2026-11-25',created_at:'2026-11-25T16:00:00Z',points:38,text:'Bia fez dia completo (+38)'},{id:'e3',kind:'cardio',patient_id:'p1',first_name:'Ana',date:'2026-11-25',created_at:'2026-11-25T14:00:00Z',minutes:300,text:'Ana passou de 300 min de cardio no desafio'}]});
     const staff=date=>({date,rows:window.__rows,audit:window.__audit,participants:[...window.__rows.map(r=>({patient_id:r.patient_id,full_name:r.full_name,active:true,revision:1,patient_active:r.patient_active,plan_name:r.plan_name})),{patient_id:'p8',full_name:'Helena Demonstração',active:false,revision:0,patient_active:false,plan_name:'Sem plano ativo'}]});
     window.__rpc=async(name,args={})=>{
       window.__state.ops.push({name,args});
@@ -27,7 +27,7 @@ async (existingPage) => {
       if(name==='challenge_staff_day')return{data:staff(args.p_date)};
       if(name==='challenge_save_day'){
         if(window.__state.failSave){window.__state.failSave=false;return{error:{code:'40001',message:'Outro membro da equipe atualizou este dia. Atualize para conferir.'}};}
-        for(const row of args.p_rows){const current=window.__rows.find(r=>r.patient_id===row.patient_id);Object.assign(current,row,{revision:current.revision+1});current.total=['strength','vegetable','cardio','water','other_activity','story'].reduce((n,key,i)=>n+(current[key]?[10,8,6,5,4,3][i]:0),0);window.__audit.push({id:window.__audit.length+1,patient_id:row.patient_id,patient_name:current.full_name,actor_name:'Equipe Demo',created_at:'2026-11-25T18:40:00Z',action:'score',before:{},after:row});}
+        for(const row of args.p_rows){const current=window.__rows.find(r=>r.patient_id===row.patient_id),before={...current};Object.assign(current,row,{revision:current.revision+1});current.total=['strength','vegetable','cardio','water','other_activity','story','reading'].reduce((n,key,i)=>n+(current[key]?[10,8,6,5,4,3,2][i]:0),0);window.__audit.push({id:window.__audit.length+1,patient_id:row.patient_id,patient_name:current.full_name,actor_name:'Equipe Demo',created_at:'2026-11-25T18:40:00Z',action:'score',before,after:row});}
         return{data:staff(args.p_date)};
       }
       if(name==='challenge_set_participant')return{data:args};
@@ -43,10 +43,11 @@ async (existingPage) => {
   // Assertions are deliberately written against accessible labels and real renders.
   await page.getByRole('button',{name:'Ranking',exact:true}).waitFor();
   assert(await page.getByRole('button',{name:'Pontuar',exact:true}).count()===0&&await page.locator('[data-challenge-cardio-minutes]').count()===0,'Patient must not have scoring controls');
+  assert(await page.locator('[data-challenge-habit=reading]').count()===0,'Reading points cannot be edited by patients');
   assert((await page.locator('#challenge').innerText()).includes('Gabi'),'Patient included in own ranking');
   await page.getByRole('button',{name:'Regras',exact:true}).click();
   const rules=await page.locator('#challenge').innerText();
-  assert(rules.includes('WhatsApp')&&rules.includes('23h59')&&rules.includes('756'),'Rules: WhatsApp proof, deadline and maximum');
+  assert(rules.includes('WhatsApp')&&rules.includes('23h59')&&rules.includes('798')&&rules.includes('Leitura de livro'),'Rules: WhatsApp proof, deadline and maximum');
   await page.getByRole('button',{name:'Ranking',exact:true}).click();
   await page.locator('[data-challenge-rules]').click();
   assert(await page.locator('dialog[open]').count()===1,'Home rules open in a dialog');
@@ -70,10 +71,11 @@ async (existingPage) => {
   await page.getByRole('button',{name:'Pontuar',exact:true}).click();
   await page.getByRole('button',{name:'Salvar dia',exact:true}).waitFor();
   const row=page.locator('[data-challenge-score-row="p1"]');
+  assert(await row.locator('[data-challenge-habit]').count()===7,'Staff sees all seven daily habits');
   assert(await row.locator('[data-challenge-cardio-minutes]').inputValue()==='','Patient workout must not prefill staff cardio');
   assert((await row.innerText()).includes('Trimestral')&&(await row.innerText()).includes('Ativo'),'Scoring shows patient status and plan');
-  for(const habit of ['strength','vegetable','cardio','water','other_activity','story'])await row.locator('[data-challenge-habit="'+habit+'"]').locator('..').click();
-  assert((await row.locator('[data-challenge-row-total]').innerText())==='36','All six checks total exactly 36');
+  for(const habit of ['strength','vegetable','cardio','water','other_activity','story','reading'])await row.locator('[data-challenge-habit="'+habit+'"]').locator('..').click();
+  assert((await row.locator('[data-challenge-row-total]').innerText())==='38','All seven checks total exactly 38');
   await row.locator('[data-challenge-notes]').fill('Comprovações conferidas no WhatsApp.');
   await row.locator('[data-challenge-cardio-minutes]').fill('3');
   assert(await row.locator('[data-challenge-habit=cardio]').isChecked(),'Partial typing must not erase manual cardio check');
@@ -93,7 +95,7 @@ async (existingPage) => {
   const normalized=await page.evaluate(()=>window.__state.ops.filter(o=>o.name==='challenge_save_day').at(-1).args.p_rows);
   assert(normalized.length===3&&normalized.find(r=>r.patient_id==='p1').cardio===false&&normalized.find(r=>r.patient_id==='p1').cardio_minutes===20,'Checked20 normalizes without blocking batch');
   assert(normalized.find(r=>r.patient_id==='p3').water&&normalized.find(r=>r.patient_id==='p4').cardio===false&&normalized.find(r=>r.patient_id==='p4').cardio_minutes===null,'Other patient and checked-null preserve batch');
-  assert(await row.locator('[data-challenge-row-total]').innerText()==='30','Sub30 removes only the six cardio points');
+  assert(await row.locator('[data-challenge-row-total]').innerText()==='32','Sub30 removes only the six cardio points');
   await row.locator('[data-challenge-cardio-minutes]').fill('45');
   assert(!await row.locator('[data-challenge-habit=cardio]').isChecked(),'Valid duration never automatically grants manual check');
   await row.locator('[data-challenge-habit=cardio]').locator('..').click();
@@ -105,6 +107,16 @@ async (existingPage) => {
   assert(save.args.p_date==='2026-11-25'&&save.args.p_rows.length===1,'Save sends selected day and changed rows only');
   assert(save.args.p_rows[0].revision===1&&save.args.p_rows[0].notes.includes('WhatsApp'),'Save preserves revision and note');
   assert(save.args.p_rows[0].cardio_minutes===45,'Staff cardio sent independently of workouts');
+  assert(save.args.p_rows[0].reading===true,'Reading checkbox is persisted with the staff batch');
+  await page.locator('[data-challenge-reload]').click();
+  await page.waitForFunction(()=>document.querySelector('[data-challenge-score-row=p1] [data-challenge-habit=reading]')?.checked);
+  await row.locator('[data-challenge-habit=reading]').locator('..').click();
+  assert(await row.locator('[data-challenge-row-total]').innerText()==='36','Clearing reading removes only two points');
+  await page.locator('[data-challenge-save]').click();
+  await page.waitForFunction(()=>window.__rows.find(r=>r.patient_id==='p1').reading===false);
+  await page.locator('[data-challenge-reload]').click();
+  await page.waitForFunction(()=>!document.querySelector('[data-challenge-score-row=p1] [data-challenge-habit=reading]')?.checked);
+  assert((await page.locator('.challenge-audit').textContent()).includes('Leitura'),'Reading changes appear in staff audit history');
   await row.locator('[data-challenge-cardio-minutes]').fill('46');
   page.once('dialog',dialog=>dialog.dismiss());
   await page.locator('[data-challenge-date]').fill('2026-11-24');
@@ -142,6 +154,7 @@ async (existingPage) => {
   const csv=await page.evaluate(async()=>({name:window.__csvName,text:await window.__csvBlob.text()}));
   assert(csv.name.includes('entries')&&csv.name.endsWith('.csv'),'CSV filename');
   assert(csv.text.includes('Minutos de cardio validados pela equipe')&&csv.text.includes('"45"')&&csv.text.includes('"20"'),'CSV contains staff minutes');
+  assert(csv.text.includes('Leitura (2)'),'CSV includes the reading category');
   await page.locator('.challenge-management summary').click();
   assert((await page.locator('[data-challenge-candidate=p2]').innerText()).includes('Inativo')&&(await page.locator('[data-challenge-candidate=p1]').innerText()).includes('Trimestral'),'Management distinguishes patient status and challenge enrollment');
   await page.locator('[data-challenge-enroll="p8"]').click();
@@ -152,7 +165,7 @@ async (existingPage) => {
   await page.evaluate(()=>{
     Object.assign(window.__state,{today:'2026-11-22',phase:'upcoming',day:0});
     window.__ranking.forEach(r=>Object.assign(r,{rank:1,previous_rank:1,points:0,habit_points:0,medal_points:0,medals:0,cardio_minutes:0,total_minutes:0,daily_points:Array(21).fill(null)}));
-    window.__rows.forEach(r=>Object.assign(r,{strength:false,vegetable:false,cardio:false,water:false,other_activity:false,story:false,total:0,notes:'',workouts:[],medals:[],cardio_minutes:0,total_minutes:0}));
+    window.__rows.forEach(r=>Object.assign(r,{strength:false,vegetable:false,cardio:false,water:false,other_activity:false,story:false,reading:false,total:0,notes:'',workouts:[],medals:[],cardio_minutes:0,total_minutes:0}));
     window.__mount();
   });
   await page.locator('.challenge-start-notice').waitFor();
@@ -175,5 +188,5 @@ async (existingPage) => {
   assert((await page.locator('[data-challenge-habit]:enabled').count())===0,'All scoring controls disabled before start');
   assert(errors.length===0,errors.join('; '));
   await page.close();
-  return {passed:true,patientReadOnly:true,secretaryScoring:true,rules:true,mobile:true,score36:true,conflictProtection:true,futureProtection:true,beforeStartZero:true,photoConsent:true,csv:true,productionWrites:0};
+  return {passed:true,patientReadOnly:true,secretaryScoring:true,rules:true,mobile:true,score38:true,conflictProtection:true,futureProtection:true,beforeStartZero:true,photoConsent:true,csv:true,productionWrites:0};
 }
