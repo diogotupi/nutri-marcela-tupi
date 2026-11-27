@@ -9,7 +9,8 @@ Todos começam com **zero pontos** às 0h de 23/11. Antes disso, o ranking não 
 1. Abra **Desafio · 21 dias** no painel da Marcela ou da equipe.
 2. Entre em **Pontuar → Gerenciar participantes** e adicione os pacientes inscritos. A implantação não inscreve ninguém automaticamente.
 3. Confira as fotos enviadas no **grupo de WhatsApp**, até 23h59 do dia da atividade.
-4. Selecione a data, marque os hábitos comprovados e clique em **Salvar dia**. É possível lançar e corrigir dias anteriores; não é possível pontuar dias futuros.
+4. Em **Data da atividade**, escolha o dia em que os hábitos foram realizados, confira o dia da semana, marque os hábitos comprovados e salve a pontuação dessa data. É possível lançar e corrigir dias anteriores; não é possível pontuar dias futuros.
+5. Use **Dia anterior** e **Próximo dia** para percorrer o desafio. Cada data carrega seus próprios checks e minutos. **Atualizar esta data** apenas busca novamente os registros do dia selecionado; não avança o calendário nem apaga os pontos.
 
 Cada pessoa da equipe usa a própria conta habilitada. Pacientes não recebem permissão de lançar pontos. O histórico mostra autoria, horário e o que mudou. Se duas pessoas editarem a mesma linha, o sistema pede recarregamento em vez de sobrescrever a alteração de outra pessoa. Um reenvio idêntico não duplica pontos nem histórico.
 

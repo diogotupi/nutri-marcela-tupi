@@ -378,3 +378,10 @@
 @media(prefers-reduced-motion:reduce) {
   .challenge-app *,.challenge-invite * { animation:none!important;transition:none!important;scroll-behavior:auto!important; }
 }
+
+.challenge-selected-day { display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1rem;padding:1rem 1.2rem;border:1px solid var(--challenge-line);border-radius:15px;background:#eee5d1;margin-bottom:.6rem; }
+.challenge-selected-day strong { text-transform:capitalize;font-size:1rem; }
+.challenge-selected-day span { font-size:.8rem;color:var(--challenge-muted); }
+.challenge-day-help { font-size:.8rem;line-height:1.6;color:var(--challenge-muted);margin:.5rem 0 1rem; }
+.challenge-day-navigation { display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem; }
+.challenge-day-navigation button { flex:1;min-width:0; }
