@@ -69,6 +69,9 @@
 .activity-row > .text-button { display:inline-block; margin-right:.7rem; }
 .patient-feed-tools { flex-wrap:wrap; }
 
+/* The challenge grows with its forms; the calendar alone uses a fixed-height frame. */
+.calendar-page.challenge-page { height:auto; min-height:100%; }
+
 /* Days size to their contents; a busy agenda must never spill into the next date. */
 .calendar-grid { align-content:start; grid-auto-rows:max-content; }
 .calendar-grid.week .calendar-day { min-height:0; }

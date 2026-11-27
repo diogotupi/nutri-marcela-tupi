@@ -115,5 +115,28 @@ await page.locator('#fixed-chat textarea').fill('Rascunho preservado');
  await page.goto('http://127.0.0.1:8877/secretaria/');await page.locator('.calendar-grid').waitFor();assert(!await page.locator('#open-audit').isVisible(),'secretary sees logs');await page.locator('#toggle-patients').click();await page.locator('.patient-row[data-patient=p1]').click();await page.getByRole('heading',{name:'Checks de hábitos'}).waitFor();assert(!await page.locator('[data-tab=anamnesis]').count(),'secretary should see the same habit panel');
  await page.locator('#toggle-patients').click();await page.locator('[data-action=community]').click();await page.locator('.community-empty').waitFor();assert(await page.locator('[data-compose]').isVisible(),'Secretary community entry');
  await page.locator('#toggle-patients').click();await page.locator('[data-action=challenge]').click();await page.locator('.challenge-hero').waitFor();await page.getByRole('button',{name:'Pontuar',exact:true}).click();await page.getByText('Gerenciar participantes',{exact:false}).waitFor();assert(await page.locator('[data-challenge-export]').count()===3,'Secretary can access challenge management and exports');
- assert(errors.length===0,errors.join('; '));await page.close();return {passed:true,colors:true,patientPanel:true,persistentChat:true,simpleEnrollment:true,counts:true,notifications:true,mobile:true,secretarySamePanel:true,productionWrites:0};
+ for(const route of ['admin','secretaria']) {
+  await page.goto('http://127.0.0.1:8877/'+route+'/?section=challenge');
+  await page.getByRole('button',{name:'Pontuar',exact:true}).click();
+  await page.getByText('Gerenciar participantes',{exact:false}).waitFor();
+  await page.locator('.challenge-page details').evaluateAll(items=>items.forEach(item=>{item.open=true;}));
+  for(const width of [320,390,430,1440]) {
+   await page.setViewportSize({width,height:width<760?844:1000});
+   const bounds=await page.locator('.challenge-page').evaluate(panel=>({
+    bottom:panel.getBoundingClientRect().bottom,
+    contentBottom:panel.querySelector('#clinic-challenge').getBoundingClientRect().bottom,
+    padding:parseFloat(getComputedStyle(panel).paddingBottom),
+    overflow:document.documentElement.scrollWidth>innerWidth+1
+   }));
+   assert(bounds.bottom>=bounds.contentBottom+bounds.padding-1,route+' '+width+'px: challenge frame must contain all content');
+   assert(!bounds.overflow,route+' '+width+'px: horizontal page overflow');
+   await page.locator('[data-challenge-export]').last().scrollIntoViewIfNeeded();
+   assert(await page.locator('[data-challenge-export]').last().isVisible(),'Challenge exports remain reachable');
+   if(width===390) {
+    await page.locator('.challenge-day-help').scrollIntoViewIfNeeded();
+    await page.screenshot({path:'.playwright-mcp/challenge-frame-'+route+'-390.png'});
+   }
+  }
+ }
+ assert(errors.length===0,errors.join('; '));await page.close();return {passed:true,colors:true,patientPanel:true,persistentChat:true,simpleEnrollment:true,counts:true,notifications:true,mobile:true,secretarySamePanel:true,challengeFrame:true,productionWrites:0};
 }
